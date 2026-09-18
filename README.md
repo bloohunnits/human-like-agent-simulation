@@ -26,21 +26,29 @@ So an agent running this forgets naturally and keeps what keeps mattering. That'
 
 ### What's missing: every memory lives and dies alone
 
-In that model, each memory is an isolated jar on a shelf, fading on its own schedule. A memory can only be reached if the *current moment* directly resembles *it*.
+In that model, each memory is an isolated jar on a shelf, fading on its own schedule, reachable only when the current moment resembles it. Human memories aren't like that — they're *built related*. A memory's meaning is partly its position in the web: what it's wired to, not just what it says. Embeddings capture what a memory is **about**; relations capture what it **means to you**. Two people can hold the same observation — "there's a spider on the wall" — and it means completely different things, because of what it's connected to.
 
-Humans don't work that way. Recall is chained: one memory tugs on the next through shared people, places, causes, and moments. A weak cue can reach a faded memory *through* a strong neighboring one — you can't remember the restaurant until you remember who you were with, and then it all comes back. Embedding similarity can't do that chain, because the target memory may share nothing, textually or semantically, with the cue.
+None of these connections are semantic:
+
+- **The spider bite.** Bitten once as a kid, and "spider" is now wired to fear. Spider and fear share no meaning — the bite made the edge. Deeper still: you can *forget the bite and keep the fear*. The association outlives the memory that created it. A flat store can't even represent that; a graph can — decayed node, surviving edge, "I don't know why I hate spiders."
+- **Sarah and calculus.** Math and calculus are semantically close. Math and *Sarah, your study partner*, are not — they're related because your life put them in the same room, over and over. Mention math and Sarah surfaces.
+- **The smell of sunscreen.** It unlocks one particular summer (Proust's madeleine — a taste unlocking a childhood). Cue and memory share nothing textual. They share an edge of lived co-occurrence.
+- **The food stall.** Sick once after eating there, and you avoid the stall, then the dish, then the block. One event, a permanent aversion edge — humans really do one-trial taste aversion, hours after the fact, with no semantic link between nausea and dinner.
+- **The betrayal.** A friend betrays you, and *every memory involving them changes color*. One new memory re-weights hundreds of old ones through a shared person-hub. Similarity search cannot re-score your past; a graph does it in one propagation.
+- **The trigger.** For a veteran, a car backfire isn't "a loud noise" — it's wired to a memory complex that the sound would never retrieve semantically. PTSD-like dynamics become *legible* in this model: nodes too strong to decay, edges that spread too wide. (Representable and explainable for simulated characters — a model of the pattern, not a claim to capture the condition.)
+- **The lucky socks.** Wore them, won the game — an edge that's causally wrong but psychologically real. Human-like means the irrational associations too: agents with quirks whose origins you can trace.
+- **"The summer before Dad got sick."** People date events relative to other events, not calendars. Temporal landmarks are edges.
 
 ### The improvement: a memory graph
 
-We keep the paper's per-memory dynamics and connect the jars:
+We keep the paper's per-memory dynamics and wire the memories together:
 
-- **Memories become nodes** carrying the `r`/`t`/`g` dynamics above.
-- **Typed edges link them**: same person or place, happened-right-after, part of the same conversation, evidence-for-an-insight.
-- **Recall spreads.** Retrieval starts from what's relevant now, then activation flows along edges — recalling a memory partially re-activates its neighbors, weighted by their strength. (This is spreading activation, straight out of the ACT-R cognitive architecture.)
-- **Recall reinforces structure.** A recall strengthens the node *and* the links it traveled — associations themselves get worn in or fade.
-- **Forgetting becomes structural.** An isolated memory fades fastest. A well-connected one keeps getting rescued by its network. That's the human pattern: trivia goes, the woven-in stuff stays.
-
-Concrete example: ask an agent about the market. Similarity search finds market memories — fine. But the edge from a market memory to *the person you met there*, and from that person to *their friend*, surfaces a memory that shares not one word with "market." That class of recall is the whole point.
+- **Nodes** carry the `r`/`t`/`g` dynamics above.
+- **Typed edges**: same person, same place, happened-right-after, same-moment co-occurrence, cause/consequence, evidence-for-an-insight, and affective ("this means fear").
+- **Recall spreads.** Retrieval starts from what's relevant now, then activation flows along edges, weighted by strength — spreading activation, straight out of the ACT-R cognitive architecture. And it transmits more than accessibility: an activated fear edge should change the agent's *state and behavior*, not just which text lands in its context window.
+- **Recall reinforces structure.** A recall strengthens the node *and* the links it traveled. Associations themselves get worn in or fade.
+- **Edges can outlive their nodes.** The mechanism behind "kept the fear, forgot the bite" — an episodic memory decays away while the association it forged persists.
+- **Forgetting becomes structural.** Isolated trivia fades fastest; the woven-in stuff keeps getting rescued by its network. And one strong new memory can reorganize the meaning of many old ones through shared hubs.
 
 As far as we can find, **nobody has published this combination.** Graph memory systems (HippoRAG, Zep, A-Mem, Mem0-g) have no decay or strength; decay systems (Hou et al., MemoryBank, Generative Agents) have no relations. The one adjacent attempt used forgetting only to *prune* a graph — and lost to flat vector search — so the question is genuinely open and we have a named baseline to beat. Details in [docs/RESEARCH.md](docs/RESEARCH.md).
 
@@ -53,7 +61,7 @@ As far as we can find, **nobody has published this combination.** Graph memory s
 
 - **Believable agents.** Characters that forget acquaintances but remember friends, need reminding, and free-associate — because their memory actually works that way, not because a prompt says "act forgetful."
 - **Forgetting is a feature.** Human forgetting is adaptive: it clears the stale and trivial and keeps what recurs. An agent that remembers everything forever gets *less* human over time and drowns in its own history.
-- **Association is how remembering happens.** People retrieve by connection, not nearest-neighbor search over their whole life.
+- **Relation is part of meaning.** What a spider *means to you* depends on what "spider" is wired to in your history. People retrieve by connection, not nearest-neighbor search over their whole life — and they feel by connection too.
 - **A real scientific hole**, per above — with an honest chance the answer is "the graph doesn't help." We'd publish that too.
 - Long-lived companions and assistants benefit downstream — consequence, not goal.
 
