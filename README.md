@@ -1,6 +1,6 @@
 # human-like-agent-simulation
 
-Give LLM agents a memory that works like ours. Memories fade with time, get stronger each time they are recalled, and pull each other up by association. Then drop those agents into a simulated world and see what changes.
+Give LLM agents a long-term memory that works like ours. Memories fade with time, strengthen with recall, and survive through their connections. Then drop those agents into a simulated world and see what changes.
 
 The goal is human-likeness, not faster retrieval or fewer tokens. We want agents that remember, forget, and associate the way people do.
 
@@ -20,37 +20,44 @@ Strip the math and it makes three claims about remembering:
 - **Time (`t`).** The longer since you last touched a memory, the deeper it sinks. `e^(−t/g)` is the classic forgetting curve. Steep at first, then it flattens.
 - **Strength (`g`).** How well-worn the memory is. Every recall bumps `g` up, and a bigger `g` slows the decay. Remembering is rehearsal. Each recall re-carves the groove.
 
-The subtle part is how strength grows. A recall after a long gap adds more strength than an immediate re-recall. That is the human spacing effect: cramming fades, spaced review sticks. It falls out of one small formula. The denominator just normalizes, so a perfectly relevant, just-recalled memory scores 1.
+The subtle part is how strength grows. A recall after a long gap adds more strength than an immediate re-recall. That is the human spacing effect: cramming fades, spaced review sticks. It falls out of one small formula.
 
-An agent running this forgets naturally and keeps what keeps mattering. Already far more human than a vector store that remembers everything forever.
+An agent running this forgets naturally and keeps what it keeps using. Already far more human than a vector store that remembers everything forever.
 
-### What's missing: every memory lives and dies alone
+### What's missing: decay is blind to connection
 
-In that model each memory is an isolated jar on a shelf, fading on its own schedule, reachable only when the current moment resembles it. Human memories are not like that. They are built related. A memory's meaning is partly its position in the web: what it is wired to, not just what it says. Embeddings capture what a memory is about. Relations capture what it means to you. Two people can see the same spider on the same wall and it means completely different things, because of what "spider" connects to in each of their histories.
+In that model every memory sits on its own clock. Use it or lose it, and "use" means one thing: being directly recalled. A memory nothing re-triggers fades, no matter how much it matters.
 
-Be precise about the objection here, because it is a fair one: relevance handles the direct match. Mention a spider and similarity will happily retrieve your spider bite memory, since spider matches spider. The failures are in everything around the match. The association outliving the memory that made it. Two records that share no content but are bound by life. The flood from one matched memory to its whole cluster. Old memories changing meaning when something new happens. And a match that should land as behavior, not as a paragraph of retrieved text. Each example below shows one of these:
+Now think about what you actually still hold from years ago. You remember your childhood best friend's kitchen. Not because you rehearse kitchens. Because that kitchen is wired into a hundred things you still think about: the friend, the sleepovers, the walk home. What you lost is the stuff nothing else attached to, like what you ate two Tuesdays ago. Human long-term memory is robust against time in exactly this selective way. **Memories survive by being connected.**
 
-- **The spider bite.** While the bite memory exists, relevance finds it fine. The failure comes later. Decay eventually drops that childhood episode below recall, and in a flat store the fear vanishes with it. That is backwards. Humans keep the fear long after they lose the episode. In the graph the bite forged a spider-to-fear edge, the episode node fades, the edge survives. "I don't know why I hate spiders." And fear is not a snippet: the edge should fire as state and behavior, not as text the LLM may or may not use.
-- **Sarah and calculus.** Every study session memory mentions both, so while those episodes are fresh, similarity connects math to Sarah fine. But study session #14 is mundane, and mundane episodes fade, exactly as they should. What a human keeps is the worn-in association: math means Sarah. In a flat store the link dies with the episodes. In the graph, every session reinforced a math-Sarah edge that outlives them all. And the edge chains: math surfaces Sarah, and Sarah brings context that shares nothing with math (she moved away, she hated exams).
-- **The smell of sunscreen.** Similarity gets you, at best, the one memory that happens to mention sunscreen. What humans get is the flood: the dock, the cousins, the water fight, the whole summer. Those memories share nothing with the cue. They connect to it only by having happened together. Co-occurrence edges turn one matched memory into the cluster.
-- **The food stall.** Two separate records: "ate at the stall" that evening, "sick all night" hours later at home. The sickness memory never mentions the food. No shared words, no semantic similarity between nausea and noodles. Only a temporal or causal edge binds them. Without it, the cue "that stall" retrieves a perfectly pleasant dinner memory and nothing warns you. With it, the aversion fires. (Humans really do form this link in one trial, hours apart.)
-- **The betrayal.** Retrieval is not the problem here either. Mention Dave and similarity returns the camping trip and the betrayal both. The problem is the camping trip is still stored as a warm memory, and it should not read warm anymore. Humans re-color the past. A flat store cannot touch old records. A graph propagates the new valence through the Dave hub and re-weights every connected memory in one pass.
-- **The trigger.** A backfire is weakly similar to gunfire at best, so top-k similarity might surface one combat snippet. What happens to a veteran is different in kind: one weak cue detonates a densely connected, over-strong cluster, including the dust, the heat, the friend, memories that share nothing with sound, and it lands as body state, not as retrieved text. That takes spreading activation across strong edges plus valence carried into state. (This models the pattern for simulated characters. It is not a claim to capture the condition.)
-- **The lucky socks.** The win memory may well mention the socks, and similarity can retrieve it. But similarity treats the socks as an irrelevant detail in a story about winning. The superstition is a binding: socks cause wins. Causally wrong, psychologically real, strengthened every time the ritual repeats. Only an edge can hold a relation the content itself does not justify.
-- **"The summer before Dad got sick."** Ask when something happened and the record itself has no answer. People date events by hopping to landmark events through temporal edges. Similarity cannot order the past. Edges can.
+The paper's model cannot produce that. Two memories with the same age and recall count get the same survival odds, whether one is woven into everything the agent cares about and the other is noise. Over a long life, that forgets the wrong things. Relevance cannot patch it either, because a connection is not content: "bitten by a spider" and fear share no words, and math still means Sarah years after every study session memory has faded. The relation itself is the fact worth keeping, and a flat store has nowhere to keep it.
 
-The pattern across all of them: relevance finds the matching text. The edges carry what the match is connected to, what it now means, what survives after it fades, and what it does to the agent.
+### The improvement: memories survive through their connections
 
-### The improvement: a memory graph
-
-We keep the paper's per-memory dynamics and wire the memories together.
+We keep the paper's per-memory dynamics and make relations a factor in recall and in survival.
 
 - **Nodes** carry the `r`/`t`/`g` dynamics above.
-- **Typed edges**: same person, same place, happened right after, same moment, cause and consequence, evidence for an insight, and affective ("this means fear").
-- **Recall spreads.** Retrieval starts from what is relevant now, then activation flows along edges, weighted by strength. This is spreading activation, straight out of the ACT-R cognitive architecture. It carries more than accessibility: an activated fear edge should change the agent's state and behavior, not just which text lands in its context window.
-- **Recall reinforces structure.** A recall strengthens the node and the links it traveled. Associations get worn in or fade.
-- **Edges can outlive their nodes.** This is the mechanism behind keeping the fear while forgetting the bite. The episodic memory decays away while the association it forged persists.
-- **Forgetting becomes structural.** Isolated trivia fades fastest. Woven-in memories keep getting rescued by their network. And one strong new memory can reorganize the meaning of many old ones through shared hubs.
+- **Typed edges** link them at write time: same person, same place, happened together, cause and consequence, evidence for an insight.
+- **Recall spreads.** Retrieval starts from what is relevant now and flows along edges, so a related memory can surface without matching the cue. This is spreading activation, from the ACT-R cognitive architecture.
+- **Reinforcement spreads too.** This is the long-term key. Recalling a memory partially refreshes its neighbors, so the parts of life an agent keeps engaging with keep each other alive. You never rehearse the kitchen. Thinking about the friend does it for you.
+- **Associations can outlive their sources.** The bite memory fades, the spider-to-fear edge persists. The agent keeps the fear without the story.
+- **Forgetting becomes structural.** Survival depends on a memory's own strength and its neighborhood. Isolated trivia fades fastest. Woven-in memories resist decay.
+
+The one-sentence version: **relevance decides what surfaces right now, decay decides what fades, and connections decide what survives.**
+
+In practice this changes storage before it changes retrieval. Memories cannot live in a plain vector store, because a connection needs somewhere to exist. We store a graph: memory nodes, entity hubs (Ben is a node, not a word), and typed, weighted edges created at write time. Retrieval keeps the paper's formula untouched and widens one input: a memory's cue strength is its direct match to the moment or the activation it receives from recalled neighbors, whichever is stronger. Recall then strengthens both the memories and the edges it traveled. Remove the edges and the system reduces exactly to the paper, which makes every ablation a config flag. Full mechanics in [docs/DESIGN.md](docs/DESIGN.md).
+
+### A mini walkthrough
+
+Ninety simulated days of one agent, Ada. This is the whole pipeline in miniature.
+
+1. **Day 1, write.** Ada meets Ben at the well and he shows her the berry patch. Two memory nodes are stored, each with an LLM importance rating as its starting strength. Edges form at write time: both involve Ben (person), they happened together (co-occurrence), the patch connects to the well (place).
+2. **Days 2 to 30, decay and reinforce.** Ada picks berries most days. Each trip memory is mundane and fades within days, as it should. But each trip touches the patch node, and reinforcement leaks along its edges. Ben gets a small refresh even on days Ada never sees him. The Ben-berries association wears in while the individual episodes disappear.
+3. **Day 45, a non-semantic link.** Ada eats strange mushrooms. Hours later a separate memory is written: sick all night. The two records share no words. The engine adds a temporal-causal edge between them.
+4. **Day 90, what survived.** The trip episodes are gone (correct). Ben is strong (correct: he was woven into a routine, not rehearsed). Mushrooms now surface the sickness through the edge, so Ada avoids them even though nausea and mushrooms share no content. Berries still bring Ben to mind.
+5. **The baselines fail differently.** A store-everything agent drowns: by day 90 retrieval pulls from a pile of trivia. A decay-only agent (the paper as published) forgot the trips and forgot Ben with them, because nothing ever directly recalled him. Ours forgot the trips and kept Ben.
+
+That contrast is what the simulation affords us. Months of time actually pass and people, places, and artifacts recur, so decay and edges have something real to act on. At day 90 we ask every agent the same questions ("who do you remember, what do you avoid, what goes together"), score the answers against the flat and decay-only baselines with each mechanism ablated in turn, and use Maya-style inspection to see why: "Ben survived through 27 edge refreshes", "this memory lost by 0.1 because it faded". No chat benchmark can produce that evidence.
 
 As far as we can find, nobody has published this combination. Graph memory systems (HippoRAG, Zep, A-Mem, Mem0-g) have no decay or strength. Decay systems (Hou et al., MemoryBank, Generative Agents) have no relations. The one adjacent attempt used forgetting only to prune a graph, and it lost to flat vector search. So the question is genuinely open and we have a named baseline to beat. Details in [docs/RESEARCH.md](docs/RESEARCH.md).
 
@@ -61,9 +68,9 @@ As far as we can find, nobody has published this combination. Graph memory syste
 
 ## Why bother
 
+- **Long-term memory that forgets like a human.** Over a long life an agent must shed almost everything. The question is what to keep. Time and direct use alone keep the wrong things. Connection keeps what is woven in.
 - **Believable agents.** Characters that forget acquaintances but remember friends, need reminding, and free-associate. Their memory actually works that way, rather than a prompt saying "act forgetful."
-- **Forgetting is a feature.** Human forgetting is adaptive. It clears the stale and trivial and keeps what recurs. An agent that remembers everything forever gets less human over time and drowns in its own history.
-- **Relation is part of meaning.** What a spider means to you depends on what "spider" is wired to in your history. People retrieve by connection, and they feel by connection too.
+- **Forgetting is a feature.** An agent that remembers everything forever gets less human over time and drowns in its own history.
 - **A real scientific hole**, per above. There is an honest chance the answer is "the graph doesn't help." We would publish that too.
 - Long-lived companions and assistants benefit downstream. Consequence, not goal.
 
@@ -71,7 +78,7 @@ As far as we can find, nobody has published this combination. Graph memory syste
 
 [Maya](https://github.com/bloohunnits/ai-capstone/tree/main/projects/maya) is our own Generative Agents implementation, the OG paper plus custom engineering. It feeds this project three ways.
 
-- **Architecture worth copying.** A deterministic engine owns the math (decay, strength, traversal, all seeded). The LLM only rates, links, and reflects, and every output is validated, so hallucinations cannot corrupt the store. Maya's citation-checked reflections are already the evidence edges our graph needs. Every feature sits behind an ablation flag. And its decision inspector shows why an agent recalled or missed a memory ("lost by 0.1 because it faded", "rescued by an edge").
+- **Architecture worth copying.** A deterministic engine owns the math (decay, strength, traversal, all seeded). The LLM only rates, links, and reflects, and every output is validated, so hallucinations cannot corrupt the store. Maya's citation-checked reflections are already the evidence edges our graph needs. Every feature sits behind an ablation flag. And its decision inspector shows why an agent recalled or missed a memory.
 - **Mistakes its own gap analysis warns about.** Eval suites that never touch the LLM layer, no retrieval-precision metric, single-seed science, no LLM record and replay, and sim time too fast to watch. We build the fixes in from day one.
 - **A testbed.** Maya's memory stream is a swappable module in our own codebase. Likely play: develop the engine against Maya (fast, instrumented, ours), then deploy into TerraLingua. The engine also back-fills Maya's missing loops (trait evolution, relationship decay).
 
@@ -94,6 +101,7 @@ It fits unusually well. Real simulated time with birth and death, so decay matte
 
 Docs only. This is the planning and research home. Code lives elsewhere once we build.
 
+- [docs/DESIGN.md](docs/DESIGN.md): how storage and retrieval actually work. The schema, the widened formula, the update rules, open math questions.
 - [docs/RESEARCH.md](docs/RESEARCH.md): full paper survey. Source papers, OG mechanics, graph systems, benchmarks, environments.
 - [docs/GAPS.md](docs/GAPS.md): what the papers don't cover, what Maya fills, open decisions.
 
@@ -101,7 +109,7 @@ Docs only. This is the planning and research home. Code lives elsewhere once we 
 
 1. **Ground truth.** Finish the source papers (including getting the paywalled ACT-R one) and lock the exact formulation.
 2. **Core engine.** Standalone memory library reproducing the human-like paper's decay, strength, and relevance behavior.
-3. **Graph layer.** Typed edges, LLM-assisted linking at write time, spreading-activation recall.
+3. **Graph layer.** Typed edges, LLM-assisted linking at write time, spreading recall and reinforcement.
 4. **Benchmark harness.** LongMemEval and LoCoMo with ablations, baselines, and our forgetting-quality probes.
 5. **Simulation.** Wire into Maya, then TerraLingua. Run the human-likeness studies.
 6. **Write-up.** Findings, honest negatives included.
