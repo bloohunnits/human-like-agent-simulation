@@ -93,7 +93,7 @@ It fits unusually well. Real simulated time with birth and death, so decay matte
 ## How we'll know it worked
 
 1. **Watch the agents.** Do they behave more like people? Forming relationships, forgetting selectively, acting on associations. Generative Agents' believability interviews and TerraLingua's "AI Anthropologist" log analysis are the templates.
-2. **Ablate everything.** Decay off, reinforcement off, edges off, one at a time. Each mechanism visibly changes behavior or it gets cut.
+2. **Ablate everything.** Decay off, reinforcement off, edges off, one at a time. Each mechanism visibly changes behavior or it gets cut. The decay kernel is part of the grid too: the paper's reset-style exponential and ACT-R's power law, each alone and each with the graph.
 3. **Benchmarks as a sanity check.** [LongMemEval](https://arxiv.org/abs/2410.10813) (primary), [LoCoMo](https://www.emergentmind.com/topics/locomo), [MemBench](https://arxiv.org/abs/2506.21605). Human-like memory must not wreck task utility, measured against Mem0, A-Mem, Zep, and flat-vector baselines.
 4. **New probes for what no benchmark measures.** Did the right things fade? Does interference behave sanely? Can association rescue faded memories that similarity alone loses?
 

@@ -27,6 +27,16 @@ Types, in build order: `mentions` (memory to entity), `co-occurred` (same scene 
 
 Reflection runs on its own trigger and writes insight nodes with `evidence-of` edges.
 
+## The decay kernel is swappable
+
+The per-memory dynamics have two candidate shapes, and they disagree in a way agents will visibly show, so we implement both behind one interface.
+
+**Hou et al., exponential with reset.** Each memory keeps one clock and one strength number. On recall the clock resets to zero and strength grows, so the whole forgetting curve restarts from the top and fades slower than before. Simple, and it's the paper we reproduce as our baseline. The suspect behavior: a single mention of a decades-old memory rejuvenates it wholesale. Interview an agent once about its childhood and that memory outcompetes recent ones for a long while afterward.
+
+**ACT-R, power law over history.** No clock ever resets. Every retrieval adds one term to a running sum, and each term fades on its own power law: `B = ln(Σ_j t_j^(−d))` with `d ≈ 0.5`. A fresh retrieval adds a big term that itself shrinks fast, so one mention gives a short priming bump and the memory settles back near its baseline. Thirty spaced retrievals build a lasting floor. The spacing effect emerges instead of being bolted on. Two extra properties we want: the power-law tail leaves old memories faint but revivable, which is exactly the state edge rescue acts on, and the retrieval threshold plus noise gives a crisp definition of functionally forgotten for our metrics. Cost is a recall history per node, handled with ACT-R's standard constant-size approximation.
+
+**The experiment this sets up.** A 2x2 grid: each kernel alone, each kernel with the graph factors mixed in. Benchmarks and probes run over all four cells. And one behavioral probe the kernels flatly disagree on, the reminiscence test: mention one old memory to an agent exactly once, then count spontaneous references to it over the following simulated days. Reset predicts a long elevation. Power law predicts a brief bump and a return to baseline. Humans match the second, so this doubles as a believability measurement and turns the kernel choice into a finding instead of a preference.
+
 ## Retrieval: association in the formula
 
 The paper scores each memory independently: `p(i) = P(r_i, t_i, g_i)` where `r_i` is similarity between the current context and memory `i`.
