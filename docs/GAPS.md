@@ -1,52 +1,52 @@
 # Gaps and Open Decisions
 
-What the source papers don't cover, what we take from our own Maya project to fill some of it, and the decisions still open. Companion to [RESEARCH.md](RESEARCH.md).
+What the papers leave open, what our Maya project fills, and what we still have to decide. Companion to [RESEARCH.md](RESEARCH.md).
 
-## 1. Gaps the papers leave open (beyond "no sandbox")
+## 1. What the papers leave open
 
-The human-like memory paper ([Hou et al.](https://arxiv.org/abs/2404.00573)) gives us the decay/strength/relevance core, but:
+[Hou et al.](https://arxiv.org/abs/2404.00573) gives us the decay/strength/relevance core, but:
 
-1. **No relations between memories.** Every memory decays and strengthens alone. Human recall is associative; this is the project's main addition (the memory graph with spreading activation).
-2. **Dialogue-agent scale only.** Evaluated on short companion-chat studies with a handful of users. Nothing about behavior over an agent *lifetime* — thousands of memories, months of simulated time, generational turnover. That's what the simulation is for.
-3. **No account of what forgetting should *look like* behaviorally.** The papers measure recall probability, not whether an agent's forgetting reads as human (fading acquaintances, kept core relationships, gist surviving detail). We need behavioral measures, not just retrieval measures.
-4. **Parameters are hand-set and uniform.** The KG-freshness literature found uniform decay can be *worse than no decay* (18× on their metric) — decay rates likely need to vary by memory type (episodic vs. semantic vs. emotional, or per-entity). Nobody has tuned this for agents.
-5. **No interference or confusion modeling.** Human memory errors are systematic (similar memories blur, gist outlives detail). The papers only model presence/absence of recall. Optional stretch: memory *distortion* as a feature of human-likeness.
-6. **Reflection/consolidation is disconnected from decay.** Generative Agents' reflection compresses memories upward but never lets the originals fade; Hou et al. consolidate strength but never abstract. Human memory does both at once: details decay, gist consolidates. Fusing them (insight nodes strengthen as evidence nodes fade) is unexplored.
-7. **No forgetting-quality metric exists anywhere.** No benchmark measures whether the *right* things faded. We'll have to build probes: superseded-vs-current fact retrieval, retention of reinforced vs. one-off memories, multi-hop recall across faded memories that only association can rescue.
-8. **Evaluation hygiene.** LoCoMo scores are inconsistent across papers (the Mem0/Zep dispute). Report F1 *and* LLM-judge with a pinned judge model; prefer LongMemEval as primary.
+1. **No relations between memories.** Every memory fades alone; human recall is associative. This is the project's main addition.
+2. **Chat-scale evaluation only.** Short companion-chat studies with a handful of users — nothing about an agent *lifetime*: thousands of memories, months of simulated time, generational turnover. That's what the simulation is for.
+3. **No behavioral picture of forgetting.** The papers measure recall probability, not whether forgetting *reads* as human — fading acquaintances, kept core relationships, gist outliving detail. We need behavioral measures, not just retrieval ones.
+4. **Hand-set, uniform parameters.** The KG-freshness literature found uniform decay can be *worse than no decay* (18× on their metric). Decay rates likely need to vary by memory type or entity; nobody has tuned this for agents.
+5. **No interference or distortion.** Human memory errors are systematic — similar memories blur, gist survives detail. The papers only model recall vs. no-recall. Stretch goal: distortion as a human-likeness feature.
+6. **Consolidation and decay never meet.** Generative Agents' reflection abstracts upward but the originals never fade; Hou et al. strengthen but never abstract. Humans do both at once — details decay while gist consolidates. Insight nodes strengthening as their evidence fades is unexplored.
+7. **No forgetting-quality metric exists anywhere.** No benchmark asks whether the *right* things faded. We'll build probes: superseded-vs-current facts, reinforced vs. one-off retention, multi-hop recall across faded memories that only association can rescue.
+8. **Evaluation hygiene.** LoCoMo scoring is inconsistent across papers (the Mem0/Zep dispute). Report F1 *and* LLM-judge with a pinned judge; LongMemEval primary.
 
-## 2. What we take from Maya
+## 2. What Maya fills
 
-Maya (our Generative Agents implementation, `ai-capstone/projects/maya`) is the OG paper plus custom engineering, and both its architecture and its own gap analysis feed this project directly.
+[Maya](https://github.com/bloohunnits/ai-capstone/tree/main/projects/maya) is the Generative Agents paper plus our own engineering, and both its architecture and its gap analysis feed this project.
 
-### Architecture worth reusing
+### Worth reusing
 
-- **Deterministic floor + LLM meaning layer.** Maya's core pattern: a deterministic engine owns state; the LLM proposes cognition that is *validated* before it touches anything. Apply it here: decay math, strength updates, and graph traversal are deterministic and seeded; the LLM only rates initial importance, proposes links, and writes reflections — all validated. Hallucinations can't corrupt the memory store, and runs are replayable.
-- **Citation-validated reflection = our evidence edges, already prototyped.** Maya's reflections must cite real memories and the citations are checked (AI Town skips validation; Maya doesn't). Those citations are exactly the insight→evidence typed edges of our graph. Maya proves the write path works; we make the citations first-class edges and let recall spread across them.
-- **Every cognition feature behind a config flag.** Maya's ablation-readiness (flags for reflection, planning, etc.) is the template: decay, reinforcement, spreading activation, and each edge type all get flags from day one, so the ablation study is a config sweep, not a refactor.
-- **Audit trail + decision inspector with near-miss memories.** Maya can show *why* an agent acted, including memories that almost got retrieved. For a memory project this is gold: "near-miss" views make decay and association visible ("this memory lost by 0.1 because it faded" / "this one was rescued by an edge"). Build explainability in from the start.
-- **Per-pair interaction edges.** Maya's gap analysis flagged AI Town's cheap `participatedTogether` edge table (last-time-we-talked lookup) as a small high-believability win. In our graph that's just an edge type — we get it for free, which is a nice concrete payoff of relations.
-- **Untrusted-memory prompt isolation.** Retrieved memories injected into prompts should be marked as untrusted historical content, separated from instructions (prompt-injection hardening AI Town shipped and Maya adopted as a to-do). Cheap, credible safety detail.
-- **Embeddings cache keyed by text hash.** Dedupe embedding spend across agents and restarts.
+- **Deterministic floor + validated LLM layer.** A deterministic engine owns state; the LLM proposes cognition that's validated before it touches anything. Here: decay math, strength updates, and traversal are deterministic and seeded; the LLM only rates initial importance, proposes links, and writes reflections. Hallucinations can't corrupt the store, and runs replay.
+- **Citation-validated reflection = our evidence edges, already prototyped.** Maya checks that reflections cite real memories (AI Town doesn't bother). Those citations *are* the insight→evidence edges — we promote them to first-class links and let recall spread across them.
+- **Everything behind a config flag.** Maya's ablation-readiness is the template: decay, reinforcement, spreading, and each edge type get flags from day one, so the ablation study is a config sweep, not a refactor.
+- **Audit trail + near-miss memories.** Maya's decision inspector shows what an agent almost recalled. For a memory project that's gold — "lost by 0.1 because it faded," "rescued by an edge" — build the explainability in from the start.
+- **Per-pair interaction edges.** AI Town's cheap `participatedTogether` table (last-time-we-talked) was flagged in Maya's analysis as a high-believability win. In our graph it's just an edge type — free.
+- **Untrusted-memory prompt isolation.** Mark retrieved memories as untrusted historical content, separated from instructions (injection hardening AI Town shipped). Cheap, credible.
+- **Embeddings cache keyed by text hash** — dedupes embedding spend across agents and restarts.
 
-### Mistakes Maya's own gap analysis warns us not to repeat
+### Mistakes not to repeat
 
-- **Don't let the eval suite skip the LLM layer.** Maya's 8 metrics all run with the LLM off — the believability claim goes unmeasured. Here, memory *is* the claim: measure retrieval precision, grounding rates, and behavior with the full stack on.
-- **No memory-retrieval precision metric** existed in Maya. It's a core metric here from day one.
-- **Single-seed science.** Every Maya claim is asserted at seed 42. Seed sweeps, variance, and confidence intervals from the start.
-- **LLM record/replay.** Maya logs every LLM call but can't replay from log. A replay-from-log language-model shim makes full runs reproducible — the strongest answer to "LLMs aren't reproducible," and it's much easier to build in early than to retrofit.
-- **Time authorship matters.** Maya runs a simulated day per 72 real seconds with a pause button that doesn't pause — memory dynamics would be illegible at that pace. Decay is a function of simulated time, so the sim needs real time controls (pause, speed, ideally scrub) for anyone to *see* memory working.
+- **Eval that never touches the LLM.** Maya's 8 metrics run with the LLM off, so the believability claim goes unmeasured. Memory *is* our claim — measure retrieval precision, grounding, and behavior with the full stack on.
+- **No retrieval-precision metric** existed in Maya. Core metric here from day one.
+- **Single-seed science.** Every Maya claim lives at seed 42. Seed sweeps, variance, confidence intervals.
+- **No LLM record/replay.** Maya logs every call but can't replay from log. A replay shim makes full runs reproducible — the strongest answer to "LLMs aren't reproducible" — and is far easier built in early.
+- **Time you can't watch.** Maya runs a simulated day per 72 real seconds and its pause button doesn't pause. Decay is a function of simulated time; without real time controls (pause, speed, ideally scrub), nobody can *see* memory working.
 
 ### Maya as a testbed
 
-Maya is also a candidate environment in its own right: it's our code, the memory stream is a swappable module, simulated months pass quickly, the cast recurs, and the decision inspector can display memory effects no other environment can show. Realistic play: **develop the memory engine against Maya (fast, instrumented, ours), then deploy into TerraLingua for the open-ended-culture experiments.** And the flow goes both ways — this memory engine back-fills Maya's own promised-but-missing loops (trait evolution nudged by reflection, relationship decay).
+Maya is also a candidate environment: our code, a swappable memory stream, fast simulated months, a recurring cast, and an inspector that can display memory effects nothing else can. Likely play: **develop against Maya, deploy into TerraLingua for the headline experiments.** It flows back too — this engine fills Maya's promised-but-missing loops (trait evolution nudged by reflection, relationship decay).
 
 ## 3. Open decisions
 
-1. **Environment: TerraLingua vs. Maya-first vs. Concordia.** TerraLingua is the most interesting (LLM-generated artifacts, birth/death) but has no memory interface; Maya is instrumented and ours; Concordia is the maintained middle. Current lean: Maya first for development, TerraLingua for the headline experiments. Needs a hands-on spike in the TerraLingua codebase to cost the integration.
-2. **Decay/strength formulation.** Hou et al.'s single recall-probability formula vs. ACT-R base-level activation vs. MemoryBank's Ebbinghaus. Hou et al. is the paper we set out to improve; ACT-R brings spreading activation natively and human-fitted parameters. Possibly: Hou-style per-node dynamics + ACT-R-style spreading along edges.
-3. **Edge types.** Minimum viable set: shared-entity, temporal-succession, evidence-of (reflection citations), same-interaction (per-pair). Causal edges are LLM-judged and noisier — phase 2?
-4. **Where strength lives.** Nodes only, or edges too (associations themselves strengthen with co-recall and fade unused — Hebbian, per Memoria)? Edge-strength is the more human story and the bigger novelty; also more parameters to tune.
-5. **Heterogeneous decay rates.** Uniform decay is provably risky. By memory type? Per-entity? Learned from recall logs (survival analysis)? Start hand-set-by-type, revisit.
-6. **Does the graph pay for itself?** The one prior graph+forgetting system *lost* to flat vector retrieval. Our bet is that strength-weighted spreading changes that — but we hold the flat baseline as a first-class competitor and report honestly if it wins.
-7. **Actually obtaining the ACT-R paper.** The HAI 2025 paper is paywalled on ACM with no arXiv preprint found; get access (library / authors) before locking the formulation.
+1. **Environment.** TerraLingua is the most interesting (LLM-authored artifacts, birth/death) but has no memory interface; Maya is instrumented and ours; Concordia is the maintained middle. Lean: Maya first, TerraLingua for the headline runs. Needs a hands-on spike in the TerraLingua codebase to cost the integration.
+2. **Formulation.** Hou et al.'s single formula vs. ACT-R activation vs. MemoryBank's Ebbinghaus. Hou is the paper we set out to improve; ACT-R brings native spreading activation and human-fitted parameters. Likely hybrid: Hou-style per-node dynamics + ACT-R-style spreading along edges.
+3. **Edge types.** Minimum set: shared-entity, temporal-succession, evidence-of (reflection citations), same-interaction. Causal edges are LLM-judged and noisy — phase 2?
+4. **Where strength lives.** Nodes only, or edges too (associations strengthen with co-recall and fade unused — Hebbian, per Memoria)? Edge-strength is the more human story and the bigger novelty, and more parameters to tune.
+5. **Heterogeneous decay rates.** Uniform decay is provably risky. By memory type? Per-entity? Learned from recall logs? Start hand-set by type, revisit.
+6. **Does the graph pay for itself?** The one prior graph+forgetting system lost to flat vectors. Our bet is strength-weighted spreading changes that — but the flat baseline stays a first-class competitor and we report honestly if it wins.
+7. **Get the ACT-R paper.** Paywalled on ACM, no arXiv preprint. Library or authors, before locking the formulation.
