@@ -68,7 +68,7 @@ Implementation: Python 3.12 library. NetworkX (or SQLite tables) for the graph, 
 
 ## 5. Repo
 
-Public single project repo: https://github.com/bloohunnits/human-like-agent-simulation. All members commit here. Currently holds the research docs; code lands here too as it's written (the docs-only note in the README predates this proposal and we'll drop it).
+Public single project repo: https://github.com/bloohunnits/human-like-agent-simulation. All members commit here. It holds the research docs now, and code lands here too as it's written.
 
 ## 6. Validation
 
