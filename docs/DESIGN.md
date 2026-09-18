@@ -65,6 +65,16 @@ That is the whole trick. A memory surfaces either because the moment resembles i
 
 Remove the edges and set `λ = 0` and this is exactly Hou et al. Every addition is a config flag, so the ablation study is a parameter sweep: paper baseline, plus edges, plus spread, plus leaked reinforcement, each measured alone and together.
 
+### Why this shouldn't repeat the prior failure
+
+The one published graph-with-forgetting system (Selective Forgetting, arXiv:2608.28978, details in [RESEARCH.md](RESEARCH.md)) lost to a flat vector baseline, and its two failure modes map to choices made differently here:
+
+- It replaced conversation text with extracted entity-relation triples, destroying wording needed for precise recall. Our memory nodes keep the full text and embedding. Entity nodes are hubs added alongside, never a substitute.
+- Its expansion was an unweighted breadth-first walk with no decay, strength, or edge weighting in ranking. Our spread is scaled by edge strength and damped per hop, and everything it reaches must still pass the decay-and-strength formula to surface.
+- Its stale-value bug (a conflict rule keeping old facts) is handled here by the dynamics themselves: a superseded fact stops being used, so it fades while its replacement strengthens. One of the forgetting-quality probes tests exactly this.
+
+None of this guarantees our graph wins. It does mean their negative result doesn't test our mechanism.
+
 ### Cost and guardrails
 
 - No LLM calls at retrieval time. LLM work happens once, at write time, and is validated.
