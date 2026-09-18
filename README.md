@@ -66,13 +66,17 @@ As far as we can find, nobody has published this combination. Graph memory syste
 - **Source**: [Hou et al., CHI 2024](https://arxiv.org/abs/2404.00573), the formula above. Sibling: an [ACT-R-inspired architecture](https://dl.acm.org/doi/10.1145/3765766.3765803) (HAI 2025) with the same three factors plus native spreading activation and decades of human-fitted parameters. Simpler cousin: [MemoryBank](https://arxiv.org/abs/2305.10250) (Ebbinghaus curve).
 - **The OG**: [Generative Agents](https://arxiv.org/abs/2304.03442) (Park et al. 2023, "Smallville"), the original recency, importance, and relevance memory stream plus reflection. We keep its scoring skeleton and its reflection trick. We fix what it lacks: nothing ever fades, importance never changes, and memory is a flat list. Full breakdown in [docs/RESEARCH.md](docs/RESEARCH.md).
 
-## Why bother
+## What this should actually change
 
-- **Long-term memory that forgets like a human.** Over a long life an agent must shed almost everything. The question is what to keep. Time and direct use alone keep the wrong things. Connection keeps what is woven in.
-- **Believable agents.** Characters that forget acquaintances but remember friends, need reminding, and free-associate. Their memory actually works that way, rather than a prompt saying "act forgetful."
-- **Forgetting is a feature.** An agent that remembers everything forever gets less human over time and drowns in its own history.
-- **A real scientific hole**, per above. There is an honest chance the answer is "the graph doesn't help." We would publish that too.
-- Long-lived companions and assistants benefit downstream. Consequence, not goal.
+Memory dynamics should show up as visible, measurable differences at three scales. These are predictions, and checking them is the project.
+
+**One agent.** No more uncanny perfect recall. Today's companion bots quote a detail you said once, verbatim, months later, and it reads as creepy rather than attentive. Natural conversation needs forgetting. We also expect "oh right" moments, where an agent fails to recall something until the right cue reaches it through a connection, and quirks with traceable origins: the agent that avoids the food stall, checks on a friend, wears the lucky socks, with the inspector able to show why.
+
+**Two agents.** Relationships that require maintenance. With decay, absence actually weakens a bond, so agents can drift apart, and reunions carry partial memory ("it's been a while"). Memory can be asymmetric: one agent still holds a friendship the other has lost, a real human situation no flat store can produce. And grudges fade unless something keeps refreshing them, which makes reconciliation mechanically possible instead of impossible.
+
+**A society.** This is the TerraLingua experiment. Reputation gets a half-life: gossip is retelling, retelling is reinforcement, so scandals fade unless kept alive, and which events become legend depends on how retold and connected they are, not just how big they were. Knowledge can be lost: a skill nobody retells dies with its holder, so elders function as living archives and their deaths matter. And the cultural version of keeping the fear while losing the bite: taboos. A group that avoids something long after anyone remembers why. Flat-memory societies can do none of this. Their networks only densify, their grudges are eternal, and their archives are perfect. Whether our societies drift, reconcile, mythologize, and lose knowledge the way human ones do is exactly what we want to find out.
+
+Beyond the sim: a real scientific hole (nobody has put decay and strengthening inside graph retrieval, and the one nearby attempt lost to a flat baseline, so the answer is a finding either way), and long-lived assistants that don't drown in their own history. Those are consequences. The human-likeness is the goal.
 
 ## What we take from Maya
 
