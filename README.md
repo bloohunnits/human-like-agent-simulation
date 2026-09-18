@@ -101,7 +101,6 @@ It fits unusually well. Real simulated time with birth and death, so decay matte
 
 Single project repo for the capstone. Research docs now, code lands here as it's written.
 
-- [PROPOSAL.md](PROPOSAL.md): the course proposal. Problem, literature, scope, datasets, compute, validation, deliverables, timeline.
 - [docs/DESIGN.md](docs/DESIGN.md): how storage and retrieval actually work. The schema, the widened formula, the update rules, open math questions.
 - [docs/RESEARCH.md](docs/RESEARCH.md): full paper survey. Source papers, OG mechanics, graph systems, benchmarks, environments.
 - [docs/GAPS.md](docs/GAPS.md): what the papers don't cover, what Maya fills, open decisions.
