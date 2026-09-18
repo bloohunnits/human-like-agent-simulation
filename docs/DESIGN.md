@@ -27,11 +27,18 @@ Types, in build order: `mentions` (memory to entity), `co-occurred` (same scene 
 
 Reflection runs on its own trigger and writes insight nodes with `evidence-of` edges.
 
+### Storage decisions that will matter
+
+- **Each agent gets its own graph.** Memory is subjective. Two agents at the same event store different memories with different edges, and asymmetric memory between agents is one of the behaviors we want to produce. Per-agent graphs also stay small, tens of thousands of nodes over a long run, which keeps everything at embedded-database scale.
+- **Backend.** Start embedded: SQLite tables (nodes, edges, recall log) plus a numpy/FAISS embedding index, NetworkX in memory for prototyping. A real graph database (Neo4j, Kùzu) only if traversal profiling demands it, which at per-agent scale it shouldn't. Determinism and replay weigh more than throughput here.
+- **Decay is computed, not ticked.** Nothing visits every node every timestep. Each node and edge stores its parameters and last-touched state, and current strength is computed lazily when something reads it. Cost per step scales with what was touched, not with the size of the store. This is the difference between a sim that runs 90 days and one that doesn't.
+- **How many levels the hierarchy goes.** Episodes at the bottom, entity hubs beside them, insight nodes above them from reflection, and possibly insights over insights (Generative Agents' reflection trees) or a community tier (Zep's third level). Open questions: how many levels earn their keep, whether spreading crosses levels, and whether a gist node one level up strengthens as its evidence below fades, the consolidation-meets-decay idea from [GAPS.md](GAPS.md).
+
 ## The decay kernel is swappable
 
 The per-memory dynamics have two candidate shapes, and they disagree in a way agents will visibly show, so we implement both behind one interface.
 
-**Hou et al., exponential with reset.** Each memory keeps one clock and one strength number. On recall the clock resets to zero and strength grows, so the whole forgetting curve restarts from the top and fades slower than before. Simple, and it's the paper we reproduce as our baseline. The suspect behavior: a single mention of a decades-old memory rejuvenates it wholesale. Interview an agent once about its childhood and that memory outcompetes recent ones for a long while afterward.
+**Hou et al., exponential with reset.** Each memory keeps one clock and one strength number. On recall the clock resets to zero and strength grows, so the whole forgetting curve restarts from the top and fades slower than before. Simple, and it's the paper we reproduce as our baseline. (Strictly, the paper never states the reset. It says recall "updates the memory's temporal significance," and MemoryBank spells out the same rule verbatim. We implement reset-on-recall and document it as an assumption.) The suspect behavior: a single mention of a decades-old memory rejuvenates it wholesale. Interview an agent once about its childhood and that memory outcompetes recent ones for a long while afterward.
 
 **ACT-R, power law over history.** No clock ever resets. Every retrieval adds one term to a running sum, and each term fades on its own power law: `B = ln(Σ_j t_j^(−d))` with `d ≈ 0.5`. A fresh retrieval adds a big term that itself shrinks fast, so one mention gives a short priming bump and the memory settles back near its baseline. Thirty spaced retrievals build a lasting floor. The spacing effect emerges instead of being bolted on. Two extra properties we want: the power-law tail leaves old memories faint but revivable, which is exactly the state edge rescue acts on, and the retrieval threshold plus noise gives a crisp definition of functionally forgotten for our metrics. Cost is a recall history per node, handled with ACT-R's standard constant-size approximation.
 
@@ -90,3 +97,5 @@ None of this guarantees our graph wins. It does mean their negative result doesn
 3. Bounded 2-hop spread vs full Personalized PageRank (HippoRAG-style). Start bounded, PPR as a variant. PPR handles long chains but obscures why a memory surfaced, and explainability is a design goal.
 4. The partial-refresh threshold and fraction. Too generous and nothing ever fades (the store-everything failure returns through the back door). Too stingy and we reproduce the paper. This is the key parameter the simulation has to tune, with sensitivity reported.
 5. Does `received` activation update `t_last_recalled`? Probably not (only true recalls reset the clock, partial refresh only bumps `g`), otherwise spreading silently freezes the whole neighborhood's decay.
+6. Hierarchy depth. How many abstraction levels earn their keep, and does spreading cross them?
+7. The source paper never anchors `t` explicitly (verified against the full text). The reproduction documents reset-on-recall as our reading and tests sensitivity to the alternative, no reset with ACT-R-style history.
