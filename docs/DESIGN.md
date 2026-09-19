@@ -8,7 +8,7 @@ You cannot bolt edges onto a vector store after the fact. A connection needs som
 
 ### Nodes
 
-- **Memory** (episodic): text, embedding, `t_created`, `t_last_recalled`, strength `g`, importance-at-birth.
+- **Memory** (episodic): text, embedding, `t_created`, importance-at-birth, and the kernel's activation state. For the ACT-R base kernel that is the recall-trace history (kept via ACT-R's constant-size approximation). For the Hou comparison kernel it is one strength `g` and one `t_last_recalled` clock.
 - **Entity** (person, place, thing): a hub. Ben is a node, not a word that appears in memory texts. This is the HippoRAG move, and it is what makes "everything about Ben" a one-hop neighborhood instead of a similarity search.
 - **Insight**: reflection output. Same fields as a memory, plus evidence edges down to what it came from.
 
@@ -46,11 +46,9 @@ The per-memory dynamics have two candidate shapes, and they disagree in a way ag
 
 ## Retrieval: association in the formula
 
-The paper scores each memory independently: `p(i) = P(r_i, t_i, g_i)` where `r_i` is similarity between the current context and memory `i`.
+Both kernels score each memory independently from the same ingredients: how well it matches the moment, its history of use, and time. The ACT-R base scores `A_i = B_i + w·sim_i + ε` against a retrieval threshold. The Hou comparison scores `p_i = P(r_i, t_i, g_i)`. We keep each kernel's formula untouched and widen one input, the cue. Three steps, all deterministic, no LLM in the loop:
 
-We keep that formula untouched and widen one input. Three steps, all deterministic, no LLM in the loop:
-
-**1. Seed.** Compute `r_i` from embedding similarity as usual. Base activation `a_i = P(r_i, t_i, g_i)`.
+**1. Seed.** Compute `sim_i` (embedding similarity between the current context and each memory) and each memory's base activation under the active kernel.
 
 **2. Spread.** Activation flows along edges for one to two hops with damping `λ < 1`:
 
@@ -58,19 +56,15 @@ We keep that formula untouched and widen one input. Three steps, all determinist
 received_j = Σ_i  a_i · norm(w_ij) · λ
 ```
 
-Then each memory's effective cue strength is the better of its two routes into mind:
+The received activation joins the memory's own cue. Under the ACT-R base it enters as extra context activation, `A_j = B_j + w·sim_j + received_j + ε`, which is what lets an edge lift a below-threshold memory over the retrieval bar. Under the Hou comparison it widens the relevance term, `r̂_j = max(r_j, received_j)`, scored as `P(r̂_j, t_j, g_j)`.
 
-```
-r̂_j = max(r_j, received_j)        final score = P(r̂_j, t_j, g_j)
-```
+That is the whole trick. A memory surfaces either because the moment resembles it (direct cue) or because a strongly associated neighbor is being recalled (associative cue). Same formula, richer cue. Decay and use-history still gate everything, so a faded memory needs a strong pull and a strong memory needs only a weak one.
 
-That is the whole trick. A memory surfaces either because the moment resembles it (direct cue, `r`) or because a strongly associated neighbor is being recalled (associative cue, `received`). Same formula, richer `r`. Decay and strength still gate everything, so a faded memory needs a strong pull and a strong memory needs only a weak one.
-
-**3. Update.** The recalled set gets the paper's strength update (`g += S(t)`, reset `t`). Every edge traversed gets the edge version of the same update (`w` bumps, spaced traversals bump more). Neighbors whose received activation cleared a threshold get a partial refresh, a fraction of a full recall. That last rule is the survival mechanism: reinforcement leaks one hop, so the parts of life the agent keeps engaging with keep each other alive without ever being directly recalled.
+**3. Update.** The recalled set gets the active kernel's normal reinforcement: a new trace appended under ACT-R, `g += S(t)` and clock reset under Hou. Every edge traversed gets the edge version of the same update (`w` bumps, spaced traversals bump more). Neighbors whose received activation cleared a threshold get a partial refresh, a fraction of a full recall (a fractional trace under ACT-R, a fractional `g` bump under Hou). That last rule is the survival mechanism: reinforcement leaks one hop, so the parts of life the agent keeps engaging with keep each other alive without ever being directly recalled.
 
 ### The reduction property
 
-Remove the edges and set `λ = 0` and this is exactly the base architecture (and with the Hou kernel selected, exactly Hou et al.). Every addition is a config flag, so the ablation study is a parameter sweep: base architecture, plus edges, plus spread, plus leaked reinforcement, each measured alone and together. In ACT-R terms, received activation from an edge enters as extra context activation, which is what lets it lift a below-threshold memory over the retrieval bar.
+Remove the edges and set `λ = 0` and this is exactly the base architecture (and with the Hou kernel selected, exactly Hou et al.). Every addition is a config flag, so the ablation study is a parameter sweep: base architecture, plus edges, plus spread, plus leaked reinforcement, each measured alone and together.
 
 ### Why this shouldn't repeat the prior failure
 
@@ -95,7 +89,8 @@ None of this guarantees our graph wins. It does mean their negative result doesn
 1. `max` vs `sum` when combining direct and received cue strength. Sum rewards convergent evidence (several weak routes agreeing) but risks feedback loops. Start with max, test sum in sim.
 2. Edge weight initialization: uniform, co-occurrence count, or LLM confidence? Start uniform, let traversal differentiate.
 3. Bounded 2-hop spread vs full Personalized PageRank (HippoRAG-style). Start bounded, PPR as a variant. PPR handles long chains but obscures why a memory surfaced, and explainability is a design goal.
-4. The partial-refresh threshold and fraction. Too generous and nothing ever fades (the store-everything failure returns through the back door). Too stingy and we reproduce the paper. This is the key parameter the simulation has to tune, with sensitivity reported.
-5. Does `received` activation update `t_last_recalled`? Probably not (only true recalls reset the clock, partial refresh only bumps `g`), otherwise spreading silently freezes the whole neighborhood's decay.
+4. The partial-refresh threshold and fraction. Too generous and nothing ever fades (the store-everything failure returns through the back door). Too stingy and we reproduce the base architecture unchanged. This is the key parameter the simulation has to tune, with sensitivity reported.
+5. Does `received` activation count as a use? Probably not (only true recalls append a trace or reset the clock, partial refresh is a smaller side channel), otherwise spreading silently freezes the whole neighborhood's decay.
 6. Hierarchy depth. How many abstraction levels earn their keep, and does spreading cross them?
-7. The source paper never anchors `t` explicitly (verified against the full text). The reproduction documents reset-on-recall as our reading and tests sensitivity to the alternative, no reset with ACT-R-style history.
+7. For the Hou comparison kernel: the Hou paper never anchors `t` explicitly (verified against the full text). Our implementation documents reset-on-recall as its reading and tests sensitivity to the alternative.
+8. For the ACT-R base kernel: Honda et al. use Gaussian noise where classic ACT-R uses logistic. Pick one, document it, and check it doesn't change the reminiscence-probe prediction.

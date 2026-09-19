@@ -4,7 +4,7 @@ What the papers leave open, what our Maya project fills, and what we still have 
 
 ## 1. What the papers leave open
 
-[Hou et al.](https://arxiv.org/abs/2404.00573) gives us the decay, strength, and relevance core, but:
+The source architectures ([Honda et al.'s ACT-R agent](https://dl.acm.org/doi/full/10.1145/3765766.3765803), our base, and [Hou et al.](https://arxiv.org/abs/2404.00573), the comparison point) give us the decay, strength, and relevance core, but:
 
 1. **No relations between memories.** Every memory fades alone. Human recall is associative. This is the project's main addition.
 2. **Chat-scale evaluation only.** Short companion-chat studies with a handful of users. Nothing about an agent lifetime: thousands of memories, months of simulated time, generational turnover. That is what the simulation is for.
@@ -12,7 +12,7 @@ What the papers leave open, what our Maya project fills, and what we still have 
 4. **Hand-set, uniform parameters.** The knowledge-graph freshness literature found uniform decay can be worse than no decay (18x on their metric). Decay rates likely need to vary by memory type or entity. Nobody has tuned this for agents.
 5. **No interference or distortion.** Human memory errors are systematic. Similar memories blur, gist survives detail. The papers only model recall vs no recall. Stretch goal: distortion as a human-likeness feature.
 6. **Consolidation and decay never meet.** Generative Agents' reflection abstracts upward but the originals never fade. Hou et al. strengthen but never abstract. Humans do both at once: details decay while gist consolidates. Insight nodes strengthening as their evidence fades is unexplored.
-7. **No forgetting-quality metric exists anywhere.** No benchmark asks whether the right things faded. We will build probes: superseded vs current facts, reinforced vs one-off retention, multi-hop recall across faded memories that only association can rescue.
+7. **No forgetting-quality metric exists anywhere.** No benchmark asks whether the right things faded. Probe candidates for milestone 5, beyond the proposal's validation list: superseded vs current facts, reinforced vs one-off retention, multi-hop recall across faded memories that only association can rescue, and the reminiscence test in [DESIGN.md](DESIGN.md).
 8. **Evaluation hygiene.** The proposal's validation set is Hou et al.'s appendix tests, EmotionBench, Shachi's benchmark list, and TerraLingua's AI Anthropologist, plus our baselines and ablations. Conversational memory benchmarks (LoCoMo, LongMemEval) are optional external checks only. If we use LoCoMo, note its scoring is inconsistent across papers (the Mem0/Zep dispute): report F1 and LLM-judge with a pinned judge.
 
 ## 2. What Maya fills
