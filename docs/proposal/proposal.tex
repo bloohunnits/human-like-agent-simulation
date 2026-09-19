@@ -1,0 +1,124 @@
+\documentclass{article}
+\usepackage[style=ieee]{biblatex}     % gives style=ieee for biblatex
+\addbibresource{sources.bib}   % your .bib file, same folder as this .tex
+\usepackage{titlesec}
+\usepackage{hyperref}
+ 
+\titleformat*{\section}{\large\bfseries}
+
+\begin{document}
+
+\begin{center}
+    {\Large CMSC473 Proposal: Relational Memory Retreivial in Multi-agent Simulations} \\
+    Andre Atkins, Ben Sadorra, and Ryan Shechtman
+\end{center}
+
+\section{Problem}
+Human memory does not just not work by cosine similarity and recency.
+In multi-agent simulations, agents interact, form relations, and disseminate information in a simulated social setting.
+Our objective is to improve the believability of these simulations by making the memory model that the agents use more human-like.
+To do this we will allow memories to be correlated when they are not inherently semantically similar. This mimics associative memory in human psychology which is related to operant and classical conditioning.
+
+\section{Literature Review}
+\textcite{hou2024humanrecall} has an architecture for LLM retrieval that finds memories based on the following factors
+\begin{enumerate}
+    \item \textbf{Relevance ($r$).}
+        A memory only surfaces when the present resembles it. If nothing around you reminds you of it, it stays buried. Measured as similarity between the current context and the memory.
+    \item \textbf{Time (t).}
+        The longer since you last touched a memory, the deeper it sinks. $e^{−t/g}$ is the forgetting curve. Steep at first, then it flattens.
+    \item \textbf{Strength (g).}
+        How well-worn the memory is. Every recall bumps $g$ up, and a bigger $g$ slows the decay. Remembering is rehearsal. Each recall re-carves the groove.
+\end{enumerate}
+And the probability of a memory being recalled is given by the formulation
+$$ p = \frac{1 - \exp\left(−r \cdot e^{−t/g}\right)}{1 − e^{−1}} $$
+Note that this memory architecture is designed for general memory recall in LLMs; we will place them in the domain of social simulations. So we must take into account the opportunities form related memories that these provide.
+
+ACT-R (Adaptive Control of Thought, Rational) \parencite{honda2026actr} is a cognitive model uses the same factors as \textcite{hou2024humanrecall}, but models them in a different way.
+The memory functions have been fit to human lab data for decades.
+\textcite{hou2024humanrecall} gives each memory one clock and one strength number, and recall resets the clock.
+One reminder makes an old memory act brand new for weeks.
+ACT-R keeps every recall as its own trace on a power-law fade, so a reminder is a quick bump that dies off while steady use builds a floor that lasts.
+And a power law never hits zero.
+Old memories end up sitting faint just under the retrieval threshold, where a cue arriving through a connected memory can push them back over the bar.
+That hovering state is what our graph works on.
+Here are the factors of ACT-R memory models.
+\begin{enumerate}
+    \item \textbf{Use history ($t_j$).}
+        Every recall leaves a trace, stamped with how long ago it happened. A memory's activation is the sum of all its traces, so a memory is not one number but a lifetime of uses. Nothing ever resets. One mention gives a short bump that fades on its own, and repeated spaced use stacks into a floor that lasts.
+    \item\textbf{Decay ($d$).}
+        Each trace fades as $t^{−d}$, with d $\approx 0.5$. A power law, not an exponential. Fast at first, then a long tail that never quite hits zero. Old memories go faint, not dead. The right cue can still reach them decades later.
+    \item\textbf{Context ($S$).}
+        Whatever is currently in focus spreads activation into memories associated with it. The present doesn't just match a memory, it primes the memory's neighbors.
+    \item\textbf{Threshold and noise ($\tau, s$).}
+        If total activation falls below the threshold, retrieval simply fails. Forgotten, but not erased. Noise means recall is probabilistic, so you can blank on something you know and get it an hour later.
+\end{enumerate}
+
+There are multiple existing simulation environments for our agent.
+A notable example is \textit{TerraLingua} \parencite{paolo2026terralinguaemergenceanalysisopenendedness}, a persistent 2D world where LLM agents forage, reproduce, die, and write the environment themselves.
+They leave persistent text artifacts that outlive their authors, so later generations inherit an LLM-made culture.
+It is unique since every part of the world is generated, so most of the actions that agents are able to do are not hard coded.
+
+In human psychology, memories that are not semantically associated can be associated if stimuli occur together; this is attributed to associative memory \parencite{looti2026associativememory}.
+Pavlovian, or operant conditioning and Skinnerian, or classical conditioning occur when stimuli are copresent.
+And this allows associations to form even when memories are not clearly related.
+
+\section{Goals and Scope}
+\begin{enumerate}
+    \item Include memory relations in the retrieval architecture.
+    \item Implement agents using this memory architecture in a sandbox simulation.
+    \item Run against benchmarks.
+\end{enumerate}
+\textbf{Dataset:} No dataset needed, we are not training.
+
+\textbf{Models:} We can use the embedding model from the \textcite{honda2026actr}, \textit{SBERT all-MiniLM-L6-v2}
+This can be run locally and outputs more sparse scores than the OpenAI embedding model.
+We can use \textit{GPT-5 Nano} for text generation.
+We attempt to run locally on a \textit{Qwen3.6-27b} active params model if we have time.
+
+\textbf{Compute:} We will run the embedding model locally.
+We have access to M1 max  with 32G Ryzen 7 7400 with 16G, and a computer with no graphics card 32G.
+We will use APIs for text generation.
+
+\section{Approach}
+We will use \textcite{honda2026actr} as a base for the retrieval architecture, then add a memory relations graph.
+The sandbox will be based on the \textcite{paolo2026terralinguaemergenceanalysisopenendedness},
+so the platform is built on \href{https://github.com/cognizant-ai-lab/terralingua}{TerraLingua} and the language is Python.
+
+\section{Validation}
+We will use the same tests from existing work. To test the memory architecture independently.
+\parencite{kuroki2026shachimodularcontrollableframework} lists benchmarks that can be used to evaluate agents on believability.
+\begin{itemize}
+    \item\textcite{hou2024humanrecall} paper has tests in appendix B (qualitative), and appendix C (quantitative).
+    \item EmotionBench \parencite{huang2024emotionallynumbempatheticevaluating} evaluates emotional responses to various real-life situations.
+\end{itemize}
+For benchmarking the simulation as a whole, \textit{Terralingua} \parencite{paolo2026terralinguaemergenceanalysisopenendedness} uses its \textit{AI Anthropologist} framework which is a separate LLM to read logs and judge open-endedness.
+
+\section{Deliverables}
+\begin{itemize}
+    \item Memory architecture: mathematical models, example agents, memory architecture diagrams.
+        And highlight the difference between our architecture, the paper’s architecture, and some other LLM’s retrieval.
+    \item A working example of an agent using our memory retrieval architecture.
+    \item A mulit-agent simulation using agents with our memory architecture; the integration is our deliverable; the sandbox should already exist.
+\end{itemize}
+
+\section{Milestones/Timeline}
+\begin{enumerate}
+    \item Create a model using the existing memory architecture. \textit{(2 weeks)}
+    \item Inject this model into the agent simulation. \textit{(1 week)}
+    \item Improve the memory architecture with memory relations. This is where the most novel work will be done, so most time will be allocated here. \textit{(4 weeks)}
+    \item Put the new model in the simulation. \textit{(1 week)}
+    \item Validate against the benchmarks used for the existing memory architectures and social agent simulations. \textit{(2 weeks)}
+\end{enumerate}
+
+\section{Why we can’t 1-shot}
+\begin{itemize}
+    \item The memory architecture we are doing does not exist yet; there is no precedent for adding relational memory to this retrieval model.
+    \item We can’t consider every problem that we could run into and have it in the prompt.
+    \item We have to tune the newly added association factor.
+    \item Judging believability with LLM’s is circular, we’d want a human in the loop.
+\end{itemize}
+
+
+\printbibliography[title={Works Cited}]
+ 
+\end{document}
