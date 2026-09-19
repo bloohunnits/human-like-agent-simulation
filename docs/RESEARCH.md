@@ -4,7 +4,7 @@ The survey behind the project, compiled 2026-09-17. Three threads: the human-lik
 
 ## 1. The human-like memory papers
 
-### Primary: Hou, Tamoto & Miyashita (CHI 2024)
+### The published comparison point: Hou, Tamoto & Miyashita (CHI 2024)
 
 ["My agent understands me better": Integrating Dynamic Human-like Memory Recall and Consolidation in LLM-Based Agents](https://arxiv.org/abs/2404.00573)
 
@@ -18,7 +18,7 @@ p_n(t) = [1 − exp(−r · e^(−t / g_n))] / [1 − e^(−1)]
 
 One caveat we verified against the full text (2026-09-18): the paper never explicitly anchors `t` as "time since last retrieval" or states that it resets on recall. The closest is a figure caption saying recall "updates the model's temporal significance." Reset-on-recall is the natural reading, and MemoryBank states that exact rule verbatim, so our reproduction implements reset-on-recall and documents it as an assumption. What the paper lacks either way: any structure between memories.
 
-### Sibling: ACT-R-inspired architecture (HAI 2025)
+### The base architecture (per the proposal): ACT-R, via Honda et al. (HAI 2025)
 
 [Human-Like Remembering and Forgetting in LLM Agents: An ACT-R-Inspired Memory Architecture](https://dl.acm.org/doi/full/10.1145/3765766.3765803) (Honda, Fujita, Zempo, Fukushima, HAI 2025, pp. 229-237, CC-BY. Full text read 2026-09-18.)
 
@@ -64,7 +64,7 @@ The open slot: decay and reinforcement fused into graph retrieval itself (streng
 
 ## 4. Benchmarks
 
-Sanity check, not the goal. Human-like memory must not wreck utility.
+The proposal's validation set is: Hou et al.'s appendix B (qualitative) and C (quantitative) tests, [EmotionBench](https://arxiv.org/abs/2308.03656) (Huang et al. 2024, evaluates emotional responses to real-life situations), the benchmark list in [Shachi](https://arxiv.org/abs/2509.21862), and TerraLingua's AI Anthropologist for whole-simulation judgment, alongside our baselines and ablations. The conversational memory benchmarks below are background and optional external checks, not the plan.
 
 - [LongMemEval](https://arxiv.org/abs/2410.10813) (ICLR 2025, [code](https://github.com/xiaowu0162/longmemeval)). Primary. 500 questions over long chat histories: extraction, multi-session reasoning, temporal reasoning, knowledge updates, abstention. Commercial assistants drop about 30%.
 - [LoCoMo](https://aclanthology.org/2024.acl-long.747/) (Maharana et al., ACL 2024). Careful with attribution here (verified 2026-09-18): the paper built 50 conversations averaging 600 turns and 16k tokens over up to 32 sessions, with 7,512 QA. What everyone actually evaluates on is the public release, LoCoMo-10: 10 of those conversations with 1,540 non-adversarial questions (841 single-hop, 282 multi-hop, 321 temporal, 96 open-domain), the protocol Mem0 established. Temporal is about 20% either way. Quote the release's numbers as "the released LoCoMo-10 subset," not as the paper's. Cross-paper scoring is inconsistent (the public Mem0 vs Zep dispute), so report F1 and LLM-judge with a pinned judge.
