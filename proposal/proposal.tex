@@ -1,0 +1,122 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.25in]{geometry}
+\usepackage{amsmath}
+\usepackage[hidelinks]{hyperref}
+
+\title{CMSC473/673 Proposal: Relational Memory Retrieval in Multi-agent Simulations}
+\author{Andre Atkins, Ben Sadorra, and Ryan Shechtman}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Problem}
+Human memory does not work by cosine similarity and recency alone. In multi-agent simulations, agents interact, form relations, and disseminate information in a simulated social setting. Our objective is to improve the believability of these simulations by making the memory model that the agents use more human-like. To do this we will allow memories to be correlated when they are not inherently semantically similar. This mimics associative memory in human psychology, which is related to classical and operant conditioning.
+
+\section{Literature Review}
+Hou et al.~\cite{hou2024} have an architecture for LLM retrieval that finds memories based on the following factors
+
+\begin{enumerate}
+  \item \textbf{Relevance ($r$).} A memory only surfaces when the present resembles it. If nothing around you reminds you of it, it stays buried. Measured as similarity between the current context and the memory.
+  \item \textbf{Time ($t$).} The longer since you last touched a memory, the deeper it sinks. $e^{-t/g}$ is the forgetting curve. Steep at first, then it flattens.
+  \item \textbf{Strength ($g$).} How well-worn the memory is. Every recall bumps $g$ up, and a bigger $g$ slows the decay. Remembering is rehearsal. Each recall re-carves the groove.
+\end{enumerate}
+
+And the probability of a memory being recalled is given by the formulation
+\[
+p = \frac{1 - \exp\!\left(-r \cdot e^{-t/g}\right)}{1 - e^{-1}}
+\]
+
+Note that this memory architecture is designed for general memory recall in LLMs; we will place it in the domain of social simulations. So we must take into account the opportunities that related memories provide.
+
+ACT-R (Adaptive Control of Thought, Rational)~\cite{honda2025} is a cognitive model that uses the same factors as Hou et al.~\cite{hou2024}, but models them in a different way. The memory functions have been fit to human lab data for decades. Hou et al.~\cite{hou2024} give each memory one clock and one strength number, and recall resets the clock. One reminder makes an old memory act brand new for weeks. ACT-R keeps every recall as its own trace on a power-law fade, so a reminder is a quick bump that dies off while steady use builds a floor that lasts. And a power law never hits zero. Old memories end up sitting faint just under the retrieval threshold, where a cue arriving through a connected memory can push them back over the bar. That hovering state is what our graph works on. Here are the factors of ACT-R memory models.
+
+\begin{enumerate}
+  \item \textbf{Use history ($t_j$).} Every recall leaves a trace, stamped with how long ago it happened. A memory's activation is the sum of all its traces, so a memory is not one number but a lifetime of uses. Nothing ever resets. One mention gives a short bump that fades on its own, and repeated spaced use stacks into a floor that lasts.
+  \item \textbf{Decay ($d$).} Each trace fades as $t^{-d}$, with $d \approx 0.5$. A power law, not an exponential. Fast at first, then a long tail that never quite hits zero. Old memories go faint, not dead. The right cue can still reach them decades later.
+  \item \textbf{Context ($S$).} Whatever is currently in focus spreads activation into memories associated with it. The present doesn't just match a memory, it primes the memories associated with it.
+  \item \textbf{Threshold and noise ($\tau$, $s$).} If total activation falls below the threshold, retrieval simply fails. Forgotten, but not erased. Noise means recall is probabilistic, so you can blank on something you know and get it an hour later.
+\end{enumerate}
+
+Notably, Honda et al.~\cite{honda2025} name our direction as the next step: their future work calls for extending the model with graph-based representations of relationships among memory chunks, which is the architecture we propose.
+
+There are multiple existing simulation environments for our agent. A notable example is TerraLingua~\cite{paolo2026}, a persistent 2D world where LLM agents forage, reproduce, die, and write the environment themselves. They leave persistent text artifacts that outlive their authors, so later generations inherit an LLM-made culture. It is unique since every part of the world is generated, so most of the actions that agents are able to do are not hard coded.
+
+In human psychology, memories that are not semantically associated can be associated if stimuli occur together; this is attributed to associative memory~\cite{apa}. Classical, or Pavlovian, conditioning occurs when stimuli are copresent, and operant, or Skinnerian, conditioning links behavior with its consequences. Both allow associations to form even when memories are not clearly related.
+
+\section{Goals and Scope}
+\begin{enumerate}
+  \item Include memory relations in the retrieval architecture.
+  \item Implement agents using this memory architecture in a sandbox simulation.
+  \item Run against benchmarks.
+\end{enumerate}
+
+\textbf{Dataset:} No dataset needed, we are not training.
+
+\textbf{Models:} We can use the embedding model from Honda et al.~\cite{honda2025}, SBERT all-MiniLM-L6-v2. This can be run locally and outputs sparser scores than the OpenAI embedding model. We can use GPT-5 Nano for text generation. We will attempt to run locally on a Qwen3.6 model (27B active parameters) if we have time.
+
+\textbf{Compute:} We will run the embedding model locally. We have access to an M1 Max with 32GB, a Ryzen 7 7400 with 16GB, and a computer with 32GB and no graphics card. We will use APIs for text generation.
+
+\section{Approach}
+We will use Honda et al.~\cite{honda2025} as a base for the retrieval architecture, then add a memory relations graph. Hou et al.~\cite{hou2024} remains the published comparison point, and both architectures can run under the same relations graph. The sandbox will be based on Paolo et al.~\cite{paolo2026}, so the platform is built on TerraLingua and the language is Python.
+
+\section{Validation}
+We will use the same tests from existing work to test the memory architecture independently. Kuroki et al.~\cite{kuroki2026} list benchmarks that can be used to evaluate agents on believability.
+
+\begin{itemize}
+  \item The Hou et al.~\cite{hou2024} paper has tests in appendix B (qualitative), and appendix C (quantitative).
+  \item EmotionBench~\cite{huang2024} evaluates emotional responses to various real-life situations.
+\end{itemize}
+
+Every mechanism in our architecture sits behind a configuration flag, so we can compare against two baselines, a flat vector store and the base architecture with the graph turned off, and ablate one mechanism at a time. With the graph off, the system must reproduce the base architecture exactly, which doubles as a correctness test.
+
+For benchmarking the simulation as a whole, TerraLingua~\cite{paolo2026} uses its AI Anthropologist framework, which is a separate LLM to read logs and judge open-endedness.
+
+\section{Deliverables}
+\begin{itemize}
+  \item Memory architecture: mathematical models, example agents, and memory architecture diagrams, highlighting the differences between our architecture, the papers' architectures, and other LLMs' retrieval.
+  \item A working example of an agent using our memory retrieval architecture.
+  \item A multi-agent simulation using agents with our memory architecture; the integration is our deliverable; the sandbox should already exist.
+\end{itemize}
+
+\section{Milestones/Timeline}
+\begin{enumerate}
+  \item Create a model using the existing memory architecture. (2 weeks)
+  \item Inject this model into the agent simulation. (1 week)
+  \item Improve the memory architecture with memory relations. This is where the most novel work will be done, so most time will be allocated here. (4 weeks)
+  \item Put the new model in the simulation. (1 week)
+  \item Validate against the benchmarks used for the existing memory architectures and social agent simulations. (2 weeks)
+\end{enumerate}
+
+\section{Why we can't 1-shot}
+\begin{itemize}
+  \item The memory architecture we are proposing does not exist yet; there is no precedent for adding relational memory to this retrieval model.
+  \item We can't consider every problem that we could run into and have it in the prompt.
+  \item We have to tune the newly added association factor.
+  \item Judging believability with LLMs is circular, we'd want a human in the loop.
+\end{itemize}
+
+\renewcommand{\refname}{Works Cited}
+\begin{thebibliography}{9}
+
+\bibitem{hou2024}
+Y.~Hou, H.~Tamoto, and H.~Miyashita, ``\,`My agent understands me better': Integrating dynamic human-like memory recall and consolidation in LLM-based agents,'' in \emph{Extended Abstracts of the CHI Conference on Human Factors in Computing Systems}, ser. CHI EA '24, Honolulu, HI, USA: Association for Computing Machinery, 2024, ISBN: 9798400703317. DOI: 10.1145/3613905.3650839. [Online]. Available: \url{https://doi.org/10.1145/3613905.3650839}
+
+\bibitem{honda2025}
+Y.~Honda, Y.~Fujita, K.~Zempo, and S.~Fukushima, ``Human-like remembering and forgetting in LLM agents: An ACT-R-inspired memory architecture,'' in \emph{Proceedings of the 13th International Conference on Human-Agent Interaction}, ser. HAI '25, Association for Computing Machinery, 2026, pp. 229--237, ISBN: 9798400721786. DOI: 10.1145/3765766.3765803. [Online]. Available: \url{https://doi.org/10.1145/3765766.3765803}
+
+\bibitem{paolo2026}
+G.~Paolo, J.~Warner, H.~Shahrzad, B.~Hodjat, R.~Miikkulainen, and E.~Meyerson, ``TerraLingua: Emergence and analysis of open-endedness in LLM ecologies,'' 2026. arXiv: 2603.16910 [cs.MA]. [Online]. Available: \url{https://arxiv.org/abs/2603.16910}
+
+\bibitem{apa}
+American Psychological Association, ``Associative memory,'' \emph{APA Dictionary of Psychology}. [Online]. Available: \url{https://dictionary.apa.org/associative-memory}
+
+\bibitem{kuroki2026}
+S.~Kuroki, Y.~Tian, K.~Misaki, T.~Ikegami, T.~Akiba, and Y.~Tang, ``Shachi: A modular, controllable framework for LLM-based agent-based modeling of emergent collective behavior,'' 2026. arXiv: 2509.21862 [cs.AI]. [Online]. Available: \url{https://arxiv.org/abs/2509.21862}
+
+\bibitem{huang2024}
+J.-t.~Huang et al., ``Emotionally numb or empathetic? Evaluating how LLMs feel using EmotionBench,'' 2024. arXiv: 2308.03656 [cs.CL]. [Online]. Available: \url{https://arxiv.org/abs/2308.03656}
+
+\end{thebibliography}
+
+\end{document}

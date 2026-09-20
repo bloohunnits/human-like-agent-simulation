@@ -2,7 +2,7 @@
 
 Relational memory retrieval for agents in multi-agent simulations. Memories fade with time, strengthen with recall, and survive through their connections. The goal is believability: agents that remember, forget, and associate the way people do.
 
-Working repo for our CMSC473/673 project (Andre Atkins, Ben Sadorra, Ryan Shechtman). The course proposal is the source of truth. These docs elaborate it into working detail.
+Working repo for our CMSC473/673 project (Andre Atkins, Ben Sadorra, Ryan Shechtman). The course proposal ([PDF](proposal/proposal.pdf) · [LaTeX](proposal/proposal.tex)) is the source of truth. These docs elaborate it into working detail.
 
 ## The idea
 
