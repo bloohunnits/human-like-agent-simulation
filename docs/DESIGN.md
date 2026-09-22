@@ -48,7 +48,7 @@ The per-memory dynamics have two candidate shapes, and they disagree in a way ag
 
 Both kernels score each memory independently from the same ingredients: how well it matches the moment, its history of use, and time. The ACT-R base scores `A_i = B_i + w·sim_i + ε` against a retrieval threshold. The Hou comparison scores `p_i = P(r_i, t_i, g_i)`. We keep each kernel's formula untouched and widen one input, the cue. Three steps, all deterministic, no LLM in the loop:
 
-**1. Seed.** Compute `sim_i` (embedding similarity between the current context and each memory) and each memory's base activation under the active kernel.
+**1. Seed.** Relevance has two routes in, both mapping onto ACT-R's spreading term `Σ W_j S_ji`, where the sources are what is in the agent's focus right now. Route one is semantic: embed the current moment and take cosine similarity against each memory (Honda's move, and their sweep gives starting scales, w near 11 with σ = 1.2). Route two is associative: the entities present right now (a person, a place) are ACT-R sources, and their `mentions` edge weights to memories act as dynamic `S_ji`, learned at write time, worn in by traversal, and normalized per node (the fan effect, `S − ln(fan)`, made dynamic). Route two catches what embeddings miss: a memory about Ben scores high when Ben is present, whatever is being said. Compute each memory's base activation under the active kernel from both routes.
 
 **2. Spread.** Activation flows along edges for one to two hops with damping `λ < 1`:
 
@@ -87,6 +87,7 @@ None of this guarantees our graph wins. It does mean their negative result doesn
 ## Open math questions
 
 1. `max` vs `sum` when combining direct and received cue strength. Sum rewards convergent evidence (several weak routes agreeing) but risks feedback loops. Start with max, test sum in sim.
+1b. Calibration across routes. `B` is log-scale, cosine lives in [−1, 1], edge weights are whatever the update rule makes them. The scale factors (`w_sem`, entity weights, `λ`) must put all three on a common footing where one threshold τ is meaningful. Anchor route one on Honda's published w and σ, then express routes two and three in units of route one (scale so a typical contribution equals a given cosine bump). Budget real time for this in milestone 3.
 2. Edge weight initialization: uniform, co-occurrence count, or LLM confidence? Start uniform, let traversal differentiate.
 3. Bounded 2-hop spread vs full Personalized PageRank (HippoRAG-style). Start bounded, PPR as a variant. PPR handles long chains but obscures why a memory surfaced, and explainability is a design goal.
 4. The partial-refresh threshold and fraction. Too generous and nothing ever fades (the store-everything failure returns through the back door). Too stingy and we reproduce the base architecture unchanged. This is the key parameter the simulation has to tune, with sensitivity reported.
