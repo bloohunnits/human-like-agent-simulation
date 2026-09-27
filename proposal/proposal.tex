@@ -2,10 +2,12 @@
 \usepackage[margin=1.25in]{geometry}
 \usepackage{amsmath}
 \usepackage[hidelinks]{hyperref}
+\usepackage{biblatex}
 
 \title{CMSC473/673 Proposal: Relational Memory Retrieval in Multi-agent Simulations}
 \author{Andre Atkins, Ben Sadorra, and Ryan Shechtman}
 \date{}
+\addbibresource{sources.bib}
 
 \begin{document}
 \maketitle
@@ -96,27 +98,5 @@ For benchmarking the simulation as a whole, TerraLingua~\cite{paolo2026} uses it
   \item Judging believability with LLMs is circular, we'd want a human in the loop.
 \end{itemize}
 
-\renewcommand{\refname}{Works Cited}
-\begin{thebibliography}{9}
-
-\bibitem{hou2024}
-Y.~Hou, H.~Tamoto, and H.~Miyashita, ``\,`My agent understands me better': Integrating dynamic human-like memory recall and consolidation in LLM-based agents,'' in \emph{Extended Abstracts of the CHI Conference on Human Factors in Computing Systems}, ser. CHI EA '24, Honolulu, HI, USA: Association for Computing Machinery, 2024, ISBN: 9798400703317. DOI: 10.1145/3613905.3650839. [Online]. Available: \url{https://doi.org/10.1145/3613905.3650839}
-
-\bibitem{honda2025}
-Y.~Honda, Y.~Fujita, K.~Zempo, and S.~Fukushima, ``Human-like remembering and forgetting in LLM agents: An ACT-R-inspired memory architecture,'' in \emph{Proceedings of the 13th International Conference on Human-Agent Interaction}, ser. HAI '25, Association for Computing Machinery, 2026, pp. 229--237, ISBN: 9798400721786. DOI: 10.1145/3765766.3765803. [Online]. Available: \url{https://doi.org/10.1145/3765766.3765803}
-
-\bibitem{paolo2026}
-G.~Paolo, J.~Warner, H.~Shahrzad, B.~Hodjat, R.~Miikkulainen, and E.~Meyerson, ``TerraLingua: Emergence and analysis of open-endedness in LLM ecologies,'' 2026. arXiv: 2603.16910 [cs.MA]. [Online]. Available: \url{https://arxiv.org/abs/2603.16910}
-
-\bibitem{apa}
-American Psychological Association, ``Associative memory,'' \emph{APA Dictionary of Psychology}. [Online]. Available: \url{https://dictionary.apa.org/associative-memory}
-
-\bibitem{kuroki2026}
-S.~Kuroki, Y.~Tian, K.~Misaki, T.~Ikegami, T.~Akiba, and Y.~Tang, ``Shachi: A modular, controllable framework for LLM-based agent-based modeling of emergent collective behavior,'' 2026. arXiv: 2509.21862 [cs.AI]. [Online]. Available: \url{https://arxiv.org/abs/2509.21862}
-
-\bibitem{huang2024}
-J.-t.~Huang et al., ``Emotionally numb or empathetic? Evaluating how LLMs feel using EmotionBench,'' 2024. arXiv: 2308.03656 [cs.CL]. [Online]. Available: \url{https://arxiv.org/abs/2308.03656}
-
-\end{thebibliography}
-
+\printbibliography
 \end{document}
