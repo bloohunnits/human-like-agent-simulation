@@ -1,5 +1,13 @@
 # Research Notes
 
+**2026-09-27 audit update:** the broad novelty claims in this earlier survey are
+not established. The [ACT-R design audit](ACTR_MEMORY_ARCHITECTURE.md) corrects
+the distinction between native contextual associations and our simplified kernel,
+and its [prior-work comparison](ACTR_MEMORY_ARCHITECTURE.md#9-prior-work-and-the-contribution-claim)
+adds primary examples of generated chunks, ACT-R/LLM interfaces, and
+embedding-derived associations. Treat the earlier survey below as historical
+research notes, not proof that no similar hybrid exists.
+
 The survey behind the project, compiled 2026-09-17. Three threads: the human-like memory papers we build on, the graph systems we borrow relation mechanics from, and the benchmarks and environments we evaluate in. The plain-language version of the core idea is in the [README](../README.md). This file keeps the precise details.
 
 ## 1. The human-like memory papers

@@ -1,6 +1,12 @@
 # Design: Storage and Retrieval
 
-How association actually enters the formula. Status: proposal, pre-implementation. Companion to the [README](../README.md) and [RESEARCH.md](RESEARCH.md).
+Historical architecture exploration. For the implemented experiment, use [Independent associative retrieval](INDEPENDENT_GRAPH_MEMORY_DESIGN.md) and its [implementation audit](ASSOCIATIVE_IMPLEMENTATION.md).
+
+The [later logic audit](PROPOSAL_LOGIC_AUDIT.md) supersedes claims below that graph storage is necessary or that the proposed mechanics already establish human-like behavior. Relations can be represented alongside a vector store, and the current primary condition is exactly reproducible by a weighted cue-to-episode index. The earlier text remains as design history.
+
+## Active Hou-graph implementation
+
+[Independent associative retrieval](INDEPENDENT_GRAPH_MEMORY_DESIGN.md) now runs in the simulation, with separate memory and connection decay, persistent learning and audit traces. The broader architecture notes below remain historical design context, not a runtime specification.
 
 ## Storage comes first
 
@@ -93,5 +99,5 @@ None of this guarantees our graph wins. It does mean their negative result doesn
 4. The partial-refresh threshold and fraction. Too generous and nothing ever fades (the store-everything failure returns through the back door). Too stingy and we reproduce the base architecture unchanged. This is the key parameter the simulation has to tune, with sensitivity reported.
 5. Does `received` activation count as a use? Probably not (only true recalls append a trace or reset the clock, partial refresh is a smaller side channel), otherwise spreading silently freezes the whole neighborhood's decay.
 6. Hierarchy depth. How many abstraction levels earn their keep, and does spreading cross them?
-7. For the Hou comparison kernel: the Hou paper never anchors `t` explicitly (verified against the full text). Our implementation documents reset-on-recall as its reading and tests sensitivity to the alternative.
+7. For the Hou comparison kernel: the Hou paper never anchors `t` explicitly (verified against the full text). Our implementation documents reset-on-recall as its reading and tests sensitivity to the alternative. **Empirically confirmed sensitive** (`code/hou_memory/demo_ada_walkthrough.py`, bare kernel, no graph): with the paper's `g_0 = 1` and `t` in days, `exp(-t/g)` collapses to ~0 within days regardless of `r`, so a memory that is never recalled again is unrecallable almost immediately, no matter how relevant a later cue is - even the day-45 mushroom/sickness pair was dead on arrival by day 90. `g` and `t` must share a scale, and the paper's `g_0 = 1` implicitly assumes `t` in units where "a while" is a small number (their setup recalled memories often enough, likely within a session, that this never bit). Raising `g_0` to ~30 (day-scale) gave the walkthrough its intended shape: recent berry trips faintly surface for berry-flavored cues, the mushroom/sickness pair surfaces strongly and correctly for related cues, and - importantly - **"Ben" never surfaces for any cue**, confirming this bare kernel needs the graph: nothing here routes a "berry patch" trip back to Ben without literally saying his name. `g_0` (or equivalently a `t`-rescaling) is a required calibration knob, not a free default, and should be swept alongside the other open questions once the graph lands.
 8. For the ACT-R base kernel: Honda et al. use Gaussian noise where classic ACT-R uses logistic. Pick one, document it, and check it doesn't change the reminiscence-probe prediction.

@@ -1,0 +1,1267 @@
+{
+  "scope": "Constructed one-episode fixture. Real writer, encoder and scoring; no LLM/world rollout.",
+  "feedback_scope": "Food-transfer feedback is supplied as a scenario fixture, not automatically inferred from a live transfer.",
+  "behavior_scope": "Approaching the pinwheel to seek Mia is an expected behavior to test, not a measured result.",
+  "query_scope": "Hunger-aware text is explicitly appended for this stronger probe; the live default query does not automatically include hunger/energy.",
+  "config": {
+    "mode": "independent",
+    "edge_learning": false,
+    "beta": 0.5,
+    "edge_weight": 0.8,
+    "retention": 100.0,
+    "retention_cap": 200.0,
+    "learning_rate": 0.2,
+    "retention_increment": 25.0,
+    "threshold": 0.15,
+    "top_k": 3,
+    "token_budget": 600,
+    "time_scale": 25.0,
+    "g0": 1.0,
+    "memory_sources": false,
+    "seed_threshold": 0.1,
+    "seed_budget": 3,
+    "working_history": 0
+  },
+  "memory_text": "Chose action move: {\"direction\": \"stay\"}. Nearby: Mia. Artifacts here: blue pinwheel. Feedback from the preceding action: {'event': 'Mia gave me food and my energy increased.'}. Heard Mia said \"I'm usually here.\".",
+  "cue_entities": {
+    "people": [],
+    "artifacts": [
+      "blue pinwheel"
+    ],
+    "places": []
+  },
+  "query_variants": [
+    {
+      "name": "observation_only",
+      "query": "Observation: (-1, 1): \n (0, 1): \n (1, 1): \n (-1, 0): \n (0, 0): yourself\n (1, 0): \n (-1, -1): \n (0, -1): A(text): blue pinwheel\n (1, -1): \n \nIncoming messages: <none>",
+      "probes": [
+        {
+          "tick": 0,
+          "raw_similarity": 0.33703500032424927,
+          "direct_contribution": 0.33703500032424927,
+          "graph_contribution": 0.4,
+          "direct_score": 0.4526290795400132,
+          "with_association_score": 0.5215460078933705,
+          "direct_selected": true,
+          "with_association_selected": true
+        },
+        {
+          "tick": 32,
+          "raw_similarity": 0.33703500032424927,
+          "direct_contribution": 0.09370830164839568,
+          "graph_contribution": 0.2904596148294764,
+          "direct_score": 0.14151045998719278,
+          "with_association_score": 0.3987851097565104,
+          "direct_selected": false,
+          "with_association_selected": true
+        },
+        {
+          "tick": 33,
+          "raw_similarity": 0.33703500032424927,
+          "direct_contribution": 0.0900339465846788,
+          "graph_contribution": 0.2875694933727705,
+          "direct_score": 0.13620793983368484,
+          "with_association_score": 0.3953605960877741,
+          "direct_selected": false,
+          "with_association_selected": true
+        },
+        {
+          "tick": 100,
+          "raw_similarity": 0.33703500032424927,
+          "direct_contribution": 0.006173011358803357,
+          "graph_contribution": 0.14715177646857694,
+          "direct_score": 0.009735480649494905,
+          "with_association_score": 0.21647301047373563,
+          "direct_selected": false,
+          "with_association_selected": true
+        },
+        {
+          "tick": 139,
+          "raw_similarity": 0.33703500032424927,
+          "direct_contribution": 0.0012971723544166322,
+          "graph_contribution": 0.09963012185266729,
+          "direct_score": 0.002050766063399304,
+          "with_association_score": 0.15001543479140994,
+          "direct_selected": false,
+          "with_association_selected": true
+        },
+        {
+          "tick": 140,
+          "raw_similarity": 0.33703500032424927,
+          "direct_contribution": 0.0012463094988838545,
+          "graph_contribution": 0.0986387855766426,
+          "direct_score": 0.001970404474827113,
+          "with_association_score": 0.14859517577570777,
+          "direct_selected": false,
+          "with_association_selected": false
+        }
+      ]
+    },
+    {
+      "name": "hunger_aware",
+      "query": "Observation: (-1, 1): \n (0, 1): \n (1, 1): \n (-1, 0): \n (0, 0): yourself\n (1, 0): \n (-1, -1): \n (0, -1): A(text): blue pinwheel\n (1, -1): \n \nIncoming messages: <none>\nI am hungry. Current goal: find food.",
+      "probes": [
+        {
+          "tick": 0,
+          "raw_similarity": 0.37020161747932434,
+          "direct_contribution": 0.37020161747932434,
+          "graph_contribution": 0.4,
+          "direct_score": 0.489471375543555,
+          "with_association_score": 0.5215460078933705,
+          "direct_selected": true,
+          "with_association_selected": true
+        },
+        {
+          "tick": 32,
+          "raw_similarity": 0.37020161747932434,
+          "direct_contribution": 0.10292985834735735,
+          "graph_contribution": 0.2904596148294764,
+          "direct_score": 0.15473274244348775,
+          "with_association_score": 0.3987851097565104,
+          "direct_selected": true,
+          "with_association_selected": true
+        },
+        {
+          "tick": 33,
+          "raw_similarity": 0.37020161747932434,
+          "direct_contribution": 0.09889392087358552,
+          "graph_contribution": 0.2875694933727705,
+          "direct_score": 0.14896083534996038,
+          "with_association_score": 0.3953605960877741,
+          "direct_selected": false,
+          "with_association_selected": true
+        },
+        {
+          "tick": 100,
+          "raw_similarity": 0.37020161747932434,
+          "direct_contribution": 0.006780479141776608,
+          "graph_contribution": 0.14715177646857694,
+          "direct_score": 0.010690276508262823,
+          "with_association_score": 0.21647301047373563,
+          "direct_selected": false,
+          "with_association_selected": true
+        },
+        {
+          "tick": 139,
+          "raw_similarity": 0.37020161747932434,
+          "direct_contribution": 0.0014248232477116702,
+          "graph_contribution": 0.09963012185266729,
+          "direct_score": 0.002252432149381415,
+          "with_association_score": 0.15001543479140994,
+          "direct_selected": false,
+          "with_association_selected": true
+        },
+        {
+          "tick": 140,
+          "raw_similarity": 0.37020161747932434,
+          "direct_contribution": 0.001368955129060087,
+          "graph_contribution": 0.0986387855766426,
+          "direct_score": 0.0021641734607640096,
+          "with_association_score": 0.14859517577570777,
+          "direct_selected": false,
+          "with_association_selected": false
+        }
+      ]
+    }
+  ],
+  "raw_similarity": 0.37020161747932434,
+  "initial_direct_contribution": 0.37020161747932434,
+  "initial_graph_contribution": 0.4,
+  "direct_threshold_tick": 32.817285385757884,
+  "association_threshold_tick": 139.01081932044355,
+  "algebraic_crossing_tick": -2.580559259137341,
+  "positive_time_crossing": false,
+  "association_only_integer_ticks": [
+    33,
+    139
+  ],
+  "curve": [
+    {
+      "tick": 0,
+      "direct_score": 0.489471375543555,
+      "with_association_score": 0.5215460078933705,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 1,
+      "direct_score": 0.47349711318923016,
+      "with_association_score": 0.5173170129344682,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 2,
+      "direct_score": 0.45792924006459723,
+      "with_association_score": 0.5131134830595211,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 3,
+      "direct_score": 0.44276588047243737,
+      "with_association_score": 0.5089354295689846,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 4,
+      "direct_score": 0.42800443911683395,
+      "with_association_score": 0.5047828600649971,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 5,
+      "direct_score": 0.4136416625116203,
+      "with_association_score": 0.500655778518957,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 6,
+      "direct_score": 0.39967369793681173,
+      "with_association_score": 0.4965541853387085,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 7,
+      "direct_score": 0.3860961498412622,
+      "with_association_score": 0.49247807743531563,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 8,
+      "direct_score": 0.3729041336214995,
+      "with_association_score": 0.4884274482894103,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 9,
+      "direct_score": 0.3600923267348173,
+      "with_association_score": 0.48440228801709545,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 10,
+      "direct_score": 0.3476550171294639,
+      "with_association_score": 0.48040258343538794,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 11,
+      "direct_score": 0.3355861489963883,
+      "with_association_score": 0.4764283181271883,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 12,
+      "direct_score": 0.32387936586570026,
+      "with_association_score": 0.4724794725057592,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 13,
+      "direct_score": 0.31252805108701837,
+      "with_association_score": 0.46855602387870376,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 14,
+      "direct_score": 0.3015253657464346,
+      "with_association_score": 0.4646579465114269,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 15,
+      "direct_score": 0.2908642840841336,
+      "with_association_score": 0.46078521169006936,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 16,
+      "direct_score": 0.28053762648598957,
+      "with_association_score": 0.4569377877839035,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 17,
+      "direct_score": 0.270538090129915,
+      "with_association_score": 0.4531156403071778,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 18,
+      "direct_score": 0.2608582773735614,
+      "with_association_score": 0.4493187319804029,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 19,
+      "direct_score": 0.25149072197432637,
+      "with_association_score": 0.4455470227910658,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 20,
+      "direct_score": 0.24242791323570714,
+      "with_association_score": 0.44180047005376677,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 21,
+      "direct_score": 0.23366231817598118,
+      "with_association_score": 0.4380790284697687,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 22,
+      "direct_score": 0.22518640181615243,
+      "with_association_score": 0.43438265018595074,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 23,
+      "direct_score": 0.21699264568421403,
+      "with_association_score": 0.4307112848531596,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 24,
+      "direct_score": 0.20907356463214202,
+      "with_association_score": 0.42706487968395174,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 25,
+      "direct_score": 0.20142172206078954,
+      "with_association_score": 0.4234433795097203,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 26,
+      "direct_score": 0.19402974364607245,
+      "with_association_score": 0.41984672683719987,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 27,
+      "direct_score": 0.18689032965763436,
+      "with_association_score": 0.4162748619043454,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 28,
+      "direct_score": 0.17999626595860585,
+      "with_association_score": 0.41272772273557917,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 29,
+      "direct_score": 0.17334043377223907,
+      "with_association_score": 0.4092052451964021,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 30,
+      "direct_score": 0.16691581829812102,
+      "with_association_score": 0.4057073630473668,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 31,
+      "direct_score": 0.16071551625744723,
+      "with_association_score": 0.40223400799740483,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 32,
+      "direct_score": 0.15473274244348775,
+      "with_association_score": 0.3987851097565104,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 33,
+      "direct_score": 0.14896083534996038,
+      "with_association_score": 0.3953605960877741,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 34,
+      "direct_score": 0.14339326194657018,
+      "with_association_score": 0.39196039285876694,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 35,
+      "direct_score": 0.13802362166751772,
+      "with_association_score": 0.3885844240922707,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 36,
+      "direct_score": 0.13284564967533752,
+      "with_association_score": 0.3852326120163533,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 37,
+      "direct_score": 0.1278532194590396,
+      "with_association_score": 0.38190487711379223,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 38,
+      "direct_score": 0.12304034482219446,
+      "with_association_score": 0.37860113817083857,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 39,
+      "direct_score": 0.11840118131335794,
+      "with_association_score": 0.37532131232532645,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 40,
+      "direct_score": 0.11393002714806774,
+      "with_association_score": 0.3720653151141257,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 41,
+      "direct_score": 0.10962132366859403,
+      "with_association_score": 0.36883306051993875,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 42,
+      "direct_score": 0.10546965538467538,
+      "with_association_score": 0.36562446101744184,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 43,
+      "direct_score": 0.10146974963564165,
+      "with_association_score": 0.36243942761877074,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 44,
+      "direct_score": 0.09761647591161166,
+      "with_association_score": 0.3592778699183536,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 45,
+      "direct_score": 0.09390484486886143,
+      "with_association_score": 0.3561396961370919,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 46,
+      "direct_score": 0.09033000707198995,
+      "with_association_score": 0.35302481316588985,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 47,
+      "direct_score": 0.08688725149316123,
+      "with_association_score": 0.34993312660853565,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 48,
+      "direct_score": 0.08357200379647375,
+      "with_association_score": 0.3468645408239368,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 49,
+      "direct_score": 0.0803798244334037,
+      "with_association_score": 0.3438189589677097,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 50,
+      "direct_score": 0.07730640657327545,
+      "with_association_score": 0.3407962830331295,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 51,
+      "direct_score": 0.07434757389083901,
+      "with_association_score": 0.33779641389144016,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 52,
+      "direct_score": 0.07149927823126769,
+      "with_association_score": 0.3348192513315293,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 53,
+      "direct_score": 0.0687575971712285,
+      "with_association_score": 0.33186469409896935,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 54,
+      "direct_score": 0.06611873149312801,
+      "with_association_score": 0.3289326399344322,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 55,
+      "direct_score": 0.06357900258817381,
+      "with_association_score": 0.3260229856114756,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 56,
+      "direct_score": 0.06113484980253321,
+      "with_association_score": 0.32313562697370823,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 57,
+      "direct_score": 0.058782827739601806,
+      "with_association_score": 0.32027045897133927,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 58,
+      "direct_score": 0.0565196035302031,
+      "with_association_score": 0.31742737569711094,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 59,
+      "direct_score": 0.05434195408144695,
+      "with_association_score": 0.3146062704216235,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 60,
+      "direct_score": 0.05224676331393753,
+      "with_association_score": 0.3118070356280539,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 61,
+      "direct_score": 0.050231019396083584,
+      "with_association_score": 0.30902956304627466,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 62,
+      "direct_score": 0.04829181198336814,
+      "with_association_score": 0.30627374368637544,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 63,
+      "direct_score": 0.04642632946962895,
+      "with_association_score": 0.30353946787159386,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 64,
+      "direct_score": 0.04463185625663785,
+      "with_association_score": 0.30082662527065934,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 65,
+      "direct_score": 0.04290577004757673,
+      "with_association_score": 0.29813510492955553,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 66,
+      "direct_score": 0.04124553916935996,
+      "with_association_score": 0.29546479530270525,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 67,
+      "direct_score": 0.03964871992816584,
+      "with_association_score": 0.2928155842835854,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 68,
+      "direct_score": 0.03811295400199198,
+      "with_association_score": 0.29018735923477357,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 69,
+      "direct_score": 0.03663596587355309,
+      "with_association_score": 0.2875800070174351,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 70,
+      "direct_score": 0.03521556030638129,
+      "with_association_score": 0.28499341402025385,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 71,
+      "direct_score": 0.033849619866569196,
+      "with_association_score": 0.2824274661878129,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 72,
+      "direct_score": 0.03253610249221674,
+      "with_association_score": 0.2798820490484295,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 73,
+      "direct_score": 0.031273039112287605,
+      "with_association_score": 0.2773570477414531,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 74,
+      "direct_score": 0.03005853131627232,
+      "with_association_score": 0.27485234704402695,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 75,
+      "direct_score": 0.02889074907575745,
+      "with_association_score": 0.2723678313973242,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 76,
+      "direct_score": 0.027767928518744815,
+      "with_association_score": 0.2699033849322599,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 77,
+      "direct_score": 0.02668836975732568,
+      "with_association_score": 0.26745889149468804,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 78,
+      "direct_score": 0.02565043476910094,
+      "with_association_score": 0.2650342346700871,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 79,
+      "direct_score": 0.024652545332545368,
+      "with_association_score": 0.2626292978077406,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 80,
+      "direct_score": 0.02369318101634284,
+      "with_association_score": 0.2602439640444187,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 81,
+      "direct_score": 0.022770877222564684,
+      "with_association_score": 0.2578781163275682,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 82,
+      "direct_score": 0.021884223283420417,
+      "with_association_score": 0.2555316374380118,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 83,
+      "direct_score": 0.021031860611196516,
+      "with_association_score": 0.25320441001217026,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 84,
+      "direct_score": 0.020212480900881714,
+      "with_association_score": 0.25089631656380545,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 85,
+      "direct_score": 0.01942482438488519,
+      "with_association_score": 0.24860723950529603,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 86,
+      "direct_score": 0.018667678139172188,
+      "with_association_score": 0.246337061168449,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 87,
+      "direct_score": 0.017939874440062665,
+      "with_association_score": 0.24408566382485386,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 88,
+      "direct_score": 0.01724028917088405,
+      "with_association_score": 0.2418529297057838,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 89,
+      "direct_score": 0.016567840277606036,
+      "with_association_score": 0.23963874102165333,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 90,
+      "direct_score": 0.015921486272546453,
+      "with_association_score": 0.23744297998103403,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 91,
+      "direct_score": 0.015300224785195656,
+      "with_association_score": 0.2352655288092377,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 92,
+      "direct_score": 0.014703091159177215,
+      "with_association_score": 0.23310626976647078,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 93,
+      "direct_score": 0.014129157094334223,
+      "with_association_score": 0.23096508516556716,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 94,
+      "direct_score": 0.013577529332915733,
+      "with_association_score": 0.22884185738930454,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 95,
+      "direct_score": 0.013047348388819678,
+      "with_association_score": 0.22673646890731047,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 96,
+      "direct_score": 0.012537787318839195,
+      "with_association_score": 0.2246488022925636,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 97,
+      "direct_score": 0.012048050534853591,
+      "with_association_score": 0.22257874023749763,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 98,
+      "direct_score": 0.011577372655904573,
+      "with_association_score": 0.22052616556970966,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 99,
+      "direct_score": 0.011125017399095966,
+      "with_association_score": 0.2184909612672845,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 100,
+      "direct_score": 0.010690276508262823,
+      "with_association_score": 0.21647301047373563,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 101,
+      "direct_score": 0.010272468719358361,
+      "with_association_score": 0.21447219651257105,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 102,
+      "direct_score": 0.009870938761521786,
+      "with_association_score": 0.21248840290148927,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 103,
+      "direct_score": 0.009485056392792703,
+      "with_association_score": 0.21052151336621136,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 104,
+      "direct_score": 0.00911421546946062,
+      "with_association_score": 0.20857141185395298,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 105,
+      "direct_score": 0.00875783304804211,
+      "with_association_score": 0.20663798254654478,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 106,
+      "direct_score": 0.00841534851890225,
+      "with_association_score": 0.20472110987320494,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 107,
+      "direct_score": 0.008086222770547158,
+      "with_association_score": 0.20282067852296873,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 108,
+      "direct_score": 0.007769937383637591,
+      "with_association_score": 0.20093657345678217,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 109,
+      "direct_score": 0.00746599385378803,
+      "with_association_score": 0.19906867991926458,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 110,
+      "direct_score": 0.0071739128422356494,
+      "with_association_score": 0.1972168834501454,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 111,
+      "direct_score": 0.006893233453486776,
+      "with_association_score": 0.1953810698953797,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 112,
+      "direct_score": 0.006623512539062313,
+      "with_association_score": 0.19356112541794965,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 113,
+      "direct_score": 0.006364324026491175,
+      "with_association_score": 0.19175693650835574,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 114,
+      "direct_score": 0.0061152582727148465,
+      "with_association_score": 0.18996838999480223,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 115,
+      "direct_score": 0.005875921441093194,
+      "with_association_score": 0.1881953730530847,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 116,
+      "direct_score": 0.0056459349012171565,
+      "with_association_score": 0.1864377732161824,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 117,
+      "direct_score": 0.00542493465075831,
+      "with_association_score": 0.18469547838356087,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 118,
+      "direct_score": 0.005212570758605717,
+      "with_association_score": 0.1829683768301907,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 119,
+      "direct_score": 0.005008506828560638,
+      "with_association_score": 0.18125635721528685,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 120,
+      "direct_score": 0.004812419482878845,
+      "with_association_score": 0.179559308590773,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 121,
+      "direct_score": 0.004623997864974849,
+      "with_association_score": 0.17787712040947676,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 122,
+      "direct_score": 0.00444294316061731,
+      "with_association_score": 0.17620968253306057,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 123,
+      "direct_score": 0.004268968136969799,
+      "with_association_score": 0.1745568852396911,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 124,
+      "direct_score": 0.004101796698845351,
+      "with_association_score": 0.1729186192314545,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 125,
+      "direct_score": 0.003941163461568326,
+      "with_association_score": 0.1712947756415207,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 126,
+      "direct_score": 0.0037868133398518728,
+      "with_association_score": 0.16968524604106167,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 127,
+      "direct_score": 0.0036385011521166684,
+      "with_association_score": 0.16808992244592774,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 128,
+      "direct_score": 0.0034959912397022523,
+      "with_association_score": 0.1665086973230876,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 129,
+      "direct_score": 0.003359057100429819,
+      "with_association_score": 0.1649414635968353,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 130,
+      "direct_score": 0.003227481036000637,
+      "with_association_score": 0.16338811465476938,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 131,
+      "direct_score": 0.003101053812727775,
+      "with_association_score": 0.1618485443535481,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 132,
+      "direct_score": 0.00297957433511533,
+      "with_association_score": 0.16032264702442423,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 133,
+      "direct_score": 0.0028628493318174422,
+      "with_association_score": 0.15881031747856705,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 134,
+      "direct_score": 0.002750693053522556,
+      "with_association_score": 0.1573114510121699,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 135,
+      "direct_score": 0.0026429269823259453,
+      "with_association_score": 0.15582594341135395,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 136,
+      "direct_score": 0.0025393795521666982,
+      "with_association_score": 0.15435369095686668,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 137,
+      "direct_score": 0.0024398858799215125,
+      "with_association_score": 0.15289459042858355,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 138,
+      "direct_score": 0.002344287506760124,
+      "with_association_score": 0.1514485391098125,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 139,
+      "direct_score": 0.002252432149381415,
+      "with_association_score": 0.15001543479140994,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 140,
+      "direct_score": 0.0021641734607640096,
+      "with_association_score": 0.14859517577570777,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 141,
+      "direct_score": 0.0020793708000753316,
+      "with_association_score": 0.14718766088025856,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 142,
+      "direct_score": 0.001997889011396833,
+      "with_association_score": 0.14579278944139967,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 143,
+      "direct_score": 0.0019195982109379876,
+      "with_association_score": 0.1444104613176438,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 144,
+      "direct_score": 0.0018443735824173076,
+      "with_association_score": 0.14304057689289434,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 145,
+      "direct_score": 0.0017720951803052887,
+      "with_association_score": 0.14168303707949592,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 146,
+      "direct_score": 0.0017026477406338774,
+      "with_association_score": 0.1403377433211172,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 147,
+      "direct_score": 0.001635920499085996,
+      "with_association_score": 0.13900459759547257,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 148,
+      "direct_score": 0.0015718070160911344,
+      "with_association_score": 0.13768350241688787,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 149,
+      "direct_score": 0.0015102050086609252,
+      "with_association_score": 0.13637436083870885,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 150,
+      "direct_score": 0.0014510161887117845,
+      "with_association_score": 0.13507707645556014,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 151,
+      "direct_score": 0.0013941461076245173,
+      "with_association_score": 0.1337915534054564,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 152,
+      "direct_score": 0.001339504006808874,
+      "with_association_score": 0.13251769637176752,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 153,
+      "direct_score": 0.0012870026740408656,
+      "with_association_score": 0.13125541058504317,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 154,
+      "direct_score": 0.0012365583053547053,
+      "with_association_score": 0.13000460182469975,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 155,
+      "direct_score": 0.0011880903722772025,
+      "with_association_score": 0.12876517642057111,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 156,
+      "direct_score": 0.0011415214942015824,
+      "with_association_score": 0.12753704125432724,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 157,
+      "direct_score": 0.0010967773157027868,
+      "with_association_score": 0.1263201037607644,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 158,
+      "direct_score": 0.0010537863886061509,
+      "with_association_score": 0.12511427192896904,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 159,
+      "direct_score": 0.0010124800586276776,
+      "with_association_score": 0.12391945430335831,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 160,
+      "direct_score": 0.0009727923564107991,
+      "with_association_score": 0.12273555998460006,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 161,
+      "direct_score": 0.0009346598927899618,
+      "with_association_score": 0.1215624986304159,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 162,
+      "direct_score": 0.0008980217581191021,
+      "with_association_score": 0.12040018045626893,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 163,
+      "direct_score": 0.0008628194255106282,
+      "with_association_score": 0.11924851623593981,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 164,
+      "direct_score": 0.0008289966578314034,
+      "with_association_score": 0.11810741730199381,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 165,
+      "direct_score": 0.0007964994183136433,
+      "with_association_score": 0.1169767955461405,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 166,
+      "direct_score": 0.0007652757846400421,
+      "with_association_score": 0.11585656341949054,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 167,
+      "direct_score": 0.0007352758663705261,
+      "with_association_score": 0.11474663393270895,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 168,
+      "direct_score": 0.0007064517255803097,
+      "with_association_score": 0.11364692065607213,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 169,
+      "direct_score": 0.0006787573005866658,
+      "with_association_score": 0.11255733771942623,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 170,
+      "direct_score": 0.000652148332643569,
+      "with_association_score": 0.1114777998120525,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 171,
+      "direct_score": 0.0006265822954912827,
+      "with_association_score": 0.11040822218244015,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 172,
+      "direct_score": 0.000602018327649007,
+      "with_association_score": 0.10934852063797157,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 173,
+      "direct_score": 0.000578417167345913,
+      "with_association_score": 0.10829861154451831,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 174,
+      "direct_score": 0.0005557410899867595,
+      "with_association_score": 0.10725841182595391,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 175,
+      "direct_score": 0.0005339538480551454,
+      "with_association_score": 0.10622783896358393,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 176,
+      "direct_score": 0.0005130206133597275,
+      "with_association_score": 0.1052068109954947,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 177,
+      "direct_score": 0.0004929079215322513,
+      "with_association_score": 0.10419524651582569,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 178,
+      "direct_score": 0.00047358361869080705,
+      "with_association_score": 0.10319306467396387,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 179,
+      "direct_score": 0.0004550168101825992,
+      "with_association_score": 0.10220018517366569,
+      "cutoff": 0.15
+    },
+    {
+      "tick": 180,
+      "direct_score": 0.00043717781132825005,
+      "with_association_score": 0.10121652827210585,
+      "cutoff": 0.15
+    }
+  ],
+  "interpretation": "Both methods initially qualify. Only association qualifies at integer ticks 33\u2013139. Neither qualifies from 140 onward without rehearsal. The graph starts stronger and ages more slowly, so there is no post-encoding crossover. Raw cosine and final score are different stages of the calculation."
+}

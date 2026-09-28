@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-28",
+  "current_mechanism_and_integration_tests": 22,
+  "kernel_checks": 14,
+  "historical_graph_checks": 15,
+  "tests_passed": 51,
+  "smoke": {
+    "status": "passed",
+    "agents": 2,
+    "ticks": 12,
+    "resume_tick": 8,
+    "embeddings": "local MiniLM",
+    "generation": "scripted client; zero API calls",
+    "log_dir": "output/validation/presentation-v12-smoke/logs/associative_smoke",
+    "checks": [
+      "actual agent prompt path",
+      "12 memory writes per agent",
+      "persistent graph equals checkpoint at resume",
+      "visible landmark cues only",
+      "one audit event per tick",
+      "retrieved token cap"
+    ],
+    "log_scope": "Local reproducible smoke logs; generated logs are excluded from version control."
+  },
+  "pinwheel_fixture": "pinwheel-walkthrough.json",
+  "audit_fixture": "logical-audit-v11.json",
+  "paid_generation_calls": 0,
+  "presentation": {
+    "version": "v12",
+    "slides": 21,
+    "main_slides": 14,
+    "backup_slides": 7,
+    "native_charts": 3,
+    "embedded_chart_workbooks": 3,
+    "gif_frames": 15,
+    "gif_duration_ms_per_frame": 500,
+    "pptx_sha256": "1ee86449c712df21b5eb3b80a27aa75fa0976ed539d6615c46b9084a522a1600",
+    "rendered_slides_reviewed": 21,
+    "pdf_sha256": "abcc88f063c0f9c6372aea1ff20c83b4b9cf20d8ce8bc6ec82e4c0eba1f0c722",
+    "validation": "Package, geometry, chart workbooks, fonts and artifact-tool import passed. All PDF slides visually reviewed."
+  }
+}

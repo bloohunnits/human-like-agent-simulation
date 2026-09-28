@@ -1,96 +1,50 @@
-# human-like-agent-simulation
+# Human-like agent simulation
 
-Relational memory retrieval for agents in multi-agent simulations. Memories fade with time, strengthen with recall, and survive through their connections. The goal is believability: agents that remember, forget, and associate the way people do.
+Relational memory for agents in multi-agent simulations. Direct retrieval and associations have separate forgetting and rehearsal processes. We test whether associations recover appropriate context from an agent's own experiences and make its remembering and behavior more believable.
 
-Working repo for our CMSC473/673 project (Andre Atkins, Ben Sadorra, Ryan Shechtman). The course proposal ([PDF](proposal/proposal.pdf) · [LaTeX](proposal/proposal.tex)) is the source of truth. These docs elaborate it into working detail.
+CMSC473/673 project: Andre Atkins, Ben Sadorra and Ryan Shechtman. The [course proposal](proposal/proposal.pdf) supplies the original research context. The implementation and current design describe the active experiment.
 
-## The idea
+## Start here
 
-### The starting point: two human-like memory architectures
+- **[Team catch-up](docs/TEAM_CATCHUP.md):** thesis, worked example, mathematical distinctions, implementation, findings and remaining experiments.
+- **[Current PowerPoint](output/presentations/relational-memory-proposal-v12.pptx)** · **[PDF](output/presentations/relational-memory-proposal-v12.pdf)** · **[Slide text](output/presentations/slide-text-v12.md)** · **[Presenter guide](output/presentations/presenter-guide-v12.md)**.
+- **[Handoff](HANDOFF.md):** current files, commands and validation status.
 
-Both give every memory the same three ingredients: relevance to the current moment, time since last use, and strength built through use. They disagree on the shape of forgetting.
+The deck has 14 main slides and 7 backups. Its TerraLingua GIF plays in PowerPoint Slide Show; the PDF is static. Main slides describe the proposed experiment. The team catch-up distinguishes implemented mechanisms from untested behavioral predictions.
 
-**Hou et al. (CHI 2024)**, the published comparison point. One recall probability per memory:
+## Current system
 
+An observed entity can cue a linked episode even when semantic similarity plus ordinary decay leaves that episode below the retrieval cutoff. The connection has its own clock and also fades. Only memories included in the prompt rehearse; only their winning graph routes can learn.
+
+The main conditions are `hou`, `independent`, and `learned`. The older `gated` condition remains available for design-history comparisons. ACT-R and partial reinforcement of unselected neighbors are outside the active experiment. The read-only `/audit` UI exposes scores, routes, selection decisions, state updates, the exact prompt and the resulting action.
+
+Better context and human believability remain empirical questions. The [logic audit](docs/PROPOSAL_LOGIC_AUDIT.md) identifies competing memories, crowded cues and other tradeoffs. A weighted lookup can represent the same one-hop associations; this equivalence preserves their relational information.
+
+## Reproduce the worked example
+
+After following [environment setup](docs/ASSOCIATIVE_IMPLEMENTATION.md#first-checkout-and-dependencies):
+
+```bash
+code/terralingua/.venv/bin/python scripts/pinwheel_walkthrough.py
+code/terralingua/.venv/bin/python scripts/logical_memory_audit.py
 ```
-p = [1 − exp(−r · e^(−t/g))] / [1 − e^(−1)]
-```
 
-`r` is similarity between the present and the memory. `e^(−t/g)` is the forgetting curve, steep then flattening. `g` grows with each recall, and spaced recalls grow it more. Each memory keeps one clock and one strength number, and recall resets the clock, so a single reminder makes an old memory act brand new for weeks.
+The Mia–pinwheel fixture includes a hunger-aware query. Under its fixed defaults, both methods retrieve the episode initially, only associative retrieval does so at ticks **33–139**, and neither does from tick 140 onward without rehearsal. These are calculated access windows, not measured human probabilities or observed approach behavior.
 
-**ACT-R (Honda et al., HAI 2025)**, our base architecture per the proposal. No clock ever resets. Every recall leaves its own trace, and each trace fades on a power law:
+Verification on 2026-09-28: **51 tests passed**, and a two-agent, 12-tick TerraLingua smoke passed with save/resume, local MiniLM and scripted generation. No generation API calls were made. See [validation evidence](output/analysis/validation-v12.json).
 
-```
-B = ln(Σ_j t_j^(−d)),   d ≈ 0.5
-```
+## Repository map
 
-A reminder is a quick bump that dies off while steady use builds a floor that lasts. A power law never hits zero, so old memories go faint, not dead. And a hard retrieval threshold (plus noise) means recall below it simply fails: forgotten, but not erased. Old memories end up hovering just under the threshold, where the right cue can still push them over.
+| Location | Purpose |
+| --- | --- |
+| `code/hou_memory/` | Retrieval engine, simulation wrapper, tests, audit UI and configs |
+| `code/terralingua/` | TerraLingua upstream submodule |
+| [Implementation](docs/ASSOCIATIVE_IMPLEMENTATION.md) | Setup, run commands, defaults and integration limits |
+| [Memory design](docs/INDEPENDENT_GRAPH_MEMORY_DESIGN.md) | Equations and design history |
+| `scripts/` | Reproducible examples and logical audit |
+| `scripts/presentation/` | Presentation source and export instructions |
+| `output/presentations/` | Current presentation, PDF, text, notes and GIF |
+| `output/analysis/` | Numerical fixtures, chart exports and validation receipt |
+| `proposal/` | Original course proposal and bibliography |
 
-That hovering state is what our graph works on.
-
-### What's missing: every memory lives and dies alone
-
-In both models, a memory can only be reached when the current moment resembles it, and it only survives by being directly recalled. Human memories are not like that. They are built related, often with no semantic overlap at all: a spider bite wires "spider" to fear, math means Sarah because she was your study partner, and you still remember your best friend's kitchen because it is tied to things you still think about. This is associative memory in psychology, the same mechanism as classical conditioning: things that happen together become linked. Current architectures have nowhere to store that link. Honda et al.'s own future-work section calls for exactly this: "graph-based representations of relationships among memory chunks."
-
-### The improvement: a memory relations graph
-
-We keep the per-memory dynamics and make relations a factor in recall and in survival.
-
-- **Nodes** are memories with full text, embedding, and the base architecture's activation state.
-- **Typed edges** link them at write time: same person, same place, happened together, happened right after, likely caused, cited as evidence. Each edge has its own weight and clock.
-- **Recall spreads.** Retrieval starts from what matches the moment, then activation flows along edges, weighted by strength and damped per hop. A memory can surface because it matched, or because a strong neighbor dragged it in. In ACT-R terms: a cue arriving through an edge is extra context activation that can lift a below-threshold memory over the bar.
-- **Reinforcement spreads too.** Recall strengthens the memory, the edges it traveled, and (a small fraction) the neighbors it touched. That last rule is the survival mechanism: memories woven into an agent's ongoing life keep each other alive while isolated trivia fades.
-- **Everything reduces cleanly.** Graph off, the system reproduces the base architecture exactly, so every mechanism is one config flag away from an ablation.
-
-One sentence: relevance decides what surfaces right now, decay decides what fades, connections decide what survives.
-
-Nobody has published this combination. Graph memory systems (HippoRAG, Zep, A-Mem, Mem0-g) never fade or strengthen. Decay systems (Hou, MemoryBank, Generative Agents) have no relations. ACT-R's own associative term spreads one hop from the current focus with static strengths, and the LLM implementation reduced it to query similarity. The one adjacent attempt used forgetting only to prune a graph, and the graph (not the forgetting) lost to flat vector search. Memory-to-memory edges that strengthen, fade, and carry multi-hop recall are the open slot. Full receipts in [docs/RESEARCH.md](docs/RESEARCH.md).
-
-### A mini walkthrough
-
-Ninety simulated days of one agent, Ada.
-
-1. **Day 1, write.** Ada meets Ben at the well and he shows her the berry patch. Two memory nodes, edges formed at write time: Ben (person), happened-together, patch-to-well (place).
-2. **Days 2 to 30, decay and reinforce.** Ada picks berries most days. Each mundane trip memory fades within days, as it should, but each trip touches the patch node and reinforcement leaks along its edges. Ben gets a small refresh even on days Ada never sees him.
-3. **Day 45, a non-semantic link.** Ada eats strange mushrooms. Hours later a separate memory is written: sick all night. The records share no words. A temporal-causal edge binds them.
-4. **Day 90, what survived.** The trip episodes are gone (correct). Ben is strong (correct: woven into a routine, not rehearsed). Mushrooms surface the sickness through the edge, so Ada avoids them. Berries still bring Ben to mind.
-5. **The baselines fail differently.** Store-everything drowns in trivia. Decay-only forgot the trips and Ben with them, because nothing directly recalled him. Ours forgot the trips and kept Ben.
-
-## What this should change
-
-Predictions at three scales, checkable in simulation:
-
-- **One agent.** No uncanny perfect recall (quoting a detail from months ago verbatim reads creepy, not attentive). "Oh right" moments when a cue reaches a faded memory through an edge. Quirks with traceable origins, like avoiding the mushroom patch.
-- **Two agents.** Relationships that need maintenance: absence weakens bonds, agents drift apart, reunions carry partial memory. Asymmetric memory, where one agent holds a friendship the other lost. Grudges that fade unless refreshed, so reconciliation becomes possible.
-- **A society.** Reputation with a half-life (gossip is retelling, retelling is reinforcement). Knowledge lost when nobody retells it, so elders matter. Taboos: a group avoiding something after everyone who remembers why is gone. Flat-memory societies can do none of this.
-
-## The sandbox: TerraLingua
-
-Per the proposal, the sandbox is [TerraLingua](https://github.com/cognizant-ai-lab/terralingua) ([Paolo et al. 2026](https://arxiv.org/abs/2603.16910), Apache 2.0, Python): a persistent 2D world where LLM agents forage, reproduce, die, and write the environment themselves as persistent text artifacts that outlive their authors. Real simulated time with birth and death, so decay matters. Recurring agents and artifacts, so the graph matters. Its built-in memory is a rolling context window plus a 150-token self-rewritten scratchpad, and our integration replaces that in the agent loop. Fallbacks if the integration spikes badly are tracked in [docs/GAPS.md](docs/GAPS.md).
-
-Models, per the proposal: SBERT all-MiniLM-L6-v2 embeddings locally (the same model Honda et al. chose, for its sparser similarity scores), GPT-5 Nano for text generation, Qwen3.6 (27B active params) locally if time allows. No dataset and no training.
-
-## Validation
-
-Per the proposal, plus the engineering practices we carry from Maya:
-
-1. **Existing tests for the memory architecture**: Hou et al.'s appendix B (qualitative) and appendix C (quantitative) tests, and [EmotionBench](https://arxiv.org/abs/2308.03656) for responses to real-life situations. [Shachi](https://arxiv.org/abs/2509.21862) lists believability benchmarks for agents.
-2. **Baselines and ablations.** Every mechanism sits behind a config flag. Baselines: a flat vector store, and the base architecture with the graph off. Ablate decay, reinforcement, spreading, and each edge type one at a time. Graph off must reproduce the base architecture exactly, which doubles as a correctness test.
-3. **Whole-simulation judgment**: TerraLingua's AI Anthropologist, a separate LLM that reads the logs and judges open-endedness. LLM-only judging of believability is circular, so a human stays in the loop.
-4. **Unit and integration tests**: property tests on the decay math (both kernels), determinism (same seed and replay log, identical run), graph invariants (no dangling edges, caps hold, links citing nonexistent memories rejected), and an agent completing simulation episodes end to end.
-
-Our own probe ideas beyond the proposal's list (forgetting quality, the reminiscence test, social signatures) live in [docs/GAPS.md](docs/GAPS.md) as candidates for milestone 5.
-
-## Repo map
-
-- [docs/DESIGN.md](docs/DESIGN.md): storage and retrieval mechanics. Schema, spreading, update rules, open math questions.
-- [docs/RESEARCH.md](docs/RESEARCH.md): the paper survey with verified numbers and links.
-- [docs/GAPS.md](docs/GAPS.md): open decisions, what we reuse from Maya, probe candidates.
-
-## Milestones (from the proposal)
-
-1. Create a model using the existing memory architecture. (2 weeks)
-2. Inject this model into the agent simulation. (1 week)
-3. Improve the memory architecture with memory relations: how links are stored, how relatedness is decided, how spreading and reinforcement work. Most of the novel work, most of the time. (4 weeks)
-4. Put the new model in the simulation. (1 week)
-5. Validate against the benchmarks used for the existing memory architectures and social agent simulations. (2 weeks)
+Earlier directions remain in [the archived overview](docs/archive/EARLY_PROJECT_OVERVIEW.md), [historical handoff](docs/archive/HANDOFF_PRE_V12.md), and the ACT-R design documents. They are context, not the current experiment specification.

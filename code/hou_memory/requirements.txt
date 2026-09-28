@@ -1,0 +1,4 @@
+# Additional dependencies beyond the TerraLingua editable install.
+# Versions used for the 2026-09-28 validation.
+Flask==3.1.3
+sentence-transformers==6.1.0

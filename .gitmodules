@@ -1,0 +1,3 @@
+[submodule "code/terralingua"]
+	path = code/terralingua
+	url = https://github.com/cognizant-ai-lab/terralingua.git

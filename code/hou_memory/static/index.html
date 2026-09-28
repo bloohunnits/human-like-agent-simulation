@@ -1,0 +1,388 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>God Mode</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+  <p class="src-note">Historical what-if console: these controls use the earlier graph prototype. For current simulation decisions, open the <a href="/audit">live memory audit</a>.</p>
+
+  <div class="head">
+    <h1>God Mode</h1>
+    <div class="readout" id="readout">loading…</div>
+  </div>
+  <div class="planline" id="planLine"></div>
+  <div class="planline" id="graphLine"></div>
+
+  <div class="world" id="worldPanel" style="display:none" title="The world as the sim rendered it at this step. Drag the clock to scrub.">
+    <img id="worldImg" alt="world at current step">
+  </div>
+
+  <div class="knobs">
+    <div class="knob">
+      <label>Agent
+        <span class="follow" title="Re-read the run from disk every few seconds while a sim is ticking, so the console tracks it live.">
+          <input type="checkbox" id="followLive"> follow live
+        </span>
+      </label>
+      <select id="sourceSelect"></select>
+    </div>
+    <div class="knob" title="The step we view from. Slide right to let time pass and watch memories fade.">
+      <label>Clock <b id="tickVal">0</b></label>
+      <input type="range" id="tickSlider" min="0" max="30" step="1">
+    </div>
+    <div class="knob" title="Sets every memory's strength. Higher = slower fading (a memory coasts about 5 x g0 x time-scale steps unaided).">
+      <label>Strength g₀ <b id="gVal">25</b></label>
+      <input type="range" id="gSlider" min="1" max="60" step="1">
+    </div>
+    <div class="knob" title="How many of the highest-scoring memories make it into the agent's head at once. This historical console has its own surface limit.">
+      <label>Surface limit <b id="kVal">5</b></label>
+      <input type="range" id="kSlider" min="1" max="12" step="1">
+    </div>
+    <div class="knob" title="How hard associations pull. 0 = graph off (pure Hou formula). Higher = memories drag in their connected neighbors more strongly.">
+      <label>Graph pull λ <b id="lamVal">50%</b></label>
+      <input type="range" id="lamSlider" min="0" max="100" step="5">
+    </div>
+    <div class="knob" id="kernelKnob" style="display:none" title="Which formula ranks the memories and decides what surfaces. Both scores always show on every memory.">
+      <label>Ranked by</label>
+      <div class="seg">
+        <button id="segHou" class="segbtn">Hou</button>
+        <button id="segActr" class="segbtn">ACT-R</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="moment">
+    <input type="text" id="cueInput" placeholder="What's happening now? e.g. a friend is nearby">
+    <button class="primary" id="cueBtn">Show</button>
+    <button id="dwellBtn" title="Change this console copy only; does not change the running simulation">Reinforce</button>
+    <button id="clearBtn" title="Clear the box">Reset</button>
+  </div>
+
+  <p class="src-note" id="srcNote"></p>
+
+  <div class="usage" id="usagePanel" style="display:none">
+    <div class="usage-title" title="Token totals per agent from the run's own logs. Tokens are the cost driver: input tokens dominate because every tick resends the prompt.">LLM usage this run</div>
+    <div id="usageRows"></div>
+  </div>
+
+  <div id="memList"></div>
+
+  <details class="legend">
+    <summary>What the numbers mean</summary>
+    <div class="legend-body" id="legendBody"></div>
+  </details>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const SHOW_ACTR = false;  // hidden until the ACT-R threshold is calibrated (tau=0 saturates near 100%)
+let currentCue = null;
+
+const LEG_REST = [
+  ["Vividness", "how alive it is now"],
+  ["Strength", "how learned it is"],
+  ["Rest", "steps since last recalled"],
+];
+const LEG_CUE_GRAPH = [
+  ["Solo", "score from direct similarity alone"],
+  ["Graph", "score after connections widen the cue"],
+  ["Rescued", "only surfaced because of a connection"],
+  ["via ...", "which connection delivered the boost"],
+];
+const LEG_CUE = [
+  ["Surface %", "chance it comes to mind"],
+  ["Match", "how it fits the moment"],
+  ["Strength", "how learned it is"],
+  ["Rest", "steps since last recalled"],
+];
+
+async function api(path, body) {
+  const opts = body ? {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)} : {};
+  return (await fetch(path, opts)).json();
+}
+const pct = (x) => Math.round(x*100) + '%';
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function sourceKey(s) {
+  if (s.mode === 'preset') return 'example';
+  const sim = s.sims.find(x => x.path === s.experimentDir);
+  return sim ? `sim:${sim.index}:${s.currentAgent}` : 'example';
+}
+
+let valuePath = {};  // option value -> run path (stable across mtime re-sorts)
+let lastState = null;
+
+let selSig = '';
+function fillState(s) {
+  lastState = s;
+  const sel = $('sourceSelect');
+  const sig = JSON.stringify(s.sims);
+  if (sig === selSig) { sel.value = sourceKey(s); applyState(s); return; }
+  selSig = sig;
+  sel.innerHTML = '';
+  valuePath = {};
+  s.sims.forEach(sim => {
+    const og = document.createElement('optgroup');
+    og.label = `run: ${sim.runName || ('sim ' + sim.index)}`;
+    sim.agents.forEach(a => {
+      const label = a.name && a.name !== a.tag ? a.name : a.tag;
+      const value = `sim:${sim.index}:${a.tag}`;
+      valuePath[value] = sim.path;
+      og.appendChild(new Option(label, value));
+    });
+    sel.appendChild(og);
+  });
+  const ex = document.createElement('optgroup');
+  ex.label = 'hand-made';
+  ex.appendChild(new Option('Petra (example)', 'example'));
+  sel.appendChild(ex);
+  sel.value = sourceKey(s);
+  applyState(s);
+}
+
+function worldFrame(tick) {
+  if (!lastState || !lastState.frameCount) { $('worldPanel').style.display = 'none'; return; }
+  const n = Math.max(0, Math.min(Math.floor(tick), lastState.frameCount - 1));
+  $('worldPanel').style.display = '';
+  $('worldImg').src = `/api/frame/${n}?m=${lastState.runMtime||0}`;
+}
+
+function applyState(s) {
+  worldFrame(s.tick);
+  $('tickSlider').max = s.maxTick || 30;
+  $('tickSlider').value = s.tick; $('tickVal').textContent = s.tick;
+  $('gSlider').value = Math.round(s.g0); $('gVal').textContent = Math.round(s.g0);
+  $('kSlider').value = s.topK; $('kVal').textContent = s.topK;
+  $('lamSlider').value = Math.round((s.lambda ?? 0.5) * 100);
+  $('lamVal').textContent = Math.round((s.lambda ?? 0.5) * 100) + '%';
+  const gs = s.graphStats;
+  $('graphLine').textContent = gs
+    ? `graph: ${gs.hubs} hubs · ${gs.edges} edges` +
+      (gs.topHubs.length ? ` · ${gs.topHubs.map(h => `${h.name} ×${h.count}`).join(', ')}` : '')
+    : '';
+  $('kernelKnob').style.display = SHOW_ACTR ? '' : 'none';
+  $('segHou').classList.toggle('active', s.kernel !== 'actr');
+  $('segActr').classList.toggle('active', s.kernel === 'actr');
+
+  const who = s.mode === 'preset' ? 'Petra' : (s.currentAgentName || s.currentAgent);
+  const run = s.mode === 'preset' ? 'example' : (s.runName || 'sim');
+  $('readout').innerHTML = `${esc(who)} · ${esc(run)} · step ${s.tick} · ${s.memoryCount} memories`;
+  $('planLine').textContent = s.plan ? `plan: ${s.plan}` : '';
+
+  const up = $('usagePanel');
+  if (s.usage && s.usage.length) {
+    up.style.display = '';
+    const model = s.runModel ? ` — ${esc(s.runModel)}` : '';
+    document.querySelector('.usage-title').textContent = `LLM usage this run${model}`;
+    $('usageRows').innerHTML = s.usage.map(u => {
+      const cur = u.tag === s.currentAgent ? ' cur' : '';
+      const total = u.inTokens + u.outTokens;
+      const cost = u.costUsd != null ? `<span class="u-cost">$${u.costUsd.toFixed(3)}</span>` : '';
+      return `<div class="usage-row${cur}"><span class="u-name">${esc(u.name)}</span>` +
+        `${cost}<span>${total.toLocaleString()} tokens</span>` +
+        `<span>${u.inTokens.toLocaleString()} in / ${u.outTokens.toLocaleString()} out</span>` +
+        `<span>${u.perTick.toLocaleString()}/tick over ${u.ticks}</span></div>`;
+    }).join('');
+  } else { up.style.display = 'none'; }
+  $('srcNote').textContent = s.mode === 'preset'
+    ? 'Hand-made example story.'
+    : 'From the sim — what the agent saw, did, and said each step. Only memories that exist at the current clock are shown.';
+}
+
+function legend(hasCue) {
+  const useGraph = hasCue && lastState && lastState.lambda > 0;
+  const L = useGraph ? LEG_CUE_GRAPH.concat(LEG_CUE) : (hasCue ? LEG_CUE : LEG_REST);
+  $('legendBody').innerHTML = L.map(([t,d]) => `<span><b>${t}</b> ${d}</span>`).join('');
+}
+
+function chips(row) {
+  const t = [];
+  (row.people||[]).forEach(p => t.push(`<span class="ent person">${esc(p)}</span>`));
+  (row.places||[]).forEach(p => t.push(`<span class="ent place">${esc(p)}</span>`));
+  (row.artifacts||[]).forEach(a => t.push(`<span class="ent artifact">${esc(a)}</span>`));
+  return t.length ? `<div class="ents">${t.join('')}</div>` : '';
+}
+
+// Fold identical memories (an agent alone writes "Moved up." twelve times)
+// into one card with a repeat count. Groups across the WHOLE list, not just
+// adjacent rows, so one interleaved memory can't split the count. The card
+// sits at its best copy's rank and keeps that copy's numbers; _sn counts how
+// many copies actually surface, so partial surfacing is reported honestly.
+// Display-only - the store still holds every copy.
+function collapse(rows) {
+  const byText = new Map();
+  const out = [];
+  for (const r of rows) {
+    const g = byText.get(r.text);
+    if (g) {
+      g._n++;
+      g._lo = Math.min(g._lo, r.createdAt);
+      g._hi = Math.max(g._hi, r.createdAt);
+      if (r.surfaced) g._sn++;
+    } else {
+      const fresh = {...r, _n: 1, _lo: r.createdAt, _hi: r.createdAt, _sn: r.surfaced ? 1 : 0};
+      byText.set(r.text, fresh);
+      out.push(fresh);
+    }
+  }
+  out.forEach(g => { g.surfaced = g._sn > 0; });
+  return out;
+}
+
+const NUMS_TIP = 'match: fit to the moment · strength: how learned · rest: steps since last recalled';
+
+function record(row, rank, hasCue) {
+  const d = document.createElement('div');
+  d.className = 'rec' + (row.surfaced ? ' on' : '');
+  let badgeText = '—';
+  if (row.surfaced) badgeText = (row._n > 1 && row._sn < row._n) ? `${row._sn} of ${row._n} surface` : 'surfaces';
+  if (row.rescued) badgeText = (row._n > 1 && row._sn < row._n) ? `${row._sn} of ${row._n} · rescued` : 'rescued';
+  const badge = hasCue
+    ? `<span class="badge ${row.rescued?'resc':(row.surfaced?'in':'out')}">${badgeText}</span>` : '';
+  const when = row._n > 1 ? `steps ${row._lo}–${row._hi}` : `step ${row.createdAt}`;
+  const times = row._n > 1 ? ` · <span class="times">repeated ${row._n} times</span>` : '';
+  const kernel = (lastState && lastState.kernel) || 'hou';
+  const mainP = kernel === 'actr' ? row.actrP : row.p;
+  d.innerHTML = `
+    <div class="rline">
+      <span class="pctbig${row.surfaced?' in':''}" title="chance under the active formula (${kernel})">${pct(mainP)}</span>
+      <div class="rmain">
+        <div class="rtext">${esc(row.text)}</div>
+        <div class="rsub">${esc(row.owner||'')} · ${when}${times}</div>
+      </div>
+      ${badge}
+    </div>
+    ${(hasCue && lastState && lastState.lambda > 0 && row.graphP !== undefined) ? `
+    <div class="bar-line"><span class="klabel">solo</span>
+      <div class="bar"><div class="fill" style="width:${Math.max((row.soloP||0)*100,2)}%"></div></div>
+      <span class="kval">${pct(row.soloP||0)}</span></div>
+    <div class="bar-line"><span class="klabel on">graph</span>
+      <div class="bar"><div class="fill graph${row.surfaced?' in':''}" style="width:${Math.max((row.graphP||0)*100,2)}%"></div></div>
+      <span class="kval">${pct(row.graphP||0)}</span></div>
+    ${row.via ? `<div class="vialine">${esc(row.via)}</div>` : ''}`
+    : SHOW_ACTR ? `<div class="bar-line"><span class="klabel${kernel==='hou'?' on':''}">hou</span>
+      <div class="bar"><div class="fill hou${row.surfaced && kernel==='hou' ?' in':''}" style="width:${Math.max(row.p*100,2)}%"></div></div>
+      <span class="kval">${pct(row.p)}</span></div>
+    <div class="bar-line"><span class="klabel${kernel==='actr'?' on':''}">act-r</span>
+      <div class="bar"><div class="fill actr${row.surfaced && kernel==='actr' ?' in':''}" style="width:${Math.max((row.actrP||0)*100,2)}%"></div></div>
+      <span class="kval">${pct(row.actrP||0)}</span></div>`
+    : `<div class="bar"><div class="fill${row.surfaced?' in':''}" style="width:${Math.max(row.p*100,2)}%"></div></div>`}
+    ${chips(row)}
+    <div class="nums" title="${NUMS_TIP}">${row.r!==null?`match ${pct(row.r)} · `:''}strength ${row.g.toFixed(0)} · rest ${row.age.toFixed(0)}${SHOW_ACTR && row.actrA!==null&&row.actrA!==undefined?` · activation ${row.actrA}`:''}</div>`;
+  return d;
+}
+
+function render(rows, hasCue) {
+  legend(hasCue);
+  const list = $('memList'); list.innerHTML = '';
+  if (!rows.length) { list.innerHTML = '<div class="empty">No memories at this clock. Slide the clock forward.</div>'; return; }
+  collapse(rows).forEach((r,i) => list.appendChild(record(r, i+1, hasCue)));
+}
+
+async function refreshMem() {
+  const q = currentCue ? `?cue=${encodeURIComponent(currentCue)}` : '';
+  render((await api('/api/memories'+q)).rows, !!currentCue);
+}
+async function refreshAll() { fillState(await api('/api/state')); await refreshMem(); }
+
+// All control actions run through one queue: a fast second click or a held
+// slider can't interleave its POST+refresh with an earlier one, so the list,
+// header, and server state always describe the same moment.
+let chain = Promise.resolve();
+function enqueue(fn) { chain = chain.then(fn, fn); return chain; }
+
+$('cueBtn').onclick = () => enqueue(async () => { currentCue = $('cueInput').value.trim() || null; await refreshMem(); });
+$('cueInput').addEventListener('keydown', e => { if (e.key==='Enter') $('cueBtn').click(); });
+$('dwellBtn').onclick = () => enqueue(async () => {
+  const c = $('cueInput').value.trim();
+  if (!c) { $('srcNote').textContent = 'Type what\'s happening first, then Reinforce.'; return; }
+  currentCue = c; render((await api('/api/recall',{cue:c})).rows, true); fillState(await api('/api/state'));
+  $('srcNote').textContent = 'Reinforced - the green memories got stronger and their rest reset to 0.';
+});
+$('clearBtn').onclick = () => enqueue(async () => { currentCue=null; $('cueInput').value=''; await refreshMem(); });
+
+$('tickSlider').addEventListener('input', () => {
+  $('tickVal').textContent = $('tickSlider').value;
+  worldFrame(parseFloat($('tickSlider').value));
+});
+$('tickSlider').addEventListener('change', () => {
+  const v = parseFloat($('tickSlider').value);
+  enqueue(async () => { await api('/api/tick',{value:v}); await refreshAll(); });
+});
+$('gSlider').addEventListener('input', () => $('gVal').textContent = $('gSlider').value);
+$('gSlider').addEventListener('change', () => {
+  const v = parseFloat($('gSlider').value);
+  enqueue(async () => { await api('/api/set_strength',{value:v}); await refreshAll(); });
+});
+$('kSlider').addEventListener('input', () => $('kVal').textContent = $('kSlider').value);
+$('kSlider').addEventListener('change', () => {
+  const v = parseInt($('kSlider').value);
+  enqueue(async () => { await api('/api/set_topk',{value:v}); await refreshAll(); });
+});
+$('lamSlider').addEventListener('input', () => $('lamVal').textContent = $('lamSlider').value + '%');
+$('lamSlider').addEventListener('change', () => {
+  const v = parseInt($('lamSlider').value) / 100;
+  enqueue(async () => { await api('/api/set_lambda',{value:v}); await refreshAll(); });
+});
+$('segHou').onclick = () => enqueue(async () => { await api('/api/set_kernel',{value:'hou'}); await refreshAll(); });
+$('segActr').onclick = () => enqueue(async () => { await api('/api/set_kernel',{value:'actr'}); await refreshAll(); });
+
+$('sourceSelect').onchange = () => enqueue(async () => {
+  const v = $('sourceSelect').value;
+  if (v==='example') await api('/api/load_preset',{});
+  else {
+    const [,i,t] = v.split(':');
+    await api('/api/load_sim',{index:parseInt(i), path: valuePath[v]});
+    await api('/api/switch',{tag:t});
+  }
+  currentCue=null; $('cueInput').value=''; await refreshAll();
+});
+
+// Follow live: while a sim is ticking, re-read its dumps from disk every few
+// seconds so the console tracks the run. Dumps are written atomically each
+// tick, so a mid-run read is always a coherent snapshot. Guarded so slow
+// reloads never stack.
+let polling = false;
+let seenMtime = 0;
+setInterval(() => {
+  if (!$('followLive').checked || polling || !lastState || lastState.mode !== 'sim') return;
+  const v = sourceKey(lastState);
+  if (v === 'example') return;
+  polling = true;
+  const [, i, t] = v.split(':');
+  enqueue(async () => {
+    // Cheap check first: reload only when the run's dumps actually changed,
+    // so a finished run goes quiet and your dials stop being reverted.
+    const st = await api('/api/state');
+    if (!st.runMtime || st.runMtime <= seenMtime) return;
+    seenMtime = st.runMtime;
+    await api('/api/load_sim', {path: valuePath[v], index: parseInt(i)});
+    await api('/api/switch', {tag: t});
+    await refreshAll();
+  }).finally(() => { polling = false; });
+}, 4000);
+
+// Deep links: ?run=town2&agent=being0&cue=someone stole my energy
+async function boot() {
+  const qs = new URLSearchParams(location.search);
+  const run = qs.get('run'), agent = qs.get('agent'), cue = qs.get('cue');
+  if (run || agent) {
+    const st = await api('/api/state');
+    const sim = st.sims.find(x => x.runName === (run || st.runName));
+    if (sim) {
+      await api('/api/load_sim', {path: sim.path, index: sim.index});
+      if (agent) await api('/api/switch', {tag: agent});
+    }
+  }
+  if (cue && cue.trim()) { $('cueInput').value = cue.trim(); currentCue = cue.trim(); }
+  await refreshAll();
+}
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,214 @@
+{
+  "scope": "Mechanism audit, not empirical believability evidence. Production code unchanged.",
+  "default_config": {
+    "mode": "independent",
+    "edge_learning": true,
+    "beta": 0.5,
+    "edge_weight": 0.8,
+    "retention": 100.0,
+    "retention_cap": 200.0,
+    "learning_rate": 0.2,
+    "retention_increment": 25.0,
+    "threshold": 0.15,
+    "top_k": 3,
+    "token_budget": 600,
+    "time_scale": 25.0,
+    "g0": 1.0,
+    "memory_sources": false,
+    "seed_threshold": 0.1,
+    "seed_budget": 3,
+    "working_history": 0
+  },
+  "displacement": {
+    "scope": "Controlled embeddings and four sequential episodes, default k=3. Labels specify scenario relevance independently of scoring.",
+    "direct_selected": [
+      "memory:00000000"
+    ],
+    "graph_selected": [
+      "memory:00000003",
+      "memory:00000002",
+      "memory:00000001"
+    ],
+    "rows": [
+      {
+        "text": "relevant",
+        "r": 1.0,
+        "M": 0.20189651799465538,
+        "G": 0.20822532529612137,
+        "direct_score": 0.2892177932003558,
+        "final_score": 0.29737357982873425
+      },
+      {
+        "text": "irrelevant 1",
+        "r": 0.1,
+        "M": 0.021013607120076473,
+        "G": 0.2103180246065026,
+        "direct_score": 0.032896192663715636,
+        "final_score": 0.30005905697865315
+      },
+      {
+        "text": "irrelevant 2",
+        "r": 0.1,
+        "M": 0.021871188695221477,
+        "G": 0.2124317558946101,
+        "direct_score": 0.0342240861012588,
+        "final_score": 0.3027658247263771
+      },
+      {
+        "text": "irrelevant 3",
+        "r": 0.1,
+        "M": 0.022763768838381274,
+        "G": 0.21456673053533415,
+        "direct_score": 0.035604962993754055,
+        "final_score": 0.30549399419729634
+      }
+    ]
+  },
+  "crowding_at_fixed_age": [
+    {
+      "hub_episode_count": 1,
+      "score_at_100": 0.21647301047373563,
+      "above_cutoff": true
+    },
+    {
+      "hub_episode_count": 3,
+      "score_at_100": 0.21647301047373563,
+      "above_cutoff": true
+    },
+    {
+      "hub_episode_count": 4,
+      "score_at_100": 0.17083561242344183,
+      "above_cutoff": true
+    },
+    {
+      "hub_episode_count": 5,
+      "score_at_100": 0.14681591602470778,
+      "above_cutoff": false
+    },
+    {
+      "hub_episode_count": 6,
+      "score_at_100": 0.13168467750668977,
+      "above_cutoff": false
+    },
+    {
+      "hub_episode_count": 10,
+      "score_at_100": 0.10217434032396579,
+      "above_cutoff": false
+    }
+  ],
+  "graph_only_bound": {
+    "equivalent_x_cutoff": 0.09961934313362833,
+    "first_blocked_hub_size": 167,
+    "assumptions": "beta=.5, cutoff=.15, all retained incident episodes count. Even w=1 at zero edge age cannot retrieve via this hub alone. Other cues or the direct route can still work."
+  },
+  "weighted_index_equivalence": "Exact agreement with production one-hop G across seven fixtures. No claim about optional memory-source routes.",
+  "max_tie": [
+    {
+      "text": "first, unrelated by text",
+      "r": 0.0,
+      "G": 0.14715177646857694,
+      "score": 0.21647301047373563
+    },
+    {
+      "text": "second, exact semantic match",
+      "r": 1.0,
+      "G": 0.14715177646857694,
+      "score": 0.21647301047373563
+    }
+  ],
+  "encoding_tags": {
+    "observed_only": {
+      "people": [],
+      "artifacts": [],
+      "places": []
+    },
+    "intended_action": {
+      "people": [],
+      "artifacts": [
+        "bell"
+      ],
+      "places": []
+    }
+  },
+  "invariant_samples": 10000,
+  "query_sensitivity": [
+    {
+      "appended_text": "Energy: 25",
+      "target_semantic_rank": 4,
+      "ranking": [
+        {
+          "id": "memory:00000001",
+          "similarity": 0.46872565150260925
+        },
+        {
+          "id": "memory:00000002",
+          "similarity": 0.45395228266716003
+        },
+        {
+          "id": "memory:00000003",
+          "similarity": 0.3865782916545868
+        },
+        {
+          "id": "memory:00000000",
+          "similarity": 0.3380332887172699
+        }
+      ],
+      "direct_with_decay_selected": [],
+      "associative_selected": [
+        "memory:00000000"
+      ]
+    },
+    {
+      "appended_text": "I need food.",
+      "target_semantic_rank": 4,
+      "ranking": [
+        {
+          "id": "memory:00000001",
+          "similarity": 0.44386470317840576
+        },
+        {
+          "id": "memory:00000002",
+          "similarity": 0.44247275590896606
+        },
+        {
+          "id": "memory:00000003",
+          "similarity": 0.3702271282672882
+        },
+        {
+          "id": "memory:00000000",
+          "similarity": 0.36421552300453186
+        }
+      ],
+      "direct_with_decay_selected": [],
+      "associative_selected": [
+        "memory:00000000"
+      ]
+    },
+    {
+      "appended_text": "Current goal: find food.",
+      "target_semantic_rank": 3,
+      "ranking": [
+        {
+          "id": "memory:00000001",
+          "similarity": 0.48164400458335876
+        },
+        {
+          "id": "memory:00000002",
+          "similarity": 0.48161980509757996
+        },
+        {
+          "id": "memory:00000000",
+          "similarity": 0.41768354177474976
+        },
+        {
+          "id": "memory:00000003",
+          "similarity": 0.41451823711395264
+        }
+      ],
+      "direct_with_decay_selected": [],
+      "associative_selected": [
+        "memory:00000000"
+      ]
+    }
+  ]
+}
