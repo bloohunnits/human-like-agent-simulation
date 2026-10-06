@@ -1,3 +1,6 @@
 [submodule "code/terralingua"]
 	path = code/terralingua
 	url = https://github.com/cognizant-ai-lab/terralingua.git
+[submodule "code/terralingua-relational-memory"]
+	path = code/terralingua-relational-memory
+	url = https://github.com/sadorrab/terralingua-relational-memory.git
