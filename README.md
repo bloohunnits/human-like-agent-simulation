@@ -39,6 +39,8 @@ Verification on 2026-09-28: **51 tests passed**, and a two-agent, 12-tick TerraL
 | --- | --- |
 | `code/hou_memory/` | Retrieval engine, simulation wrapper, tests, audit UI and configs |
 | `code/terralingua/` | TerraLingua upstream submodule |
+| `code/terralingua-relational-memory/` | Fork of a newer vesion of TerraLingua |
+| `code/integration-layer/` | Server to mediate between TerraLingua and Model requests |
 | [Implementation](docs/ASSOCIATIVE_IMPLEMENTATION.md) | Setup, run commands, defaults and integration limits |
 | [Memory design](docs/INDEPENDENT_GRAPH_MEMORY_DESIGN.md) | Equations and design history |
 | `scripts/` | Reproducible examples and logical audit |
