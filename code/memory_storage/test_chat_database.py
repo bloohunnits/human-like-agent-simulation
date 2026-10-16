@@ -91,7 +91,7 @@ class ChatDatabaseTests(unittest.TestCase):
             connection=self.connection,
         )
 
-        db.create()
+        db.initialize_database()
 
         self.assertEqual(self.connection.last_dsn, "postgresql://test")
         conn = self.connection.connections[0]
@@ -101,7 +101,7 @@ class ChatDatabaseTests(unittest.TestCase):
         self.assertIsNone(conn.executed[0][1])
         self.assertEqual(conn.commit_count, 1)
 
-    def test_insert_memory_converts_uuid_to_string(self):
+    def test_save_memory_converts_uuid_to_string(self):
         db = ChatDatabase(
             pg_dn="postgresql://test",
             connection=self.connection,
@@ -109,7 +109,7 @@ class ChatDatabaseTests(unittest.TestCase):
 
         memory_id = uuid4()
 
-        result = db.insert_memory(
+        result = db.save_memory(
             memory_id=memory_id,
             content="John ate a worm at the park",
             t_created="2026-10-07T12:00:00Z",
@@ -130,7 +130,7 @@ class ChatDatabaseTests(unittest.TestCase):
 
         self.assertEqual(conn.commit_count, 1)
 
-    def test_insert_memory_preserves_metadata(self):
+    def test_save_memory_preserves_metadata(self):
         db = ChatDatabase(
             pg_dn="postgresql://test",
             connection=self.connection,
@@ -138,7 +138,7 @@ class ChatDatabaseTests(unittest.TestCase):
 
         metadata = {"source": "test", "importance": 3}
 
-        db.insert_memory(
+        db.save_memory(
             memory_id=uuid4(),
             content="A baby is crying",
             t_created="2026-10-07T12:00:00Z",
