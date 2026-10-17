@@ -12,206 +12,151 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 
+MEMORY_COLUMNS = [
+    "memory_id",
+    "agent_id",
+    "content",
+    "role",
+    "t_created",
+    "t_last_recalled",
+    "g",
+    "recall_count",
+    "metadata",
+]
+
 CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS memories (
     memory_id UUID PRIMARY KEY,
+    agent_id TEXT NOT NULL DEFAULT 'default',
     content TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     t_created DOUBLE PRECISION NOT NULL,
     t_last_recalled DOUBLE PRECISION,
     g DOUBLE PRECISION NOT NULL DEFAULT 1.0,
     recall_count INTEGER NOT NULL DEFAULT 0,
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
 );
-
+ALTER TABLE memories ADD COLUMN IF NOT EXISTS agent_id TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE memories ADD COLUMN IF NOT EXISTS score DOUBLE PRECISION;
+CREATE INDEX IF NOT EXISTS idx_memories_agent_score
+    ON memories (agent_id, score DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_t_created
     ON memories (t_created);
-
-CREATE TABLE IF NOT EXISTS chat_messages (
-    message_id UUID PRIMARY KEY,
-    conversation_id UUID,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL,
-    t_created DOUBLE PRECISION NOT NULL
-        DEFAULT EXTRACT(EPOCH FROM clock_timestamp())
-);
-
-CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_time
-    ON chat_messages (conversation_id, t_created);
 """
 
 
-class ChatDatabase:
-    """Manage memory records and chat history in PostgreSQL."""
+class MemoryDatabase:
+    """Store and retrieve agent-scoped memories in PostgreSQL."""
 
     def __init__(
         self,
         pg_dsn: Optional[str] = None,
         connection: Callable = psycopg.connect,
         getenv: Callable = os.getenv,
+        initialize: bool = True,
     ):
         """Create the database wrapper.
 
         Args:
-            pg_dsn: PostgreSQL DSN. If omitted, read PG_DSN from the environment.
-            connection: Connection factory, injected for straightforward testing.
-            getenv: Environment lookup function, injectable for tests.
+            pg_dsn: PostgreSQL DSN; defaults to the PG_DSN environment variable.
+            connection: Injected PostgreSQL connection factory.
+            getenv: Injected environment lookup, useful for tests.
+            initialize: Create/upgrade the memories table on construction.
         """
         self.pg_dsn = pg_dsn or getenv("PG_DSN")
         if not self.pg_dsn:
             raise ValueError("A PostgreSQL DSN is required (pass pg_dsn or set PG_DSN).")
         self.connection = connection
+        if initialize:
+            self._initialize_database()
 
-    def initialize_database(self) -> None:
-        """Create the memory and chat-history tables and their indexes."""
+    def _initialize_database(self) -> None:
         with self.connection(self.pg_dsn) as conn:
             conn.execute(CREATE_SQL)
             conn.commit()
 
-    def save_memory(
-        self,
-        memory_id,
-        content: str,
-        t_created: float,
-        t_last_recalled: Optional[float] = None,
-        role: str = "user",
-        g: float = 1.0,
-        recall_count: int = 0,
-        metadata: Optional[dict] = None,
-    ) -> str:
-        """Insert a memory, or update its stored values if its ID already exists."""
-        memory_id = str(memory_id)
-        json_metadata = Jsonb(metadata if metadata is not None else {})
+    def upsert_memories(self, memories: pd.DataFrame) -> int:
+        """Insert or update many memories from a DataFrame; return row count.
 
-        with self.connection(self.pg_dsn) as conn:
-            conn.execute(
-                """
-                INSERT INTO memories
-                    (memory_id, content, role, t_created, t_last_recalled,
-                     g, recall_count, metadata)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (memory_id) DO UPDATE SET
-                    content = EXCLUDED.content,
-                    role = EXCLUDED.role,
-                    t_created = EXCLUDED.t_created,
-                    t_last_recalled = EXCLUDED.t_last_recalled,
-                    g = EXCLUDED.g,
-                    recall_count = EXCLUDED.recall_count,
-                    metadata = EXCLUDED.metadata
-                """,
-                (
-                    memory_id, content, role, t_created, t_last_recalled,
-                    g, recall_count, json_metadata,
-                ),
-            )
-            conn.commit()
-
-        return memory_id
-
-    def save_recalled_state(
-        self,
-        memory_id,
-        t_last_recalled: float,
-        g: float,
-        recall_count: int,
-    ) -> str:
-        """Update recall fields for an existing memory.
-
-        Raises:
-            ValueError: If no memory with the given ID exists.
+        Required columns: memory_id, agent_id, content, t_created.
+        Optional columns: role, t_last_recalled, g, recall_count, metadata, score.
+        If score is absent from the DataFrame, inserts receive NULL and existing
+        scores are preserved on conflict. If score is present but null for a row,
+        that row's stored score is cleared. Other absent optional columns use
+        defaults on inserts and are reset to their defaults on conflict.
         """
-        memory_id = str(memory_id)
-        with self.connection(self.pg_dsn) as conn:
-            cursor = conn.execute(
-                """
-                UPDATE memories
-                SET t_last_recalled = %s, g = %s, recall_count = %s
-                WHERE memory_id = %s
-                """,
-                (t_last_recalled, g, recall_count, memory_id),
-            )
-            if cursor.rowcount == 0:
-                raise ValueError(f"Cannot update recall state: memory {memory_id} does not exist.")
-            conn.commit()
+        if not isinstance(memories, pd.DataFrame):
+            raise TypeError("memories must be a pandas DataFrame")
 
-        return memory_id
+        required = {"memory_id", "agent_id", "content", "t_created"}
+        missing = required.difference(memories.columns)
+        if missing:
+            raise ValueError(f"Missing required columns: {sorted(missing)}")
+        if memories.empty:
+            return 0
 
-    def save_chat_message(
-        self,
-        message_id,
-        message: str,
-        role: str,
-        conversation_id=None,
-        t_created: Optional[float] = None,
-    ) -> str:
-        """Insert or update a chat message without creating a long-term memory.
+        prepared = []
+        for row in memories.to_dict(orient="records"):
+            if pd.isna(row["memory_id"]) or pd.isna(row["agent_id"]):
+                raise ValueError("memory_id and agent_id must not be null")
+            metadata = row.get("metadata", {})
+            if metadata is None or (isinstance(metadata, float) and pd.isna(metadata)):
+                metadata = {}
+            if not isinstance(metadata, dict):
+                raise TypeError("metadata values must be dictionaries")
+            score = row.get("score")
+            t_last_recalled = row.get("t_last_recalled")
+            if t_last_recalled is not None and pd.isna(t_last_recalled):
+                t_last_recalled = None
+            prepared.append((
+                str(row["memory_id"]),
+                str(row["agent_id"]),
+                row["content"],
+                row.get("role", "user"),
+                float(row["t_created"]),
+                t_last_recalled,
+                row.get("g", 1.0),
+                row.get("recall_count", 0),
+                Jsonb(metadata),
+            ))
 
-        ``message_id`` should be a UUID generated by the caller. ``conversation_id``
-        is optional, but is useful for grouping messages into a conversation.
-        When ``t_created`` is omitted, PostgreSQL records the current Unix time.
-        """
-        message_id = str(message_id)
-        conversation_id = str(conversation_id) if conversation_id is not None else None
-
-        with self.connection(self.pg_dsn) as conn:
-            conn.execute(
-                """
-                INSERT INTO chat_messages
-                    (message_id, conversation_id, role, content, t_created)
-                VALUES (
-                    %s, %s, %s, %s,
-                    COALESCE(%s, EXTRACT(EPOCH FROM clock_timestamp()))
-                )
-                ON CONFLICT (message_id) DO UPDATE SET
-                    conversation_id = EXCLUDED.conversation_id,
-                    role = EXCLUDED.role,
-                    content = EXCLUDED.content,
-                    t_created = EXCLUDED.t_created
-                """,
-                (message_id, conversation_id, role, message, t_created),
-            )
-            conn.commit()
-
-        return message_id
-
-    def retrieve_memories(self, memory_ids) -> pd.DataFrame:
-        """Retrieve memory records in the order of their creation times."""
-        ids = [str(memory_id) for memory_id in memory_ids]
-        columns = [
-            "memory_id", "role", "content", "t_created", "t_last_recalled",
+        update_fields = [
+            "agent_id", "content", "role", "t_created", "t_last_recalled",
             "g", "recall_count", "metadata",
         ]
+        update_sql = ",\n                ".join(
+            f"{field} = EXCLUDED.{field}" for field in update_fields
+        )
+        sql = f"""
+            INSERT INTO memories
+                (memory_id, agent_id, content, role, t_created,
+                 t_last_recalled, g, recall_count, metadata, score)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (memory_id) DO UPDATE SET
+                {update_sql}
+        """
+        with self.connection(self.pg_dsn) as conn:
+            with conn.cursor() as cursor:
+                cursor.executemany(sql, prepared)
+            conn.commit()
+        return len(prepared)
+
+    def recall_by_id(self, ids, agent_id) -> pd.DataFrame:
+        """Return requested memories belonging to agent_id, ordered by creation time."""
+        columns = MEMORY_COLUMNS.copy()
+        ids = [str(memory_id) for memory_id in ids]
         if not ids:
             return pd.DataFrame(columns=columns)
 
         with self.connection(self.pg_dsn) as conn:
             rows = conn.execute(
                 """
-                SELECT memory_id, role, content, t_created, t_last_recalled,
-                       g, recall_count, metadata
+                SELECT memory_id, agent_id, content, role, t_created,
+                       t_last_recalled, g, recall_count, metadata
                 FROM memories
-                WHERE memory_id = ANY(%s::uuid[])
-                ORDER BY t_created
+                WHERE memory_id = ANY(%s::uuid[]) AND agent_id = %s
+                ORDER BY t_created ASC
                 """,
-                (ids,),
+                (ids, str(agent_id)),
             ).fetchall()
-
-        return pd.DataFrame(rows, columns=columns)
-
-    def retrieve_chat_messages(self, conversation_id) -> pd.DataFrame:
-        """Retrieve chat messages for one conversation in chronological order."""
-        columns = ["message_id", "conversation_id", "role", "content", "t_created"]
-        conversation_id = str(conversation_id)
-
-        with self.connection(self.pg_dsn) as conn:
-            rows = conn.execute(
-                """
-                SELECT message_id, conversation_id, role, content, t_created
-                FROM chat_messages
-                WHERE conversation_id = %s
-                ORDER BY t_created
-                """,
-                (conversation_id,),
-            ).fetchall()
-
         return pd.DataFrame(rows, columns=columns)
