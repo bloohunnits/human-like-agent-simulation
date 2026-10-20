@@ -8,8 +8,11 @@ parser.add_argument('-p', '--port')
 args=parser.parse_args()
 
 def _start_proxy(model_port, tl_ports=(9000,9001)):
-    agent_conn = LocalChatAgent(model_port)
-    agent_conn.start_server_and_block(tl_ports)
+    agent_conn = LocalChatAgent(
+        model_port,
+        tl_ports = tl_ports,
+    )
+    agent_conn.start_server_and_block()
 
 if __name__ == "__main__":
     p = Process(target=_start_proxy, args=(int(args.port),))

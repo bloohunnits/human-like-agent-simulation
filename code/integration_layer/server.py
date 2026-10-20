@@ -2,15 +2,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import urllib.request
 import threading
+from exceptions import UnknownPathError
 
 
 class ChatCompletionHTTPRequestHandler(BaseHTTPRequestHandler):
     """
-    TerraLingua expects an OpenAI API compatible model to be hosted on localhost:9000 and localhost:9001
-    This sever intercepts those requests.
-    1. This is a reverse proxy so unsupported models can act as Deepseek and integrate into TerraLingua
-       without needing to patch to support them
-    2. We can have a mock LLM call where we manually handle the role of the agent.
+    Abstract class to handle the HTTP requests made by TerraLingua
+    Implement `model_handler` to return TerraLingua expected model
+    and `completion_handler` to return TerraLingua expected chat response
     """
 
     def model_handler():
@@ -33,12 +32,8 @@ class ChatCompletionHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def handle_request(self):
         """
-        Routes HTTP request to their mock handlers.
+        Routes HTTP request to their handlers.
         Responds to client with handler's response.
-
-        Parameters:
-            model_handler (callable): responds the the OpenAI API /v1/models endpoint
-            completion_handler (callable): responds the the OpenAI API /v1/chat/completions endpoint
         """
         
         match self.path:
@@ -50,7 +45,7 @@ class ChatCompletionHTTPRequestHandler(BaseHTTPRequestHandler):
                 json_body = json.loads(body)
                 response = self.completion_handler(json_body)
             case _:
-                raise Exception(f'Unknown endpoint {self.path}') # TODO raise a mors specific exception
+                raise UnknownPathError(f'Call to unknown endpoint: {self.path}')
 
         response_body = json.dumps(response).encode("utf-8")
         self.send_response(200)
@@ -60,7 +55,8 @@ class ChatCompletionHTTPRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(response_body)
 
 
-# ------- Mock Implementations --------
+# ------- Example Mock Implementations --------
+# TODO Move these to a mock agent class
 
 def human_completion(request_body):
     """
