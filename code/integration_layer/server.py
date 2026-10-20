@@ -3,22 +3,77 @@ import json
 import urllib.request
 import threading
 
+
+class ChatCompletionHTTPRequestHandler(BaseHTTPRequestHandler):
+    """
+    TerraLingua expects an OpenAI API compatible model to be hosted on localhost:9000 and localhost:9001
+    This sever intercepts those requests.
+    1. This is a reverse proxy so unsupported models can act as Deepseek and integrate into TerraLingua
+       without needing to patch to support them
+    2. We can have a mock LLM call where we manually handle the role of the agent.
+    """
+
+    def model_handler():
+        """
+        Responds the the OpenAI API /v1/models endpoint
+        """
+        pass
+
+    def completion_handler(request):
+        """
+        Responds the the OpenAI API /v1/chat/completions endpoint
+        """
+        pass
+
+    def do_GET(self):
+        self.handle_request()
+
+    def do_POST(self):
+        self.handle_request()
+
+    def handle_request(self):
+        """
+        Routes HTTP request to their mock handlers.
+        Responds to client with handler's response.
+
+        Parameters:
+            model_handler (callable): responds the the OpenAI API /v1/models endpoint
+            completion_handler (callable): responds the the OpenAI API /v1/chat/completions endpoint
+        """
+        
+        match self.path:
+            case "/v1/models":
+                response = self.model_handler()
+            case "/v1/chat/completions":
+                length = int(self.headers["Content-Length"])
+                body = self.rfile.read(length)
+                json_body = json.loads(body)
+                response = self.completion_handler(json_body)
+            case _:
+                raise Exception(f'Unknown endpoint {self.path}') # TODO raise a mors specific exception
+
+        response_body = json.dumps(response).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(response_body)))
+        self.end_headers()
+        self.wfile.write(response_body)
+
+
 # ------- Mock Implementations --------
 
-def human_completion(server, **kwargs):
+def human_completion(request_body):
     """
     Replaces the LLM backend with human text
 
     Parameters:
-        server (BaseHTTPRequestHandler): server handling the request
-        kwargs (Dict[Str, Str]): optional parameters, i.e., HTTP body
+        request_body (Dict[str, str]) HTTP body
 
     Returns:
         response (dict): JSON formated response body
     """
-    body = kwargs.get('body')
-    system_prompt = body['messages'][0]['content']
-    user_prompt = body['messages'][1]['content']
+    system_prompt = request_body['messages'][0]['content']
+    user_prompt = request_body['messages'][1]['content']
     print(f"------- System Prompt --------\n{system_prompt}\n")
     print(f"------- User Prompt --------\n{user_prompt}\n")
 
@@ -32,7 +87,7 @@ def human_completion(server, **kwargs):
         "id": "chatcmpl-mock",
         "object": "chat.completion",
         "created": 0,
-        "model": body["model"],
+        "model": request_body["model"],
         "choices": [
             {
                 "index": 0,
@@ -48,17 +103,14 @@ def human_completion(server, **kwargs):
     }
     return response
 
-def i_am_deepseek(server):
+def i_am_deepseek(model_name="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"):
     """
     Creates a response that says that this model is Deepseek
-
-    Parameters:
-        server (BaseHTTPRequestHandler): server handling the request
 
     Returns:
         response (dict): JSON formated response body
     """
-    model_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+
     response = {
         "object": "list",
         "data": [{
@@ -69,62 +121,22 @@ def i_am_deepseek(server):
     }
     return response
 
-# ------- Server -------
+def _serve(proxy_type,port):
+    ThreadingHTTPServer(("localhost", port), proxy_type).serve_forever()
 
-class Proxy(BaseHTTPRequestHandler):
-    """
-    TerraLingua expects an OpenAI API compatible model to be hosted on localhost:9000 and localhost:9001
-    This sever intercepts those requests.
-    1. This is a reverse proxy so unsupported models can act as Deepseek and integrate into TerraLingua
-       without needing to patch to support them
-    2. We can have a mock LLM call where we manually handle the role of the agent.
-    """
+if __name__ == "__main__":
+    # quick subclass
+    cls_mock_chat_handler = type(
+        '',
+        (ChatCompletionHTTPRequestHandler,),
+        {
+            'model_handler': i_am_deepseek,
+            'completion_handler': human_completion,
+        }
+    )
 
-    def do_GET(self):
-        self.handle_request()
+    for port in (9000, 9001):
+        threading.Thread(target=_serve, args=(cls_mock_chat_handler,port,), daemon=True).start()
 
-    def do_POST(self):
-        self.handle_request()
-
-    def handle_request(
-        self,
-        model_handler = i_am_deepseek,
-        completion_handler = human_completion,
-        ):
-        """
-        Routes HTTP request to their mock handlers.
-        Responds to client with handler's response.
-
-        Parameters:
-            model_handler (callable): responds the the OpenAI API /v1/models endpoint
-            completion_handler (callable): responds the the OpenAI API /v1/chat/completions endpoint
-        """
-        
-        match self.path:
-            case "/v1/models":
-                response = model_handler(self)
-            case "/v1/chat/completions":
-                length = int(self.headers["Content-Length"])
-                body = self.rfile.read(length)
-                json_body = json.loads(body)
-                response = completion_handler(self, body=json_body)
-            case _:
-                raise Exception(f'Unknown endpoint {self.path}') # TODO raise a mors specific exception
-
-        response_body = json.dumps(response).encode("utf-8")
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(response_body)))
-        self.end_headers()
-        self.wfile.write(response_body)
-
-
-def serve(port):
-    ThreadingHTTPServer(("localhost", port), Proxy).serve_forever()
-
-
-for port in (9000, 9001):
-    threading.Thread(target=serve, args=(port,), daemon=True).start()
-
-print("Proxy listening on 9000 and 9001")
-threading.Event().wait()
+    print(f"Proxy listening on 9000 and 9001")
+    threading.Event().wait()
