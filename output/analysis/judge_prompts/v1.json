@@ -1,0 +1,12 @@
+{
+  "name": "v1",
+  "parent": null,
+  "note": "First version, written before any human labels.",
+  "world": "You are helping check whether simulated people remember things the way real people do. Each case shows what one person in a small survival world did recently (What happened), what they see right now (Right now), and one memory that just came to their mind (This came to mind). In this world a person loses 1 energy every turn and dies at 0. They regain energy by stepping on food or when someone gives it to them. They can move, talk to people in sight, give or take energy, and leave text notes called artifacts. Their memories are short notes of what they did, noticed and heard.",
+  "task": "Decide whether a real person in this spot would have this memory come to mind, and whether it matters for what they do next.",
+  "definitions": {
+    "belongs": "a person would plausibly think of this here, and it bears on what to do next.",
+    "doesnt_matter": "a person might plausibly think of this here, but it changes nothing about what to do next.",
+    "noise": "a person would not think of this here, or it points them the wrong way."
+  }
+}

@@ -89,6 +89,11 @@ MEMORY_CONDITIONS = {
     "gated": {"mode": "gated", "edge_learning": False},
     "independent": {"mode": "independent", "edge_learning": False},
     "learned": {"mode": "independent", "edge_learning": True},
+    # An observed entity may continue one step past a tagged episode, so a cue
+    # can reach an episode that never mentions it. Fresh links start at full
+    # weight: a route through a person multiplies three links, and at .8 it
+    # fades before similarity does (see scripts/pinwheel_gap_walkthrough.py).
+    "chained": {"mode": "independent", "edge_learning": True, "entity_hops": 2, "edge_weight": 1.0},
 }
 _landmarks = {}
 _orig_build_obs = OpenGridWorld._build_obs
@@ -114,6 +119,8 @@ def memory_arguments():
     parser.add_argument("--memory-condition", choices=MEMORY_CONDITIONS, default=None)
     parser.add_argument("--memory-config", help="JSON file of MemoryConfig overrides")
     parser.add_argument("--memory-landmarks", help='JSON map of visible place labels to [x,y] tiles')
+    parser.add_argument("--recent-turns", type=int, default=None,
+                        help="Show each agent its last N turns, the same for every condition (default 0)")
     mem_args, rest = parser.parse_known_args()
     sys.argv = [sys.argv[0], *rest]
     return mem_args
@@ -123,7 +130,7 @@ def configure_memory(params, options, resume):
     global _landmarks
     path = Path(params.run.save_root) / "logs" / params.run.exp_name / "memory_config.json"
     if resume:
-        if options.memory_condition or options.memory_config or options.memory_landmarks:
+        if options.memory_condition or options.memory_config or options.memory_landmarks or options.recent_turns is not None:
             raise ValueError("Resume uses the saved memory configuration; start a new run to change conditions")
         with open(path) as f:
             saved = json.load(f)
@@ -134,6 +141,10 @@ def configure_memory(params, options, resume):
         if options.memory_config:
             with open(options.memory_config) as f:
                 settings.update(json.load(f))
+        if options.recent_turns is not None:
+            settings["working_history"] = options.recent_turns
+        if settings.get("working_history", 0) > params.agent.max_history:
+            raise ValueError("--recent-turns cannot exceed --max_history, which caps the turns kept")
         cfg = MemoryConfig(**settings)
         if options.memory_landmarks:
             with open(options.memory_landmarks) as f:
@@ -175,6 +186,20 @@ def _build_remote_with_nano(self):
 
 
 llm_router_module.LLMRouter._build_remote_client = _build_remote_with_nano
+
+# Upstream calls create_video unconditionally at the end of a run, which
+# raises when --no-save_video left no frames behind. Skip it in that case.
+_orig_create_video = runner_module.create_video
+
+
+def _create_video_if_frames(pattern, *args, **kwargs):
+    frames_dir = Path(pattern).parent
+    if not frames_dir.is_dir() or not any(frames_dir.glob("*.png")):
+        return None
+    return _orig_create_video(pattern, *args, **kwargs)
+
+
+runner_module.create_video = _create_video_if_frames
 
 # A pool of plain human names so memories read "Took 20 energy from Ben"
 # instead of "...from being0". TerraLingua resolves give/take by name and

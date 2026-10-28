@@ -70,6 +70,7 @@ Allowed initial routes:
 - Observed entity to one memory: one mentions edge.
 - A direct memory source to a temporal neighbor: one same-tick or adjacent edge.
 - A direct memory source through one entity hub to another memory: two mentions edges.
+- With `entity_hops=2` (launcher condition `chained`, added 2026-09-29): an observed entity through one tagged episode to that episode's same-tick or adjacent neighbour (two edges), or through a second hub that is not itself observed to that hub's other members (three edges). A three-edge route pays the crowd penalty at both hubs. Only the strongest bridge into a second hub is kept, plus its runner-up for the bridge episode itself, which is exact for the max and keeps route counts linear on crowded hubs. This is what lets a cue reach an episode that never mentions it; `scripts/pinwheel_split_walkthrough.py` is the worked case.
 
 No repeated node within a route, no self-return, and no recursive diffusion. The historical prototype treats a shared hub as one damped transfer using the receiving membership weight. The candidate explicitly multiplies the independently aging physical edges on a two-edge route. That route change must receive its own comparison; the first entity-only test avoids it.
 
@@ -82,7 +83,7 @@ A_{P,i}=c_j\left(\prod_{e\in P} L_e(t)\right)f_P,\qquad
 G_i=\beta\max_{P\to i} A_{P,i}.
 \]
 
-If no eligible route exists, G=0. f is a crowding penalty applied once at a traversed entity hub, otherwise 1. A starting comparison can reuse the existing penalty: 1 for at most three hub members, and 1/[1+ln(n/3)] above three. It is a chosen approximation, not a fitted human interference curve. Count only eligible existing records and keep topology identical across conditions.
+If no eligible route exists, G=0. f is a crowding penalty applied once at each traversed entity hub, otherwise 1. A starting comparison can reuse the existing penalty: 1 for at most three hub members, and 1/[1+ln(n/3)] above three. It is a chosen approximation, not a fitted human interference curve. Count only eligible existing records and keep topology identical across conditions.
 
 Beta is a global graph budget in [0,1]. Apply it once per allowed route. Edge weights and the route length already attenuate the signal; do not also apply the legacy lambda accidentally. Every c, L, and f lies in [0,1], so G <= beta and x <= 1. Consequently 0 <= p <= 1 without a final repair clamp hiding errors.
 

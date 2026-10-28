@@ -50,6 +50,46 @@ class AgentTests(unittest.TestCase):
                                      0, {}, tick, {}, client)
         return action, client
 
+    def test_energy_rise_is_recorded_and_survives_checkpoint(self):
+        agent = self.agent()
+
+        def step(agent, tick, energy):
+            obs = observation(); obs['energy'] = energy; obs['time'] = tick
+            agent.select_action(obs, {'move': {'params': {'direction': 'stay'}}}, 0, {}, tick, {}, ScriptedClient())
+
+        step(agent, 100, 100)      # nothing to compare on the first tick
+        step(agent, 101, 99)       # the per-tick drain
+        step(agent, 102, 119.0)    # a gift or food
+        texts = [m.text for m in agent.hou_store.memories]
+        self.assertTrue(all('Energy rose' not in t for t in texts[:2]))
+        self.assertIn('Energy rose from 99 to 119.', texts[2])
+        state = agent.get_state_ckpt()
+        self.assertEqual(state['associative_memory']['last_energy'], 119.0)
+        fresh = self.agent()
+        fresh.set_state_ckpt(state)
+        step(fresh, 103, 118)      # a drain after the restore
+        step(fresh, 104, 118.004)  # below the rounding floor, no line
+        step(fresh, 105, 119.5)
+        texts = [m.text for m in fresh.hou_store.memories][3:]
+        self.assertTrue(all('Energy rose' not in t for t in texts[:2]))
+        self.assertIn('Energy rose from 118 to 119.5.', texts[2])
+
+    def test_energy_drop_beyond_drain_is_recorded(self):
+        agent = self.agent()
+
+        def step(tick, energy):
+            obs = observation(); obs['energy'] = energy; obs['time'] = tick
+            agent.select_action(obs, {'move': {'params': {'direction': 'stay'}}}, 0, {}, tick, {}, ScriptedClient())
+
+        step(100, 100)
+        step(101, 99)    # the per-tick drain, no line
+        step(102, 93)    # a theft of 5 on top of the drain
+        step(103, 92)
+        texts = [m.text for m in agent.hou_store.memories]
+        self.assertTrue(all('Energy fell' not in t for t in texts[:2]))
+        self.assertIn('Energy fell from 99 to 93.', texts[2])
+        self.assertNotIn('Energy fell', texts[3])
+
     def test_recovered_episode_enters_real_prompt_and_learning_is_persisted(self):
         agent = self.agent()
         memory = agent.memory_engine.add('Omar showed me the berry patch.', 0, {'entities':{'places':['well']}})
