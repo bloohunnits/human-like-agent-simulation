@@ -10,5 +10,6 @@
   "token_budget": 600,
   "time_scale": 25.0,
   "memory_sources": false,
+  "entity_hops": 1,
   "working_history": 0
 }

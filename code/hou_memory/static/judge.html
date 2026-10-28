@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Rescued set</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#153237;background:#f7f6f0}body{max-width:820px;margin:28px auto;padding:0 16px}h1{font-size:28px;margin:4px 0}
+select,button,input,textarea{font:inherit;padding:8px 10px;background:white;border:1px solid #bbc9c7;border-radius:6px;color:inherit}textarea{width:100%;box-sizing:border-box}button{cursor:pointer}
+.top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}.tabs{display:flex;gap:4px;border-bottom:1px solid #ccd8d4;margin-bottom:14px}.tabs button{border:none;border-bottom:3px solid transparent;border-radius:0;background:none;font-weight:600}.tabs button.on{border-color:#007c80;color:#007c80}
+.muted{color:#526b71}.box{background:white;border:1px solid #ccd8d4;border-radius:8px;padding:16px;margin:10px 0}pre{white-space:pre-wrap;margin:0;font-family:inherit;line-height:1.6}
+.answers{display:grid;gap:8px;margin:14px 0}.answers button{padding:14px;text-align:left;font-size:17px}.answers button.on{background:#007c80;color:white;border-color:#007c80}
+.go{background:#17383c;color:white;border-color:#17383c}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px;border-bottom:1px solid #ccd8d4}
+.pass{color:#0b7a3b;font-weight:700}.fail{color:#a12d21;font-weight:700}#error{color:#a12d21;min-height:1em}label{display:block;margin:8px 0 4px;font-weight:600}
+</style></head><body>
+<h1>Rescued set</h1>
+<p class="muted">Memories that came back only because of a link.</p>
+<div class="top"><select id="run"></select><button id="update">Update</button><input id="rater" placeholder="Your name" size="12"></div>
+<p id="error"></p>
+<div class="tabs"><button data-tab="label" class="on">Label</button><button data-tab="judge">Judge</button><button data-tab="match">Match</button></div>
+
+<section id="tab-label">
+  <p id="left" class="muted"></p>
+  <div id="card" class="box" hidden><pre id="text"></pre>
+    <p><b>Would a person think of this right now?</b></p>
+    <div class="answers" id="answers"></div>
+    <input id="why" placeholder="Why? (optional)" style="width:100%;box-sizing:border-box">
+    <p><button id="back">Back</button> <button id="next" class="go">Next</button></p>
+  </div>
+  <p id="done" class="box" hidden>All done. Thanks!</p>
+</section>
+
+<section id="tab-judge" hidden>
+  <div class="top"><select id="prompt"></select><select id="model"></select><button id="runJudge" class="go">Run judge</button><span id="status" class="muted"></span></div>
+  <label>"Yes, and it matters" means</label><textarea id="d1" rows="2"></textarea>
+  <label>"Yes, but it doesn't matter" means</label><textarea id="d2" rows="2"></textarea>
+  <label>"No" means</label><textarea id="d3" rows="2"></textarea>
+  <details><summary class="muted">More instructions</summary><label>About the world</label><textarea id="world" rows="5"></textarea><label>The task</label><textarea id="task" rows="2"></textarea></details>
+  <p><input id="note" placeholder="What did you change?" style="width:60%"> <button id="save">Save</button></p>
+  <h3>Where the judge got it wrong</h3><p class="muted">Practice cards only.</p><div id="wrong"></div>
+</section>
+
+<section id="tab-match" hidden>
+  <p id="people"></p>
+  <table><thead><tr><th>Judge</th><th>Practice cards</th><th>Test cards</th><th>Result</th></tr></thead><tbody id="rows"></tbody></table>
+  <p id="rule" class="muted"></p>
+</section>
+
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),f2=x=>x==null?'-':Number(x).toFixed(2);
+const L=['belongs','doesnt_matter','noise'];let meta={},cards=[],todo=[],pos=0,pick=null,tab='label';
+const keep={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+async function api(p,d){const r=await fetch(p,d?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}:{});const j=await r.json();if(!r.ok)throw Error(j.error||r.statusText);return j;}
+const err=e=>$('error').textContent=e?(e.message||e):'',run=()=>meta.runs.find(r=>r.path===$('run').value),set=()=>run()&&run().name,who=()=>$('rater').value.trim();
+const name=l=>meta.labels[l]||l;
+
+async function loadMeta(){meta=await api('/api/judge/meta');$('run').innerHTML=meta.runs.map(r=>`<option value="${esc(r.path)}">${esc(r.name)}</option>`).join('');
+  const saved=keep.get('rescued.run');if(saved&&meta.runs.some(r=>r.path===saved))$('run').value=saved;
+  const ps=Object.keys(meta.prompts);$('prompt').innerHTML=ps.map(n=>`<option>${esc(n)}</option>`).join('');$('prompt').value=ps[ps.length-1];showPrompt();
+  $('model').innerHTML=meta.models.map(m=>`<option>${esc(m)}</option>`).join('');}
+function showPrompt(){const p=meta.prompts[$('prompt').value];if(!p)return;$('d1').value=p.definitions.belongs;$('d2').value=p.definitions.doesnt_matter;$('d3').value=p.definitions.noise;$('world').value=p.world;$('task').value=p.task;$('note').value='';}
+async function ensure(force){const r=run();if(!r)return;if(force||!r.ready){$('left').textContent='Finding rescued memories...';await api('/api/judge/make_cards',{path:r.path});r.ready=true;}}
+async function load(force){err();try{await ensure(force);const d=await api(`/api/judge/cards?set=${encodeURIComponent(set())}&rater=${encodeURIComponent(who())}`);cards=d.cards;todo=cards.filter(c=>!c.mine);pos=0;show();if(tab!=='label')await report();}catch(e){err(e);}}
+function show(){$('left').textContent=cards.length?`${todo.length} of ${cards.length} left`:'No rescued memories in this run.';const c=todo[pos];$('card').hidden=!c;$('done').hidden=!!c||!cards.length;if(!c)return;
+  $('text').textContent=c.text;pick=null;$('why').value='';$('answers').innerHTML=L.map((l,i)=>`<button data-l="${l}">${i+1}. ${esc(name(l))}</button>`).join('');
+  $('answers').querySelectorAll('button').forEach(b=>b.onclick=()=>choose(b.dataset.l));$('back').disabled=pos===0;}
+function choose(l){pick=l;$('answers').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));}
+let saving=false;async function next(){const c=todo[pos];if(!c||saving)return;if(!pick){err('Pick an answer.');return;}if(!who()){err('Type your name at the top first.');$('rater').focus();return;}saving=true;if(document.activeElement)document.activeElement.blur();try{await api('/api/judge/label',{set:set(),rater:who(),card_id:c.card_id,label:pick,reason:$('why').value});err();c.mine={label:pick};todo.splice(pos,1);if(pos>=todo.length)pos=Math.max(0,todo.length-1);show();}catch(e){err(e);}finally{saving=false;}}
+
+async function report(){if(!set())return;const r=await api('/api/judge/report?set='+encodeURIComponent(set()));
+  const raters=Object.entries(r.raters);$('people').textContent=!raters.length?'Nobody has labeled yet.':raters.map(([n,k])=>`${n} labeled ${k}.`).join(' ')+' '+r.human_pairs.map(p=>`${p.a} and ${p.b} agree on ${p.agree} of ${p.n}.`).join(' ');
+  $('rows').innerHTML=r.runs.map(x=>`<tr><td>${esc(x.run)}</td><td>${x.tuning.agree} of ${x.tuning.n} <span class="muted">(${f2(x.tuning.kappa)})</span></td><td>${x.held_out.agree} of ${x.held_out.n} <span class="muted">(${f2(x.held_out.kappa)})</span></td><td class="${x.gate==='pass'?'pass':x.gate==='fail'?'fail':'muted'}">${esc(x.gate==='pass'?'Pass':x.gate==='fail'?'Fail':x.gate)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">No judge runs yet.</td></tr>';
+  $('rule').textContent=r.gate_rule;
+  const runName=`${$('prompt').value} / ${$('model').value}`;const w=r.runs.some(x=>x.run===runName)?(await api(`/api/judge/disagreements?set=${encodeURIComponent(set())}&run=${encodeURIComponent(runName)}`)).items:[];
+  $('wrong').innerHTML=w.length?w.map(x=>`<div class="box"><b>Came to mind:</b> ${esc(x.text.split('Came to mind:\n')[1]||'')}<br><b>People:</b> ${esc(name(x.majority))}<br><b>Judge:</b> ${esc(name(x.judge))}. <span class="muted">${esc(x.judge_reason)}</span><details><summary class="muted">Whole card</summary><pre>${esc(x.text)}</pre></details></div>`).join(''):'<p class="muted">Nothing yet. Label some cards, then run the judge.</p>';}
+async function save(){try{const s=await api('/api/judge/prompt',{parent:$('prompt').value,world:$('world').value,task:$('task').value,note:$('note').value,definitions:{belongs:$('d1').value,doesnt_matter:$('d2').value,noise:$('d3').value}});meta=await api('/api/judge/meta').then(m=>({...meta,prompts:m.prompts}));
+  $('prompt').innerHTML=Object.keys(meta.prompts).map(n=>`<option>${esc(n)}</option>`).join('');$('prompt').value=s.name;showPrompt();$('status').textContent=`Saved as ${s.name}.`;err();}catch(e){err(e);}}
+async function runJudge(){try{$('runJudge').disabled=true;const {job}=await api('/api/judge/run',{set:set(),prompt:$('prompt').value,model:$('model').value,scope:'labeled'});err();
+  const poll=async()=>{const j=await api('/api/judge/job/'+job);$('status').textContent=j.status==='running'?`Judging ${j.done} of ${j.total??'?'}...`:j.status==='failed'?`Failed: ${j.error}`:'Done.';if(j.status==='running')setTimeout(poll,1000);else{$('runJudge').disabled=false;await report();}};poll();}catch(e){$('runJudge').disabled=false;err(e);}}
+
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));for(const t of ['label','judge','match'])$('tab-'+t).hidden=t!==tab;if(tab!=='label')report().catch(err);});
+$('run').onchange=()=>{keep.set('rescued.run',$('run').value);load();};$('update').onclick=()=>load(true);$('rater').onchange=()=>{keep.set('rescued.rater',who());load();};
+$('next').onclick=next;$('back').onclick=()=>{if(pos>0){pos--;show();}};$('prompt').onchange=()=>{showPrompt();report().catch(err);};$('model').onchange=()=>report().catch(err);$('save').onclick=save;$('runJudge').onclick=runJudge;
+document.addEventListener('keydown',e=>{if(tab!=='label'||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName))return;if(['1','2','3'].includes(e.key))choose(L[e.key-1]);else if(e.key==='Enter'){e.preventDefault();next();}});
+$('rater').value=keep.get('rescued.rater')||'';loadMeta().then(()=>load()).catch(err);
+</script></body></html>

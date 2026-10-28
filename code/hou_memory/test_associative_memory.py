@@ -118,6 +118,69 @@ class MechanismTests(unittest.TestCase):
                 self.assertEqual(len(route.edges), len(set(route.edges)))
                 self.assertLessEqual(route.contribution, route.cue)
 
+    def test_two_hop_entity_routes_reach_untagged_episodes(self):
+        texts = [('saw the pinwheel, Mia nearby', 0, {'people': ['Mia'], 'artifacts': ['pinwheel']}),
+                 ('Mia gave me food', 1, {'people': ['Mia']}),
+                 ('met Mia again', 5, {'people': ['Mia']})]
+        one = fixture(MemoryConfig(edge_learning=False), texts)
+        two = fixture(MemoryConfig(edge_learning=False, entity_hops=2), texts)
+        cue = {'artifacts': ['pinwheel']}
+        r1, r2 = one.preview('cue', 50, cue), two.preview('cue', 50, cue)
+        # The sighting itself is tagged with the cue: identical either way.
+        self.assertEqual(r1.scores[0].routes, r2.scores[0].routes)
+        self.assertAlmostEqual(r2.scores[0].graph, .5 * .8 * math.exp(-.5))
+        # The food episode never mentions the pinwheel: unreachable in one hop.
+        self.assertEqual(r1.scores[1].graph, 0)
+        self.assertEqual(r1.scores[2].graph, 0)
+        # Two hops: pinwheel -> sighting -> (followed) -> food wins over
+        # pinwheel -> sighting -> Mia -> food, which pays a third transmission.
+        food = r2.scores[1].routes
+        self.assertEqual([len(r.edges) for r in food], [2, 3])
+        self.assertAlmostEqual(food[0].contribution, .5 * (.8 * math.exp(-.5)) * (.8 * math.exp(-.49)))
+        self.assertAlmostEqual(food[1].contribution, .5 * (.8 * math.exp(-.5)) ** 2 * (.8 * math.exp(-.49)))
+        self.assertAlmostEqual(r2.scores[1].graph, food[0].contribution)
+        # 'met Mia again' is two ticks of followed edges away, so only the hub chain reaches it.
+        self.assertEqual([len(r.edges) for r in r2.scores[2].routes], [3])
+        for row in r2.scores:
+            for route in row.routes:
+                self.assertNotEqual(row.id, route.source)
+                self.assertEqual(len(route.edges), len(set(route.edges)))
+                self.assertLessEqual(route.contribution, .5)
+        # With Mia also in view, her direct one-hop route wins for the food
+        # episode and no three-edge chain is re-entered through her hub.
+        both = two.preview('cue', 50, {'artifacts': ['pinwheel'], 'people': ['Mia']}).scores[1].routes
+        self.assertEqual(len(both[0].edges), 1)
+        self.assertAlmostEqual(both[0].contribution, .5 * .8 * math.exp(-.49))
+        self.assertTrue(all(len(r.edges) <= 2 for r in both))
+        # A single tagged memory scores the same under both settings.
+        self.assertAlmostEqual(fixture(MemoryConfig(entity_hops=2)).preview('cue', 100, {'places': ['well']}).scores[0].score,
+                               .2164730059, places=8)
+        for bad in (0, 3, True):
+            with self.assertRaises(ValueError):
+                MemoryConfig(entity_hops=bad)
+
+    def test_hub_bridge_runner_up_covers_the_best_bridge_episode(self):
+        # a and b are tagged with hubs A and B; c only with B. Cue A. The
+        # younger a-B bridge (b) is the strongest into hub B, so it carries the
+        # chains to a and c, and b itself is reached through the runner-up (a).
+        texts = [('a', 0, {'places': ['A', 'B']}), ('b', 1, {'places': ['A', 'B']}), ('c', 2, {'places': ['B']})]
+        engine = fixture(MemoryConfig(edge_learning=False, entity_hops=2), texts)
+        ids = {m.text: m.memory_id for m in engine.store.memories}
+        result = engine.preview('cue', 10, {'places': ['A']})
+        rows = {m.text: s for m, s in zip(engine.store.memories, result.scores)}
+
+        def via(route):
+            e = engine.edges[route.edges[0]]
+            return e.b if e.a.startswith('entity:') else e.a
+
+        chains = {t: [r for r in s.routes if len(r.edges) == 3] for t, s in rows.items()}
+        self.assertEqual({t: len(rs) for t, rs in chains.items()}, {'a': 1, 'b': 1, 'c': 1})
+        self.assertEqual(via(chains['a'][0]), ids['b'])
+        self.assertEqual(via(chains['b'][0]), ids['a'])
+        self.assertEqual(via(chains['c'][0]), ids['b'])
+        self.assertEqual(sorted(len(r.edges) for r in rows['a'].routes), [1, 2, 3])
+        self.assertEqual(sorted(len(r.edges) for r in rows['c'].routes), [2, 3])
+
     def test_crowding_and_duplicate_tags(self):
         engine = fixture(texts=[('one', 0, {'places': ['Well', 'well', 'well']})])
         row = engine.preview('cue', 100, {'places': ['WELL']}).scores[0]

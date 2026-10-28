@@ -76,6 +76,9 @@ This real-model command uses the configured API account. The implementation veri
 | `gated` | Same aged graph support before target decay | Off |
 | `independent` | Separately decayed pathways | Off |
 | `learned` (default) | Separately decayed pathways | Winning route only |
+| `chained` | As `learned`, and an observed entity may continue one step past a tagged episode (`entity_hops=2`); fresh links start at weight 1.0 | Winning route only |
+
+With `entity_hops=1` an observed entity reaches only episodes tagged with it, which is a weighted lookup. With `entity_hops=2` it also reaches the tagged episode's same-tick or adjacent neighbour (two edges) and, through a second hub that is not itself in view, that hub's other members (three edges). `scripts/pinwheel_split_walkthrough.py` shows the difference on an episode that never mentions the cue.
 
 JSON overrides can explicitly change any `MemoryConfig` field, including mode/learning. The resolved configuration and landmark map are saved with the experiment; use those values when interpreting results. These defaults are illustrative starting values, not calibrated parameters. Use `--memory-help` for the wrapper's flags. Keep generation settings fixed within a comparison.
 
