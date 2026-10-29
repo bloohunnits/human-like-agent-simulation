@@ -1,2 +1,5 @@
-def UnknownPathError(Exception):
+class UnknownPathError(Exception):
+    pass
+
+class FailedModelResponseError(Exception):
     pass

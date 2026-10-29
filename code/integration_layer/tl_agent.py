@@ -1,38 +1,44 @@
 import requests
+from openai import OpenAI
 import threading
 from integration_layer.server import ChatCompletionHTTPRequestHandler
 from http.server import ThreadingHTTPServer
 
-TL_EXPECTED_MODEL = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" # This is what TerraLingua asks for
-ACTUAL_MODEL = "Qwen3-4B-Instruct-2507-Q4_K_M" # I will be using this for texting
+from exceptions import FailedModelResponseError
+from openai import BadRequestError
 
-class LocalChatAgent:
+TL_EXPECTED_MODEL = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" # This is what TerraLingua asks for
+
+
+class TerraLinguaAgent:
 
     def __init__(
         self,
-        model_port: str,
-        model_host: str = "127.0.0.1",
+        model_name: str,
         tl_ports: tuple[int] = (9000, 9001),
         tl_host: str = "127.0.0.1",
         expected_model: str = TL_EXPECTED_MODEL,
-        actual_model: str = ACTUAL_MODEL,
         request_lib=requests,
+        ChatClient=OpenAI,
+        **client_args,
         ):
         """
         Parameters:
-            model_port, model_host: The port/server of the model
-            tl_ports, tl_host: The ports/server where TerraLingua assumes the
-                model is
-            actual_model: The name of a model running on model host/port
+            model_name: Name of the model to handle requests
+            tl_ports, tl_host: The ports/server where TerraLingua assumes the model is
             expected_model: The name of the model expected by TerraLingua
+            request_lib: Library to make HTTP requests
+            ChatClient: class to interface with model
+            client_args: Options passed to the client
         """
-        self.model_port = model_port
-        self.model_host = model_host
+        self.model_name = model_name
         self.tl_ports = tl_ports
         self.tl_host = tl_host
-        self.request_lib = request_lib
         self.expected_model = expected_model
-        self.actual_model = actual_model
+        self.request_lib = request_lib
+        self.client = ChatClient(**client_args)
+
+        # HTTP handler that wil respond to TL requests
         self.HTTPHandler = type(
             '',
             (ChatCompletionHTTPRequestHandler,),
@@ -42,22 +48,33 @@ class LocalChatAgent:
             }
         )
 
-    # TODO Log intercepted requests/responses in the http handlers
     def _model_handler(self):
-        url = f"http://{self.model_host}:{self.model_port}/v1/models"
-        r = self.request_lib.get(url).json()
-        r['data'][0]['id'] = self.expected_model # Inject the fake name into the response
+        raw = self.client.models.with_raw_response.list()
+        r = raw.http_response.json()
+
+        # Inject fake model name into the response
+        try:
+            r['data'][0]['id'] = self.expected_model
+            # TODO inject othrer fake fields if needed
+        except Exception as e:
+            raise FailedModelResponseError(f'Could not get models: {e}')
+
         return r
 
     def _completion_handler(self,payload):
-        # make request to the model
-        url = f"http://{self.model_host}:{self.model_port}/v1/chat/completions"
-        payload['model'] = self.actual_model
-        headers = {"Content-Type": "application/json"}
-        r = self.request_lib.post(url, json=payload, headers=headers).json()
-        # TODO add post validation and exception handling
+        messages = payload['messages']
+        print(messages)
 
-        r['model'] = self.expected_model # Mimic the expected model
+        # make request to model
+        try:
+            raw = self.client.chat.completions.with_raw_response.create(
+                model=self.model_name,
+                messages=messages,
+            )
+        except BadRequestError as e:
+            raise FailedModelResponseError(f'Model failed to respond: {e}')
+
+        r = raw.http_response.json()
         return r
     
     def _run_server(
@@ -72,7 +89,7 @@ class LocalChatAgent:
         with ThreadingHTTPServer(addr, self.HTTPHandler) as httpd:
             httpd.serve_forever()
 
-    def start_server_and_block(self):
+    def start_tl_agent_and_block(self):
         threads = []
         for port in self.tl_ports:
             t = threading.Thread(target=self._run_server,
@@ -83,6 +100,7 @@ class LocalChatAgent:
         print(f"Proxy listening on {self.tl_ports}")
 
         try:
+            # Wait for the threads to die
             for t in threads:
                 t.join()
         except KeyboardInterrupt:
