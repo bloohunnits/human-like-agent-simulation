@@ -121,21 +121,28 @@ def memory_arguments():
     parser.add_argument("--memory-landmarks", help='JSON map of visible place labels to [x,y] tiles')
     parser.add_argument("--recent-turns", type=int, default=None,
                         help="Show each agent its last N turns, the same for every condition (default 0)")
+    parser.add_argument("--plan-notes", action="store_true",
+                        help="Limit each agent's notes to a 60-token plan instead of TerraLingua's free notes")
+    parser.add_argument("--effort", choices=["minimal", "low", "medium", "high"], default="low",
+                        help="Reasoning effort for the GPT-5 models (default low)")
     mem_args, rest = parser.parse_known_args()
     sys.argv = [sys.argv[0], *rest]
     return mem_args
 
 
 def configure_memory(params, options, resume):
-    global _landmarks
+    global _landmarks, _effort
     path = Path(params.run.save_root) / "logs" / params.run.exp_name / "memory_config.json"
     if resume:
-        if options.memory_condition or options.memory_config or options.memory_landmarks or options.recent_turns is not None:
+        if options.memory_condition or options.memory_config or options.memory_landmarks or options.recent_turns is not None or options.plan_notes:
             raise ValueError("Resume uses the saved memory configuration; start a new run to change conditions")
         with open(path) as f:
             saved = json.load(f)
         cfg = MemoryConfig(**saved["memory"])
         _landmarks = saved["landmarks"]
+        # Runs saved before free notes became the default used the plan.
+        HouMemoryAgent.plan_notes = saved.get("plan_notes", not saved.get("paper_prompt", False))
+        _effort = saved.get("effort", "low")
     else:
         settings = dict(MEMORY_CONDITIONS[options.memory_condition or "learned"])
         if options.memory_config:
@@ -162,7 +169,10 @@ def configure_memory(params, options, resume):
             raise ValueError(f"Experiment already exists: {path.parent}. Choose a new exp_name or resume it.")
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "x") as f:
-            json.dump({"schema_version": 1, "memory": asdict(cfg), "landmarks": _landmarks}, f, indent=2)
+            HouMemoryAgent.plan_notes = options.plan_notes
+            _effort = options.effort
+            json.dump({"schema_version": 1, "memory": asdict(cfg), "landmarks": _landmarks,
+                       "plan_notes": options.plan_notes, "effort": _effort}, f, indent=2)
     HouMemoryAgent.memory_config = cfg
 
 # The proposal specifies GPT-5 Nano, but TerraLingua's router doesn't list
@@ -171,16 +181,19 @@ def configure_memory(params, options, resume):
 import core.experiment.llm_router as llm_router_module  # noqa: E402
 from core.utils.llm_client import AgentClient  # noqa: E402
 
-llm_router_module.MODEL_MAP["gpt-5-nano"] = "gpt-5-nano"
+GPT5_MODELS = ("gpt-5-nano", "gpt-5-mini", "gpt-5")
+for _name in GPT5_MODELS:
+    llm_router_module.MODEL_MAP[_name] = _name
+_effort = "low"
 _orig_build_remote = llm_router_module.LLMRouter._build_remote_client
 
 
 def _build_remote_with_nano(self):
-    if self.model_name == "gpt-5-nano":
+    if self.model_name in GPT5_MODELS:
         return AgentClient(provider="openai"), {
-            "model": "gpt-5-nano",
+            "model": self.model_name,
             "response_format": {"type": "json_object"},
-            "reasoning_effort": "low",
+            "reasoning_effort": _effort,
         }
     return _orig_build_remote(self)
 
@@ -238,6 +251,34 @@ def _add_agent_named(self, *args, **kwargs):
 
 OpenGridWorld.add_agent = _add_agent_named
 
+# Upstream silently cancels a move into an occupied cell and its observation
+# text says beings can share a cell. Agents then retry the same move until they
+# starve. Tell the agent when a move was blocked, and state the real rule.
+import core.agents.prompt_templates as prompt_templates_module  # noqa: E402
+
+CELL_RULE = ("Several artifacts can share a cell and are separated by |. Two beings can never share a cell: "
+             "you cannot move into a cell where another being stands.")
+for _style in prompt_templates_module.OBS_STYLE.values():
+    _style["detail"] = re.sub(r"If multiple beings or artifacts are in the same cells, (they are|they are listed) separated by \|",
+                              CELL_RULE, _style["detail"])
+_orig_step = OpenGridWorld.step
+
+
+def _step_with_move_feedback(self, actions):
+    before = {tag: tuple(int(v) for v in pos) for tag, pos in self.agent_pos.items()}
+    out = _orig_step(self, actions)
+    infos = out[-1]
+    for tag, act in actions.items():
+        direction = ((act or {}).get("params") or {}).get("direction") if isinstance(act, dict) else None
+        if (act or {}).get("action") != "move" or direction in (None, "stay") or tag not in self.agent_pos:
+            continue
+        if tuple(int(v) for v in self.agent_pos[tag]) == before.get(tag):
+            infos.setdefault(tag, {})["Move outcome"] = (
+                f"You tried to move {direction}, but another being stands in that cell, so you did not move.")
+    return out
+
+
+OpenGridWorld.step = _step_with_move_feedback
 
 def _sync_agent_identities(runner):
     """Match each agent object's own name/prompt to the name the env now uses,

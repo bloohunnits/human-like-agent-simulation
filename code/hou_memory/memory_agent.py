@@ -33,10 +33,12 @@ class HouMemoryAgent(LLMAgent):
     _shared_embedder: SBERTEmbedder | None = None
     memory_config = MemoryConfig()
 
-    # The plan cap. TerraLingua's 150-token scratchpad doubled as working
-    # plan AND long-term memory; we scope the field to intention only
-    # (docs/INTEGRATION.md finding 4) and a 60-token cap forces triage so
-    # it can't quietly become a decay-proof life archive again.
+    # By default the agent keeps TerraLingua's own free notes and prompt text,
+    # so only the memory system differs from the paper. plan_notes instead
+    # scopes the notes to intention only (docs/INTEGRATION.md finding 4) with
+    # a 60-token cap, so they can't become a decay-proof life archive. Small
+    # models copied that plan into their speech as move announcements.
+    plan_notes = False
     hou_plan_tokens = 60
 
     PLAN_CONTRACT = """- Plan (the internal_memory field):
@@ -57,6 +59,8 @@ class HouMemoryAgent(LLMAgent):
         self._last_energy = None
         self.current_plan = ""
         self.use_internal_memory = True
+        if not self.plan_notes:
+            self.hou_plan_tokens = self.internal_memory_size
         self.internal_memory_size = self.hou_plan_tokens
         self._rescope_scratchpad_to_plan()
 
@@ -65,6 +69,8 @@ class HouMemoryAgent(LLMAgent):
         a plan, not a diary. String surgery on TerraLingua's rendered
         template - their files stay untouched. Tolerant of the block being
         absent (custom system prompts pass through unchanged)."""
+        if not self.plan_notes:
+            return
         sp = self.system_prompt
         sp = sp.replace(
             "Your INTERNAL MEMORY from the previous timestep",
@@ -92,6 +98,8 @@ class HouMemoryAgent(LLMAgent):
             )
         finally:
             self.history = history
+        if not self.plan_notes:
+            return prompt
         prompt = prompt.replace(
             "Previous INTERNAL MEMORY:", "YOUR PLAN AND WHAT COMES TO MIND:"
         )
@@ -260,6 +268,8 @@ class HouMemoryAgent(LLMAgent):
     def _render_memory_slot(self, surfaced) -> str:
         """What goes into the prompt's memory slot: the agent's own plan
         first (guaranteed, verbatim), then whatever the kernel surfaced."""
+        if not self.plan_notes:
+            return f"{self.current_plan}\n\nWhat comes to mind:\n{self._render_surfaced(surfaced)}".lstrip()
         plan = self.current_plan or "<no plan yet>"
         return f"Current plan: {plan}\n\nWhat comes to mind:\n{self._render_surfaced(surfaced)}"
 

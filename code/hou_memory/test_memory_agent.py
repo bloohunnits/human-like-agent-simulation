@@ -164,8 +164,12 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(agent.validate_internal_memory(echo), agent.current_plan)
         long_plan = 'Walk north. ' * 200
         clipped = agent.validate_internal_memory(long_plan)
-        self.assertLessEqual(agent._count_tokens(clipped),60)
+        self.assertLessEqual(agent._count_tokens(clipped),agent.internal_memory_size)
         self.assertTrue(clipped.startswith('Walk north.'))
+        with patch.object(HouMemoryAgent, 'plan_notes', True):
+            planner = self.agent()
+        self.assertLessEqual(planner._count_tokens(planner.validate_internal_memory(long_plan)),60)
+        self.assertIn('Plan (the internal_memory field)', planner.system_prompt)
 
     def test_audit_endpoint_reports_actual_trace_and_prompt(self):
         import webapp
@@ -176,7 +180,7 @@ class AgentTests(unittest.TestCase):
             client = webapp.app.test_client()
             data = client.get('/api/live_audit').get_json()
             self.assertEqual(data['trace'],agent.memory_engine.last_event)
-            self.assertIn('YOUR PLAN',data['agent_step']['input_prompt'])
+            self.assertIn('What comes to mind',data['agent_step']['input_prompt'])
             self.assertEqual(client.get('/api/live_audit?agent=../../x').status_code,400)
             with client.get('/audit') as response:
                 self.assertEqual(response.status_code,200)

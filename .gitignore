@@ -11,3 +11,5 @@ node_modules
 output/validation/
 output/*.log
 logs/
+output/analysis/rescued/*
+!output/analysis/rescued/anchor_v1/

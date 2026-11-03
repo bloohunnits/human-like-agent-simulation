@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import ast
 import csv
+import hashlib
 import json
 import os
 import random
 import re
+import time
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -33,6 +35,15 @@ LABELS = ("belongs", "doesnt_matter", "noise")
 LABEL_NAMES = {"belongs": "Yes, and it matters", "doesnt_matter": "Yes, but it doesn't matter", "noise": "No"}
 JUDGE_MODELS = ("gpt-5-mini", "gpt-5.6-luna", "gpt-6-luna", "gpt-5.4-mini", "gpt-5-nano")
 GATE_KAPPA, GATE_MIN_CARDS, HELD_OUT_SHARE = 0.61, 20, 0.3
+ANCHOR_SET = "anchor_v1"  # the set classmates grade
+SESSION_CARDS = 60  # about 70 minutes, and six people this size give every card three grades
+# People and the judge read these same words.
+QUESTION = "Out of everything this person remembers, this came to mind. Does that make sense right now?"
+ANSWER_HELP = {
+    "belongs": "A real person could think of this here, and it helps them pick what to do next.",
+    "doesnt_matter": "A real person could think of this here, but it changes nothing about what they do next.",
+    "noise": "A real person would not think of this here, or it would send them the wrong way.",
+}
 REPLY_FORMAT = ('First give one or two sentences of reasoning, then the label. Reply as json: '
                 '{"reason": "...", "label": "belongs" or "doesnt_matter" or "noise"}')
 
@@ -45,16 +56,13 @@ V1 = {
         "Each case shows what one person in a small survival world did recently (What happened), what they "
         "see right now (Right now), and one memory that just came to their mind (This came to mind). In this world a person loses 1 energy "
         "every turn and dies at 0. They regain energy by stepping on food or when someone gives it to them. "
-        "They can move, talk to people in sight, give or take energy, and leave text notes called artifacts. "
-        "Their memories are short notes of what they did, noticed and heard."
+        "They can move, talk to people in sight, give or take energy, and leave text notes. "
+        "Their memories are short notes of what they did, noticed and heard. "
+        "If the memory is also listed under What happened, that line is marked. "
+        "Being listed there is not by itself a reason to say yes."
     ),
-    "task": ("Decide whether a real person in this spot would have this memory come to mind, "
-             "and whether it matters for what they do next."),
-    "definitions": {
-        "belongs": "a person would plausibly think of this here, and it bears on what to do next.",
-        "doesnt_matter": "a person might plausibly think of this here, but it changes nothing about what to do next.",
-        "noise": "a person would not think of this here, or it points them the wrong way.",
-    },
+    "task": QUESTION,
+    "definitions": ANSWER_HELP,
 }
 
 
@@ -83,21 +91,23 @@ def set_dir(card_set: str) -> Path:
 def load_cards(card_set: str) -> list[dict]:
     path = set_dir(card_set) / "cards.jsonl"
     cards = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-    order = card_order(path)
-    rank = {cid: i for i, cid in enumerate(order)}
-    return sorted(cards, key=lambda c: rank.get(c["card_id"], len(rank)))
+    cards.sort(key=lambda c: c["card_id"])
+    random.Random(card_set).shuffle(cards)
+    return cards
 
 
-def card_order(cards_path: Path) -> list[str]:
-    md = cards_path.with_name("cards.md")
-    if md.exists():
-        return re.findall(r"^## Card (card-[0-9a-f]+)", md.read_text(), flags=re.M)
-    return []
-
-
-def split_of(card_id: str) -> str:
-    digits = re.sub(r"[^0-9a-f]", "", card_id)[:8] or "0"
+def split_of(card: dict) -> str:
+    """Sampled sets store their split. Otherwise hash the group, so near copies
+    of one moment or memory never sit on both sides."""
+    sealed = card.get("sealed", {})
+    if sealed.get("split"):
+        return sealed["split"]
+    digits = re.sub(r"[^0-9a-f]", "", (sealed.get("group") or card["card_id"]).removeprefix("group-"))[:8] or "0"
     return "held_out" if int(digits, 16) % 100 < HELD_OUT_SHARE * 100 else "tuning"
+
+
+def text_hash(card: dict) -> str:
+    return hashlib.sha1(visible_text(card).encode()).hexdigest()[:12]
 
 
 def _names(items: list[str]) -> str:
@@ -111,9 +121,9 @@ def _action(name: str, params: dict) -> str:
         d = p.get("direction", "")
         return "Stayed put." if d == "stay" else f"Moved {d}."
     if name == "give":
-        return f"Gave {p.get('target')} {p.get('amount')} energy."
+        return f"Tried to give {p.get('target')} {p.get('amount')} energy."
     if name == "take":
-        return f"Took {p.get('amount')} energy from {p.get('target')}."
+        return f"Tried to take {p.get('amount')} energy from {p.get('target')}."
     if name == "create_artifact":
         return f'Wrote a note called "{p.get("name")}".'
     if name == "pickup_artifact":
@@ -127,30 +137,44 @@ def _action(name: str, params: dict) -> str:
     return f"Did {name.replace('_', ' ')}."
 
 
+def _flat(value) -> list[str]:
+    if isinstance(value, (list, tuple)):
+        return [x for item in value for x in _flat(item)]
+    return [str(value)]
+
+
+def _speech(text: str) -> str:
+    """Two people talking become two plain sentences."""
+    return re.sub(r'\.\"\.', '."', text.replace('"; ', '". ')).replace('."."', '."')
+
+
 def plain(text: str) -> str:
     """Rewrite one stored memory line in everyday words, for people and judge alike."""
-    def act(m):
-        try:
-            return _action(m.group(1), json.loads(m.group(2)))
-        except ValueError:
-            return f"Did {m.group(1)}."
-
     def feedback(m):
         try:
-            values = [str(v) for v in ast.literal_eval(m.group(1)).values()]
+            found = ast.literal_eval(re.sub(r"np\.\w+\(([^()]*)\)", r"\1", m.group(1)))
+            values = [v for item in found.values() for v in _flat(item)]
         except (ValueError, SyntaxError):
             values = [m.group(1)]
-        return "The world said: " + " ".join(v.rstrip(".") + "." for v in values)
+        said = " ".join(v.rstrip(".") + "." for v in values)
+        said = re.sub(r"Artifact (.+?) content: ", r"Note \1 says: ", said)
+        return "The world said: " + said.replace("another being", "someone")
 
-    text = re.sub(r"Chose action (\w+): (\{.*?\})\.", act, text)
+    chosen = re.search(r"Chose action (\w+): ", text)
+    if chosen:
+        try:  # a note's text can hold any character, so read the JSON properly
+            params, end = json.JSONDecoder().raw_decode(text, chosen.end())
+            end += text[end:end + 1] == "."
+            text = text[:chosen.start()] + _action(chosen.group(1), params) + text[end:]
+        except ValueError:
+            pass
     text = re.sub(r"Nearby: ([^.]+)\.", lambda m: f"Near {_names(m.group(1).split(','))}.", text)
     text = re.sub(r"Artifacts here: ([^.]+)\.", lambda m: f"Saw a note: {_names(m.group(1).split(','))}.", text)
     text = re.sub(r"Visible places: ([^.]+)\.",
                   lambda m: "Could see " + _names([f"the {x.strip()}" for x in m.group(1).split(",")]) + ".", text)
-    text = re.sub(r"Feedback from the preceding action: (\{.*?\})\.", feedback, text)
-    text = re.sub(r"Heard (.+?)\.(?= |$)", lambda m: m.group(1).replace('"; ', '". ') + ".", text)
-    text = re.sub(r'\.\"\.', '."', text).replace('."."', '."')
-    return re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"Feedback from the preceding action: (\{.*?\})\.(?= |$)", feedback, text)
+    text = re.sub(r"\bHeard (?=\w+ said \")", "", text)
+    return re.sub(r"\s+", " ", _speech(text)).strip()
 
 
 def _scene_line(line: str) -> str | None:
@@ -166,40 +190,53 @@ def _scene_line(line: str) -> str | None:
                   lambda m: "Can see " + _names([f"the {x.strip()}" for x in m.group(1).split(",")]) + ".", line)
     line = re.sub(r"Artifacts nearby: ([^.]+)\.", lambda m: f"Notes nearby: {m.group(1)}.", line)
     line = line.replace("Incoming messages: ", "Just heard: ").replace("Nearby: ", "Near: ")
-    return line
+    return _speech(line)
 
 
 def _ago(n) -> str:
     return "1 turn ago" if n == 1 else f"{n} turns ago"
 
 
-def _story(history: list[dict]) -> list[str]:
-    """What happened, oldest first, with repeated turns folded into one line."""
+def _story(history: list[dict], memory: dict | None = None) -> list[str]:
+    """What happened, oldest first. Repeated turns fold into one line, words
+    already quoted are not quoted again, and the graded memory is marked."""
+    memory = memory or {}
     groups = []
     for h in history:
         text = plain(h["text"])
-        if groups and groups[-1]["text"] == text:
+        marked = h["ticks_ago"] == memory.get("ticks_ago") and h["text"] == memory.get("text")
+        if groups and groups[-1]["text"] == text and not marked and not groups[-1]["marked"]:
             groups[-1]["last"] = h["ticks_ago"]
             groups[-1]["count"] += 1
         else:
-            groups.append({"text": text, "first": h["ticks_ago"], "last": h["ticks_ago"], "count": 1})
+            groups.append({"text": text, "first": h["ticks_ago"], "last": h["ticks_ago"], "count": 1, "marked": marked})
+    seen = set()
+
+    def once(m):
+        if (m.group(1), m.group(2)) in seen and len(m.group(2).split()) > 3:
+            return f"{m.group(1)} said the same again."
+        seen.add((m.group(1), m.group(2)))
+        return m.group(0)
+
     lines = []
     for g in groups:
-        if g["count"] == 1:
-            lines.append(f"- {_ago(g['first'])}: {g['text']}")
-            continue
-        head, _, rest = g["text"].partition(". ")
-        head = head.rstrip(".") + f" ({g['count']} times)."
-        when = f"{g['first']} to {g['last']} turns ago"
-        lines.append(f"- {when}: {head}{' ' + rest if rest else ''}")
+        text = re.sub(r'(\w+) said "([^"]*)"\.?', once, g["text"])
+        if g["marked"]:
+            lines.append(f"- {_ago(g['first'])}: {g['text']} [this is the memory below]")
+        elif g["count"] == 1:
+            lines.append(f"- {_ago(g['first'])}: {text}")
+        else:
+            head, _, rest = text.partition(". ")
+            head = head.rstrip(".") + f" ({g['count']} times)."
+            lines.append(f"- {g['first']} to {g['last']} turns ago: {head}{' ' + rest if rest else ''}")
     return lines or ["- Nothing yet."]
 
 
 def visible_text(card: dict) -> str:
     """What a person and the judge both read: what happened, right now, and the memory."""
-    lines = ["What happened:"] + _story(card.get("history", []))
-    lines += ["", "Right now:"] + [x for x in (_scene_line(l) for l in card.get("scene", [])) if x]
     memory = card.get("memory", {})
+    lines = ["What happened:"] + _story(card.get("history", []), memory)
+    lines += ["", "Right now:"] + [x for x in (_scene_line(l) for l in card.get("scene", [])) if x]
     lines += ["", "This came to mind:", f"{_ago(memory.get('ticks_ago'))}: {plain(memory.get('text', ''))}"]
     return "\n".join(lines)
 
@@ -249,36 +286,67 @@ def normalize(label) -> str | None:
             "doesnt_matter": "doesnt_matter", "noise": "noise"}.get(key)
 
 
-def ratings(card_set: str) -> dict[str, dict[str, dict]]:
-    """rater -> card_id -> {label, reason}"""
+def _read_ratings(path: Path) -> dict[str, dict]:
+    with open(path, newline="") as f:
+        return {r["card_id"]: r for r in csv.DictReader(f)}
+
+
+def ratings(card_set: str, stale: list | None = None) -> dict[str, dict[str, dict]]:
+    """rater -> card_id -> {label, reason}. A grade counts only for the exact
+    text the person read. Grades on older wording go into stale."""
+    current = {c["card_id"]: text_hash(c) for c in load_cards(card_set)}
     out = {}
     for path in sorted(set_dir(card_set).glob("ratings_*.csv")):
-        with open(path, newline="") as f:
-            rows = {r["card_id"]: {"label": normalize(r.get("label")), "reason": r.get("reason", "")}
-                    for r in csv.DictReader(f)}
-        rows = {k: v for k, v in rows.items() if v["label"]}
+        rows = {}
+        for card_id, row in _read_ratings(path).items():
+            if not normalize(row.get("label")):
+                continue
+            if current.get(card_id) != row.get("text_hash"):
+                if stale is not None:
+                    stale.append(card_id)
+                continue
+            rows[card_id] = {"label": normalize(row["label"]), "reason": row.get("reason", ""),
+                             "saved_at": float(row.get("saved_at") or 0)}
         out[path.stem.removeprefix("ratings_")] = rows
     return out
 
 
 def save_rating(card_set: str, rater: str, card_id: str, label: str | None, reason: str = "") -> None:
-    rater = safe_name(rater)
+    rater = safe_name(rater).lower()
+    card = next((c for c in load_cards(card_set) if c["card_id"] == card_id), None)
+    if card is None:
+        raise ValueError(f"no card {card_id} in {card_set}")
     path = set_dir(card_set) / f"ratings_{rater}.csv"
-    rows = {}
-    if path.exists():
-        with open(path, newline="") as f:
-            rows = {r["card_id"]: r for r in csv.DictReader(f)}
+    rows = _read_ratings(path) if path.exists() else {}
     label = normalize(label) if label else None
     if label:
-        rows[card_id] = {"card_id": card_id, "label": label, "reason": reason.strip()}
+        rows[card_id] = {"card_id": card_id, "label": label, "reason": reason.strip(),
+                         "text_hash": text_hash(card), "saved_at": round(time.time(), 1)}
     else:
         rows.pop(card_id, None)
     tmp = path.with_suffix(".tmp")
     with open(tmp, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["card_id", "label", "reason"])
+        writer = csv.DictWriter(f, fieldnames=["card_id", "label", "reason", "text_hash", "saved_at"])
         writer.writeheader()
         writer.writerows(rows.values())
     os.replace(tmp, path)
+
+
+def for_rater(card_set: str, rater: str) -> list[tuple[dict, dict | None]]:
+    """(card, this person's grade), their finished cards first. Then the cards
+    with the fewest grades, in an order of their own, so grades spread evenly."""
+    rater = safe_name(rater).lower() if rater else ""
+    rated = ratings(card_set)
+    counts = Counter(card_id for rows in rated.values() for card_id in rows)
+    mine = rated.get(rater, {})
+
+    def rank(card):
+        cid = card["card_id"]
+        if cid in mine:
+            return (0, mine[cid]["saved_at"], "")
+        return (1, counts[cid], hashlib.sha1(f"{rater}|{cid}".encode()).hexdigest())
+
+    return [(c, mine.get(c["card_id"])) for c in sorted(load_cards(card_set), key=rank)]
 
 
 def human_majority(rated: dict[str, dict[str, dict]]) -> dict[str, str]:
@@ -322,7 +390,7 @@ def ask(client, model: str, prompt: dict, card: dict) -> dict:
         label, reason = None, raw
     usage = reply.usage
     return {"card_id": card["card_id"], "label": label or "unparsed", "reason": reason,
-            "input_tokens": usage.prompt_tokens if usage else 0,
+            "text_hash": text_hash(card), "input_tokens": usage.prompt_tokens if usage else 0,
             "output_tokens": usage.completion_tokens if usage else 0}
 
 
@@ -347,7 +415,8 @@ def run_judge(card_set: str, prompt_name: str, model: str, card_ids=None, progre
         for line in out.read_text().splitlines():
             row = json.loads(line)
             previous[row["card_id"]] = row
-    todo = [c for c in cards if previous.get(c["card_id"], {}).get("label") in (None, "unparsed")]
+    todo = [c for c in cards if previous.get(c["card_id"], {}).get("label") in (None, "unparsed")
+            or previous[c["card_id"]].get("text_hash") != text_hash(c)]
     done = 0
     if progress:
         progress(done, len(todo))
@@ -419,8 +488,9 @@ def krippendorff_alpha(raters: dict[str, dict[str, str]]):
 
 def report(card_set: str) -> dict:
     cards = load_cards(card_set)
-    split = {c["card_id"]: split_of(c["card_id"]) for c in cards}
-    rated = ratings(card_set)
+    split = {c["card_id"]: split_of(c) for c in cards}
+    stale = []
+    rated = ratings(card_set, stale)
     majority = human_majority(rated)
     humans = {r: {k: v["label"] for k, v in rows.items()} for r, rows in rated.items()}
 
@@ -451,6 +521,7 @@ def report(card_set: str) -> dict:
         "cards": len(cards),
         "split": dict(Counter(split.values())),
         "raters": {r: len(rows) for r, rows in rated.items()},
+        "stale": len(stale),
         "majority": {"n": len(majority), **{g: sum(1 for k in majority if split.get(k) == g) for g in ("tuning", "held_out")}},
         "human_pairs": pairs,
         "human_alpha": krippendorff_alpha(humans) if len(humans) >= 2 else None,
@@ -469,12 +540,13 @@ def disagreements(card_set: str, run_name: str) -> list[dict]:
     out = []
     for card_id, truth in majority.items():
         row = rows.get(card_id)
-        if not row or split_of(card_id) != "tuning" or row["label"] == truth or card_id not in cards:
+        card = cards.get(card_id)
+        if not row or not card or split_of(card) != "tuning" or row["label"] == truth:
             continue
-        card = cards[card_id]
         out.append({
             "card_id": card_id,
             "text": visible_text(card),
+            "memory": plain(card["memory"]["text"]),
             "people": [{"rater": r, "label": rows_[card_id]["label"], "reason": rows_[card_id]["reason"]}
                        for r, rows_ in rated.items() if card_id in rows_],
             "majority": truth,
