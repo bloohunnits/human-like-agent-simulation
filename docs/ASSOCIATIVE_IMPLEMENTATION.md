@@ -30,7 +30,7 @@ The main source policy is explicitly observed entities. Names inside free-form c
 - One committed retrieval per agent tick. Repeated event IDs return the original result; changed requests, stale previews, and backwards time are rejected. API transport retries do not double-rehearse.
 - Only selected memories receive Hou rehearsal. Only a selected target's graph-winning route can learn; ties credit direct access. Shared route edges update once per event. Alternate routes and graph-off counterfactual selections are logged.
 - Renewal starts from decayed edge transmission, not its old stored weight. h has a finite cap. Unselected memories receive no partial g refresh.
-- The prompt contains selected episode text, an intention-only plan capped at 60 tokens, current observation and feedback. It contains no retrieval scores. The separate upstream recent-turn history is omitted by default; `working_history` can explicitly enable a matched recent buffer.
+- The prompt contains selected episode text, TerraLingua's own free notes (150 tokens, as in the paper), current observation and feedback. `--plan-notes` swaps the notes for an intention-only plan capped at 60 tokens. It contains no retrieval scores. The separate upstream recent-turn history is omitted by default; `working_history` can explicitly enable a matched recent buffer.
 - One episode is encoded per turn. The memory says which action was chosen, not that its outcome already occurred. Next-turn environment feedback is recorded as feedback from the preceding action. Tags can refer to a contemplated action, but the nearby-person/artifact description comes only from observation.
 - People, artifacts, inventory items and message senders provide observed entity cues. Optional configured place labels appear only within the actual observation footprint. These are map annotations, not new wells/resources or physical simulation mechanics. Free-form references to absent entities are not extracted.
 - Graph state and memories are embedded in the same world checkpoint. Atomic memory dumps serve the viewer; they are never substituted for checkpoint state during resume. Legacy checkpoints without synchronized memory state fail explicitly instead of overwriting history with an empty or future store.
@@ -92,6 +92,12 @@ Resume with the original name/root and a larger final tick:
 
 Resume loads the saved memory configuration and landmark map. Do not supply a new memory condition on resume. Start a separate run for another condition. A fresh launch refuses to overwrite an existing experiment directory.
 
+### Through the proxy
+
+`make run NAME=world7 TICKS=300` from the repo root starts the proxy in `code/integration_layer/` and then this runner with the settings of the six gpt-5-mini worlds behind `output/analysis/rescued/anchor_v1`. TerraLingua asks for the paper's DeepSeek model on ports 9000 and 9001, and the proxy sends each request to `MODEL_NAME` (default `gpt-5-mini` with `REASONING_EFFORT=low`). Set `OPENAI_BASE_URL` and `OPENAI_API_KEY` to use another OpenAI-compatible service. The run saves the model that answered as `actor_model` in `memory_config.json`. Output goes to `logs/terralingua.log` and `logs/proxy.log`, where model errors such as running out of credit are written.
+
+In this mode TerraLingua adds the paper's DeepSeek line ("do NOT spend too much time and tokens reasoning") to each prompt, so label these worlds separately from direct runs when pooling.
+
 ## Inspect actual decisions
 
 ```bash
@@ -137,6 +143,6 @@ Choose an empty output path. Without `--sbert`, this smoke test uses determinist
 - Crowd counts include all retained memories in a hub, even when some edges have faded. They may over-penalize long-lived agents. An activity-weighted fan is a separate model change, not silently substituted here.
 - One episode per turn means same-tick links normally do not occur in live writing. Temporal/shared-hub memory-source routes are implemented and tested but off in the primary condition.
 - Entity tags are normalized explicit names, not a learned identity resolver. Initial character names are unique across the numeric spawn sequence; duplicate user/chosen character or artifact names can still conflate entities. Avoid ambiguous names in controlled experiments.
-- The plan is bounded, rejects recognizable echoes of the retrieval slot, and is prompted to contain intentions, but an LLM can still write historical content into it. Audit that leakage; the code cannot certify semantic compliance.
+- With `--plan-notes`, the plan is bounded, rejects recognizable echoes of the retrieval slot, and is prompted to contain intentions, but an LLM can still write historical content into it. Audit that leakage; the code cannot certify semantic compliance.
 - Returning text to the prompt is the engineering definition of full recall. It does not prove that the LLM attended to or acted on it.
 - Retrieval scans stored episodes; there is no approximate vector index or pruning policy. Repeated near-identical episodes and full audit traces can grow large. Performance/representation changes should preserve the comparison conditions.

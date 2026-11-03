@@ -287,7 +287,8 @@ def load_run(run_dir, min_age):
     rate = 100.0 * rescues_total / ticks_total if ticks_total else 0.0
     print(f"run {run}: {ticks_total} ticks, {rescues_total} rescues ({rate:.1f} per 100) in {len(turns)} moments")
     print("  per agent: " + (", ".join(f"{t}={n}" for t, n in sorted(per_agent.items())) or "none"))
-    info = {"run": run, "run_dir": str(run_dir), "actor_model": (params.get("agent") or {}).get("model"),
+    info = {"run": run, "run_dir": str(run_dir),
+            "actor_model": mem_cfg.get("actor_model") or (params.get("agent") or {}).get("model"),
             "actor_effort": mem_cfg.get("effort", "low"), "plan_notes": mem_cfg.get("plan_notes", not mem_cfg.get("paper_prompt", False)),
             "memory_window": (mem_cfg.get("memory") or {}).get("working_history")}
     return turns, info

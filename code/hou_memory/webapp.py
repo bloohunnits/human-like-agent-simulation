@@ -61,6 +61,10 @@ def _run_model(dir_path: Path):
     import json as _json
 
     try:
+        # Runs through the proxy save the model that really answered
+        cfg = dir_path.parent / "memory_config.json"
+        if cfg.exists() and (m := _json.load(open(cfg)).get("actor_model")):
+            return m
         p = _json.load(open(dir_path.parent / "params.json"))
         return p.get("agent", {}).get("model")
     except Exception:

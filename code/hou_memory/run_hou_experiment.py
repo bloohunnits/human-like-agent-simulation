@@ -168,11 +168,17 @@ def configure_memory(params, options, resume):
         if path.parent.exists() and any(path.parent.iterdir()):
             raise ValueError(f"Experiment already exists: {path.parent}. Choose a new exp_name or resume it.")
         path.parent.mkdir(parents=True, exist_ok=True)
+        # A model we don't call directly is reached through the proxy on its
+        # ports, so params.json names the model TerraLingua asked for, not the
+        # one that answered. Save the real one the proxy was started with.
+        proxied = params.agent.model not in GPT5_MODELS
         with open(path, "x") as f:
             HouMemoryAgent.plan_notes = options.plan_notes
             _effort = options.effort
             json.dump({"schema_version": 1, "memory": asdict(cfg), "landmarks": _landmarks,
-                       "plan_notes": options.plan_notes, "effort": _effort}, f, indent=2)
+                       "plan_notes": options.plan_notes,
+                       "actor_model": os.environ.get("MODEL_NAME") if proxied else params.agent.model,
+                       "effort": os.environ.get("REASONING_EFFORT") if proxied else _effort}, f, indent=2)
     HouMemoryAgent.memory_config = cfg
 
 # The proposal specifies GPT-5 Nano, but TerraLingua's router doesn't list
