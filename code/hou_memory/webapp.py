@@ -604,6 +604,162 @@ def api_load_preset():
     return jsonify(_state_payload())
 
 
+
+# ---------- believability judge workbench (/judge) ----------
+# People label rescued memories, the judge is tuned on the tuning cards and
+# checked on held-out cards. Files and statistics live in judging.py.
+import json  # noqa: E402
+import subprocess  # noqa: E402
+import sys  # noqa: E402
+import threading  # noqa: E402
+import uuid  # noqa: E402
+
+import judging  # noqa: E402
+
+JUDGE_JOBS = {}
+
+
+def _json_error(exc, code=400):
+    return jsonify({"error": str(exc)}), code
+
+
+@app.route("/judge")
+@app.route("/rescued")
+def judge_page():
+    return send_from_directory("static", "judge.html")
+
+
+@app.route("/api/judge/meta")
+def api_judge_meta():
+    runs = []
+    for agent_logs in {p.parent for p in TERRALINGUA_ROOT.rglob("*_memory_audit.jsonl")}:
+        run_dir = agent_logs.parent
+        try:  # plain decay runs have the graph off, so they never rescue anything
+            if json.loads((run_dir / "memory_config.json").read_text())["memory"]["mode"] == "hou":
+                continue
+        except (OSError, KeyError, ValueError):
+            pass
+        runs.append({"path": str(run_dir), "name": run_dir.name, "mtime": agent_logs.stat().st_mtime,
+                     "ready": (judging.CARDS_ROOT / run_dir.name / "cards.jsonl").exists()})
+    runs.sort(key=lambda r: (not r["ready"], -r["mtime"]))
+    return jsonify({"runs": runs, "prompts": judging.prompts(),
+                    "models": list(judging.JUDGE_MODELS), "labels": judging.LABEL_NAMES})
+
+
+@app.route("/api/judge/cards")
+def api_judge_cards():
+    try:
+        card_set, rater = request.args.get("set", ""), request.args.get("rater", "")
+        cards = judging.load_cards(card_set)
+        mine = judging.ratings(card_set).get(judging.safe_name(rater), {}) if rater else {}
+        runs = judging.judge_runs(card_set)
+        out = []
+        for c in cards:
+            memory = c.get("memory") or {}
+            out.append({
+                "card_id": c["card_id"], "split": judging.split_of(c["card_id"]),
+                "text": judging.visible_text(c),
+                "memory": memory.get("text", "") if isinstance(memory, dict) else str(memory),
+                "mine": mine.get(c["card_id"]),
+                "judges": {name: {"label": rows[c["card_id"]]["label"], "reason": rows[c["card_id"]]["reason"]}
+                           for name, rows in runs.items() if c["card_id"] in rows},
+            })
+        return jsonify({"cards": out})
+    except (ValueError, OSError) as e:
+        return _json_error(e)
+
+
+@app.route("/api/judge/label", methods=["POST"])
+def api_judge_label():
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        judging.save_rating(data.get("set", ""), data.get("rater", ""), data.get("card_id", ""),
+                            data.get("label"), data.get("reason", ""))
+        return jsonify({"ok": True})
+    except (ValueError, OSError) as e:
+        return _json_error(e)
+
+
+@app.route("/api/judge/prompt", methods=["POST"])
+def api_judge_prompt():
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        saved = judging.save_prompt(data.get("parent"), data.get("world", ""), data.get("task", ""),
+                                    data.get("definitions") or {}, data.get("note", ""))
+        return jsonify(saved)
+    except (ValueError, OSError) as e:
+        return _json_error(e)
+
+
+@app.route("/api/judge/run", methods=["POST"])
+def api_judge_run():
+    data = request.get_json(force=True, silent=True) or {}
+    card_set, prompt, model = data.get("set", ""), data.get("prompt", ""), data.get("model", "")
+    try:
+        judging.set_dir(card_set)
+        if prompt not in judging.prompts():
+            raise ValueError(f"no judge instructions named {prompt}")
+        if model not in judging.JUDGE_MODELS:
+            raise ValueError(f"unknown judge model {model}")
+        ids = None
+        if data.get("scope", "labeled") == "labeled":
+            ids = set(judging.human_majority(judging.ratings(card_set)))
+            if not ids:
+                raise ValueError("nobody has labeled a card in this set yet")
+    except (ValueError, OSError) as e:
+        return _json_error(e)
+    job_id = uuid.uuid4().hex[:8]
+    job = JUDGE_JOBS[job_id] = {"done": 0, "total": None, "status": "running", "error": None}
+
+    def progress(done, total):
+        job["done"], job["total"] = done, total
+
+    def work():
+        try:
+            judging.run_judge(card_set, prompt, model, ids, progress)
+            job["status"] = "finished"
+        except Exception as e:  # surfaced to the page
+            job["status"], job["error"] = "failed", str(e)
+
+    threading.Thread(target=work, daemon=True).start()
+    return jsonify({"job": job_id})
+
+
+@app.route("/api/judge/job/<job_id>")
+def api_judge_job(job_id):
+    job = JUDGE_JOBS.get(job_id)
+    return jsonify(job) if job else _json_error("no such job", 404)
+
+
+@app.route("/api/judge/report")
+def api_judge_report():
+    try:
+        return jsonify(judging.report(request.args.get("set", "")))
+    except (ValueError, OSError) as e:
+        return _json_error(e)
+
+
+@app.route("/api/judge/disagreements")
+def api_judge_disagreements():
+    try:
+        return jsonify({"items": judging.disagreements(request.args.get("set", ""), request.args.get("run", ""))})
+    except (ValueError, OSError) as e:
+        return _json_error(e)
+
+
+@app.route("/api/judge/make_cards", methods=["POST"])
+def api_judge_make_cards():
+    data = request.get_json(force=True, silent=True) or {}
+    run_dir = Path(data.get("path", "")).resolve()
+    if TERRALINGUA_ROOT.resolve() not in run_dir.parents or not (run_dir / "agent_logs").is_dir():
+        return _json_error("that is not a simulation run folder")
+    out = judging.CARDS_ROOT / run_dir.name
+    result = subprocess.run([sys.executable, str(judging.ROOT / "scripts/rescued_cards.py"), str(run_dir),
+                             "--out", str(out)], capture_output=True, text=True, timeout=600)
+    if result.returncode != 0:
+        return _json_error(result.stderr.strip()[-600:] or "card extraction failed", 500)
+    return jsonify({"set": run_dir.name, "log": result.stdout.strip()[-1200:]})
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
@@ -616,7 +772,8 @@ if __name__ == "__main__":
             parser.error("--run-dir must contain memory dumps")
         EXTRA_EXPERIMENTS.append(directory)
     _init_state()
-    print(f"\nSimulation audit: http://127.0.0.1:{args.port}/audit\n")
+    print(f"\nSimulation audit: http://127.0.0.1:{args.port}/audit")
+    print(f"Rescued set and judge: http://127.0.0.1:{args.port}/rescued\n")
     # threaded=False: STATE is a plain dict shared by every request; the
     # console is single-user and the client serializes its calls anyway
     app.run(host="127.0.0.1", port=args.port, debug=False, threaded=False)

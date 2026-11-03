@@ -20,7 +20,8 @@
     "memory_sources": false,
     "seed_threshold": 0.1,
     "seed_budget": 3,
-    "working_history": 0
+    "working_history": 0,
+    "entity_hops": 1
   },
   "memory_text": "Chose action move: {\"direction\": \"stay\"}. Nearby: Mia. Artifacts here: blue pinwheel. Feedback from the preceding action: {'event': 'Mia gave me food and my energy increased.'}. Heard Mia said \"I'm usually here.\".",
   "cue_entities": {

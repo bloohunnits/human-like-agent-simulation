@@ -25,12 +25,14 @@ The live embedding query does not automatically include hunger/energy. The fixtu
 
 See [implementation and setup](docs/ASSOCIATIVE_IMPLEMENTATION.md) and [mathematical design](docs/INDEPENDENT_GRAPH_MEMORY_DESIGN.md). Main conditions: `hou`, `independent`, `learned`. `gated` is historical; ACT-R is outside the current experiment.
 
+2026-09-29: `MemoryConfig.entity_hops` (1 or 2, default 1) and the launcher condition `chained` let an observed entity continue one step past a tagged episode, so a cue can reach an episode that never mentions it. With the default the engine is bit-identical to before (verified against the previous version on randomized fixtures). The episode writer now records energy rises ("Energy rose from 25 to 45."), because the world never tells a receiver that it was given food. `scripts/pinwheel_split_walkthrough.py` is the worked example with the cue and the payoff in different records, and `scripts/pinwheel_gap_walkthrough.py` the ten-tick gap where only the route through Mia reaches the food line; see [TEAM_CATCHUP.md](docs/TEAM_CATCHUP.md) for the numbers. That gap case is why `chained` starts fresh links at weight 1.0 (at .8 the three-link route fades before similarity does). The deck still shows the one-record example.
+
 ## Verification
 
 Rerun on 2026-09-28:
 
-- 22 current mechanism/actual-agent integration tests, all passed.
-- 14 kernel checks and 15 historical graph checks, all passed: **51 total**.
+- 25 current mechanism/actual-agent integration tests, all passed (three added 2026-09-29: two-hop routes, hub bridges, the energy line).
+- 14 kernel checks and 15 historical graph checks, all passed: **54 total**.
 - Pinwheel fixture with cached MiniLM and the stronger hunger-aware query.
 - Logical audit: displacement, crowded-cue failure, seven lookup-equivalence fixtures and 10,000 fixed-seed invariant samples.
 - Actual TerraLingua smoke: two agents, 12 ticks, identical memory/graph restore at tick 8, real local MiniLM, scripted generation, zero generation API calls.
@@ -41,6 +43,7 @@ From the repository root, after setup:
 
 ```bash
 code/terralingua/.venv/bin/python scripts/pinwheel_walkthrough.py
+code/terralingua/.venv/bin/python scripts/pinwheel_split_walkthrough.py
 code/terralingua/.venv/bin/python scripts/logical_memory_audit.py
 code/terralingua/.venv/bin/python -m unittest discover -s code/hou_memory -p 'test_*memory*.py' -v
 code/terralingua/.venv/bin/python code/hou_memory/test_hou_memory.py

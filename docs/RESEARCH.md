@@ -36,6 +36,19 @@ On the association question, because a sharp reviewer will ask: classic ACT-R th
 
 Two lines from the paper that matter for us. Limitations: "Memory chunks were treated as independent sentences. The model does not yet support more complex episodic memory or hierarchical/semantic relationships between memories." Future work: "Extend the model to incorporate graph-based representations of relationships among memory chunks, enabling more complex associations and inference." The paper's own future-work section calls for exactly what this project builds. It also lists emotional salience as unmodeled, which matches our affective-edges stretch goal.
 
+**Novelty re-check, 2026-09-29 (six papers read in full).** The wording above is now too broad: several 2025 and 2026 systems give memories relations, and two update relation strengths with use. None of them evaluates inside a running social simulation, uses a perceived entity as the cue, or measures believability, so the claim has to be narrowed to that.
+
+| System | Forgetting or decay | Relations between memories | Relation strength changes with use | Evaluated in an agent simulation |
+| --- | --- | --- | --- | --- |
+| [HeLa-Mem](https://arxiv.org/abs/2604.16839) (ACL 2026) | yes, time decay on the base score | untyped weighted graph over conversation turns | yes, Hebbian: edges strengthen when two memories are retrieved together and decay otherwise | no, dialogue benchmarks |
+| [Synapse](https://arxiv.org/abs/2601.02744) (2026) | yes | typed: temporal, co-occurrence within a window, concept association | no | no |
+| [Hindsight](https://arxiv.org/abs/2512.12818) (Dec 2025) | no | typed: entity, temporal, semantic, causal, with static weights, spreading-activation BFS | no | no |
+| [REALM](https://arxiv.org/abs/2609.16053) (Sept 2026) | no time decay | typed graph with confidence weights | yes, weights revised on retrieval (reconsolidation) | no |
+| [MaRS / FiFA](https://arxiv.org/abs/2512.12856) (Dec 2025) | budget-triggered eviction | typed graph plus entity index | no | generative agents, but a privacy benchmark |
+| [Human-Inspired Memory Architecture](https://arxiv.org/abs/2605.08538) (Microsoft, May 2026) | yes | entity graph, traversal seeded by vector search | no; its own future work asks for use-based strengthening | no, LongMemEval |
+
+Safe claim: relational memory for LLM agents exists on chat and QA benchmarks. What no one has tested is an association that ages on its own clock, next to a human forgetting curve, inside a multi-agent world where the cue is something the agent sees, with believability as the outcome. Cite HeLa-Mem and Synapse as the nearest prior work whenever the graph is presented.
+
 ### Also relevant
 
 - [MemoryBank](https://arxiv.org/abs/2305.10250) (AAAI 2024). Ebbinghaus curve `R = e^(−t/S)`. Each recall increments `S` and resets `t`, and decay can delete outright. Relevance is retrieval-side (FAISS cosine), not fused into the score.

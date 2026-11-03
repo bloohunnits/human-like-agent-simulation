@@ -1,0 +1,3413 @@
+{
+  "scope": "Constructed two-episode fixture. Real writer, encoder and scoring; no LLM/world rollout.",
+  "episode_scope": "Both episodes are built only from observation fields the sandbox provides: agents and artifacts in view, broadcast messages and the agent's energy. Nothing is supplied as feedback text.",
+  "query_scope": "The hunger line is appended for this stronger probe; the live query is the observation and messages only. Similarities and direct end ticks are reported for both.",
+  "vision_scope": "vision_radius is 1 here so one move hides the pinwheel. The project default is 6, under which the pinwheel stays in view for several ticks and the payoff usually lands in a record that also mentions it (the one-record case). The split case arises when the payoff comes after the cue has left view.",
+  "route_scope": "The winning route is the followed edge, which is content-blind: whatever was recorded the tick after a sighting comes back with it. The pinwheel-Mia-food chain is the meaningful route but multiplies three transmissions, so at the current edge weight it fades at about the same tick as similarity; the if_edge_weight_1 figure shows what a stronger fresh edge would give. memory_sources is off, so no similarity-seeded routes exist.",
+  "config": {
+    "mode": "independent",
+    "edge_learning": false,
+    "beta": 0.5,
+    "edge_weight": 0.8,
+    "retention": 100.0,
+    "retention_cap": 200.0,
+    "learning_rate": 0.2,
+    "retention_increment": 25.0,
+    "threshold": 0.15,
+    "top_k": 3,
+    "token_budget": 600,
+    "time_scale": 25.0,
+    "g0": 1.0,
+    "memory_sources": false,
+    "seed_threshold": 0.1,
+    "seed_budget": 3,
+    "working_history": 0,
+    "entity_hops": 2
+  },
+  "memory_texts": [
+    "Chose action move: {\"direction\": \"up\"}. Nearby: Mia. Artifacts here: blue pinwheel. Heard Mia said \"I'm usually here.\".",
+    "Chose action move: {\"direction\": \"stay\"}. Nearby: Mia. Energy rose from 25 to 45. Heard Mia said \"Here, have some food.\"."
+  ],
+  "query": "Observation: (-1, 1): \n (0, 1): \n (1, 1): \n (-1, 0): \n (0, 0): yourself\n (1, 0): \n (-1, -1): \n (0, -1): A(text): blue pinwheel\n (1, -1): \n \nIncoming messages: <none>\nI am hungry. Current goal: find food.",
+  "observation_only_query": "Observation: (-1, 1): \n (0, 1): \n (1, 1): \n (-1, 0): \n (0, 0): yourself\n (1, 0): \n (-1, -1): \n (0, -1): A(text): blue pinwheel\n (1, -1): \n \nIncoming messages: <none>",
+  "cue_entities": {
+    "people": [],
+    "artifacts": [
+      "blue pinwheel"
+    ],
+    "places": []
+  },
+  "raw_similarity": {
+    "sighting": 0.32611706852912903,
+    "food": 0.35373178124427795,
+    "sighting_observation_only": 0.3469911813735962,
+    "food_observation_only": 0.20588208734989166
+  },
+  "food_routes_at_tick_1": [
+    {
+      "edges": 2,
+      "contribution": 0.3168159467997338,
+      "edge_ids": [
+        "edge:da7ee79e51071f89f606c791",
+        "edge:6f0c24c0bac9297af3e6fc73"
+      ]
+    },
+    {
+      "edges": 3,
+      "contribution": 0.2509308603665294,
+      "edge_ids": [
+        "edge:da7ee79e51071f89f606c791",
+        "edge:db18119039e35662142f4a83",
+        "edge:4413f10f8f5d9d3dd91a614b"
+      ]
+    }
+  ],
+  "thresholds": {
+    "sighting_association_end_tick": 139.01081932044355,
+    "sighting_direct_end_tick": 29.647501722940927,
+    "food_followed_route_end_tick": 58.848232094511296,
+    "food_hub_chain_end_tick": 31.794036352533876,
+    "food_hub_chain_end_tick_if_edge_weight_1": 54.10839148395485,
+    "food_direct_end_tick": 32.679564798616966,
+    "sighting_direct_end_tick_observation_only_query": 31.198575295285725,
+    "food_direct_end_tick_observation_only_query": 19.148681487552462
+  },
+  "probes": {
+    "1": {
+      "tick": 1,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.5173170129344682,
+      "one_hop_food_score": 0.4713290007798001,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.5173170129344682,
+      "two_hop_food_score": 0.4713290007798001,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.4713290007798001,
+      "sighting_direct_score": 0.42553787562722617
+    },
+    "31": {
+      "tick": 31,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.40223400799740483,
+      "one_hop_food_score": 0.15987880032640778,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.40223400799740483,
+      "two_hop_food_score": 0.25247679251264976,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.15987880032640778,
+      "sighting_direct_score": 0.14246780859544697
+    },
+    "32": {
+      "tick": 32,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3987851097565104,
+      "one_hop_food_score": 0.15392545989337958,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3987851097565104,
+      "two_hop_food_score": 0.2478915661761443,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.15392545989337958,
+      "sighting_direct_score": 0.13713114822484085
+    },
+    "33": {
+      "tick": 33,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3953605960877741,
+      "one_hop_food_score": 0.1481820787217428,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3953605960877741,
+      "two_hop_food_score": 0.24338178666041901,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.1481820787217428,
+      "sighting_direct_score": 0.131985106148564
+    },
+    "58": {
+      "tick": 58,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.31742737569711094,
+      "one_hop_food_score": 0.056214686490540296,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.31742737569711094,
+      "two_hop_food_score": 0.15243861532508587,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.056214686490540296,
+      "sighting_direct_score": 0.0498964579679357
+    },
+    "59": {
+      "tick": 59,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3146062704216235,
+      "one_hop_food_score": 0.054048575946196956,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3146062704216235,
+      "two_hop_food_score": 0.14956758955703445,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.054048575946196956,
+      "sighting_direct_score": 0.04796996332396945
+    },
+    "100": {
+      "tick": 100,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.21647301047373563,
+      "one_hop_food_score": 0.010631745364175852,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.21647301047373563,
+      "two_hop_food_score": 0.0677080173268883,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.010631745364175852,
+      "sighting_direct_score": 0.00942104986983262
+    },
+    "139": {
+      "tick": 139,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.15001543479140994,
+      "one_hop_food_score": 0.0022400667780069915,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.15001543479140994,
+      "two_hop_food_score": 0.03140562363540155,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0022400667780069915,
+      "sighting_direct_score": 0.0019843751089681934
+    },
+    "140": {
+      "tick": 140,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.14859517577570777,
+      "one_hop_food_score": 0.0021522922805988693,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.14859517577570777,
+      "two_hop_food_score": 0.030789842393960827,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0021522922805988693,
+      "sighting_direct_score": 0.0019066135549989172
+    }
+  },
+  "curve": [
+    {
+      "tick": 1,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.5173170129344682,
+      "one_hop_food_score": 0.4713290007798001,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.5173170129344682,
+      "two_hop_food_score": 0.4713290007798001,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.4713290007798001,
+      "sighting_direct_score": 0.42553787562722617
+    },
+    {
+      "tick": 2,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.5131134830595211,
+      "one_hop_food_score": 0.455816965731287,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.5131134830595211,
+      "two_hop_food_score": 0.455816965731287,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.455816965731287,
+      "sighting_direct_score": 0.4112424188018157
+    },
+    {
+      "tick": 3,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.5089354295689846,
+      "one_hop_food_score": 0.44070912810928387,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.5089354295689846,
+      "two_hop_food_score": 0.44070912810928387,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.44070912810928387,
+      "sighting_direct_score": 0.3973410644607925
+    },
+    {
+      "tick": 4,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.5047828600649971,
+      "one_hop_food_score": 0.4260027983792322,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.5047828600649971,
+      "two_hop_food_score": 0.4260027983792322,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.4260027983792322,
+      "sighting_direct_score": 0.3838293303025342
+    },
+    {
+      "tick": 5,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.500655778518957,
+      "one_hop_food_score": 0.41169463708407594,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.500655778518957,
+      "two_hop_food_score": 0.41169463708407594,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.41169463708407594,
+      "sighting_direct_score": 0.3707022538399036
+    },
+    {
+      "tick": 6,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4965541853387085,
+      "one_hop_food_score": 0.39778071345427674,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4965541853387085,
+      "two_hop_food_score": 0.39778071345427674,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.39778071345427674,
+      "sighting_direct_score": 0.35795444305840346
+    },
+    {
+      "tick": 7,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.49247807743531563,
+      "one_hop_food_score": 0.38425656145260506,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.49247807743531563,
+      "two_hop_food_score": 0.3875281651687674,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.38425656145260506,
+      "sighting_direct_score": 0.34558012439074715
+    },
+    {
+      "tick": 8,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4884274482894103,
+      "one_hop_food_score": 0.37111723318774503,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4884274482894103,
+      "two_hop_food_score": 0.38086374770782117,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.37111723318774503,
+      "sighting_direct_score": 0.33357318801567526
+    },
+    {
+      "tick": 9,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.48440228801709545,
+      "one_hop_food_score": 0.3583573496583956,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.48440228801709545,
+      "two_hop_food_score": 0.3742952089608589,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.3583573496583956,
+      "sighting_direct_score": 0.32192723050707917
+    },
+    {
+      "tick": 10,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.48040258343538794,
+      "one_hop_food_score": 0.34597114881386726,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.48040258343538794,
+      "two_hop_food_score": 0.36782187571282643,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.34597114881386726,
+      "sighting_direct_score": 0.31063559487507436
+    },
+    {
+      "tick": 11,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4764283181271883,
+      "one_hop_food_score": 0.33395253093837735,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4764283181271883,
+      "two_hop_food_score": 0.3614430501099511,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.33395253093837735,
+      "sighting_direct_score": 0.2996914080538247
+    },
+    {
+      "tick": 12,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4724794725057592,
+      "one_hop_food_score": 0.322295101384562,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4724794725057592,
+      "two_hop_food_score": 0.3551580111192128,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.322295101384562,
+      "sighting_direct_score": 0.2890876159018677
+    },
+    {
+      "tick": 13,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.46855602387870376,
+      "one_hop_food_score": 0.3109922106973855,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.46855602387870376,
+      "two_hop_food_score": 0.34896601594602106,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.3109922106973855,
+      "sighting_direct_score": 0.278817015789655
+    },
+    {
+      "tick": 14,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4646579465114269,
+      "one_hop_food_score": 0.30003699218286173,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4646579465114269,
+      "two_hop_food_score": 0.34286630141030583,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.30003699218286173,
+      "sighting_direct_score": 0.2688722868561781
+    },
+    {
+      "tick": 15,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.46078521169006936,
+      "one_hop_food_score": 0.2894223969870199,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.46078521169006936,
+      "two_hop_food_score": 0.3368580852812876,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.2894223969870199,
+      "sighting_direct_score": 0.25924601802212005
+    },
+    {
+      "tick": 16,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4569377877839035,
+      "one_hop_food_score": 0.2791412267595697,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4569377877839035,
+      "two_hop_food_score": 0.330940567571255,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.2791412267595697,
+      "sighting_direct_score": 0.2499307338510956
+    },
+    {
+      "tick": 17,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4531156403071778,
+      "one_hop_food_score": 0.26918616398393286,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4531156403071778,
+      "two_hop_food_score": 0.32511293178872924,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.26918616398393286,
+      "sighting_direct_score": 0.24091891835342594
+    },
+    {
+      "tick": 18,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4493187319804029,
+      "one_hop_food_score": 0.25954980006092454,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4493187319804029,
+      "two_hop_food_score": 0.3193743461514439,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.25954980006092454,
+      "sighting_direct_score": 0.23220303682865495
+    },
+    {
+      "tick": 19,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4455470227910658,
+      "one_hop_food_score": 0.2502246612375375,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4455470227910658,
+      "two_hop_food_score": 0.3137239647596174,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.2502246612375375,
+      "sighting_direct_score": 0.2237755558438254
+    },
+    {
+      "tick": 20,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.44180047005376677,
+      "one_hop_food_score": 0.24120323247519884,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.44180047005376677,
+      "two_hop_food_score": 0.3081609287300296,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.24120323247519884,
+      "sighting_direct_score": 0.2156289614445023
+    },
+    {
+      "tick": 21,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4380790284697687,
+      "one_hop_food_score": 0.23247797935366754,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4380790284697687,
+      "two_hop_food_score": 0.30268436729145537,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.23247797935366754,
+      "sighting_direct_score": 0.20775577569478876
+    },
+    {
+      "tick": 22,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.43438265018595074,
+      "one_hop_food_score": 0.2240413681075768,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.43438265018595074,
+      "two_hop_food_score": 0.29729339884204414,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.2240413681075768,
+      "sighting_direct_score": 0.20014857164123825
+    },
+    {
+      "tick": 23,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4307112848531596,
+      "one_hop_food_score": 0.21588588389262,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4307112848531596,
+      "two_hop_food_score": 0.2919871319692527,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.21588588389262,
+      "sighting_direct_score": 0.1927999867937059
+    },
+    {
+      "tick": 24,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.42706487968395174,
+      "one_hop_food_score": 0.20800404737766579,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.42706487968395174,
+      "two_hop_food_score": 0.2867646664329791,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.20800404737766579,
+      "sighting_direct_score": 0.18570273521391442
+    },
+    {
+      "tick": 25,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4234433795097203,
+      "one_hop_food_score": 0.2003884297577479,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4234433795097203,
+      "two_hop_food_score": 0.28162509411255904,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.2003884297577479,
+      "sighting_direct_score": 0.17884961829988427
+    },
+    {
+      "tick": 26,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.41984672683719987,
+      "one_hop_food_score": 0.19303166628104731,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.41984672683719987,
+      "two_hop_food_score": 0.2765674999183085,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.19303166628104731,
+      "sighting_direct_score": 0.1722335343515049
+    },
+    {
+      "tick": 27,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4162748619043454,
+      "one_hop_food_score": 0.1859264683807154,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4162748619043454,
+      "two_hop_food_score": 0.2715909626683165,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.1859264683807154,
+      "sighting_direct_score": 0.16584748699940766
+    },
+    {
+      "tick": 28,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.41272772273557917,
+      "one_hop_food_score": 0.17906563449978188,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.41272772273557917,
+      "two_hop_food_score": 0.26669455593120445,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.17906563449978188,
+      "sighting_direct_score": 0.15968459257606582
+    },
+    {
+      "tick": 29,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4092052451964021,
+      "one_hop_food_score": 0.17244205969451099,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4092052451964021,
+      "two_hop_food_score": 0.2618773488355783,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.17244205969451099,
+      "sighting_direct_score": 0.15373808650467446
+    },
+    {
+      "tick": 30,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.4057073630473668,
+      "one_hop_food_score": 0.16604874409848105,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.4057073630473668,
+      "two_hop_food_score": 0.25713840684691874,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.16604874409848105,
+      "sighting_direct_score": 0.1480013287779386
+    },
+    {
+      "tick": 31,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.40223400799740483,
+      "one_hop_food_score": 0.15987880032640778,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.40223400799740483,
+      "two_hop_food_score": 0.25247679251264976,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.15987880032640778,
+      "sighting_direct_score": 0.14246780859544697
+    },
+    {
+      "tick": 32,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3987851097565104,
+      "one_hop_food_score": 0.15392545989337958,
+      "one_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3987851097565104,
+      "two_hop_food_score": 0.2478915661761443,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.15392545989337958,
+      "sighting_direct_score": 0.13713114822484085
+    },
+    {
+      "tick": 33,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3953605960877741,
+      "one_hop_food_score": 0.1481820787217428,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3953605960877741,
+      "two_hop_food_score": 0.24338178666041901,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.1481820787217428,
+      "sighting_direct_score": 0.131985106148564
+    },
+    {
+      "tick": 34,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.39196039285876694,
+      "one_hop_food_score": 0.14264214180442267,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.39196039285876694,
+      "two_hop_food_score": 0.23894651192228344,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.14264214180442267,
+      "sighting_direct_score": 0.12702357955459553
+    },
+    {
+      "tick": 35,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3885844240922707,
+      "one_hop_food_score": 0.13729926709000254,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3885844240922707,
+      "two_hop_food_score": 0.23458479967769638,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.13729926709000254,
+      "sighting_direct_score": 0.12224060622624945
+    },
+    {
+      "tick": 36,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3852326120163533,
+      "one_hop_food_score": 0.1321472086514569,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3852326120163533,
+      "two_hop_food_score": 0.23029570799909455,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.1321472086514569,
+      "sighting_direct_score": 0.11763036588289022
+    },
+    {
+      "tick": 37,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.38190487711379223,
+      "one_hop_food_score": 0.1271798591970455,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.38190487711379223,
+      "two_hop_food_score": 0.2260782958854476,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.1271798591970455,
+      "sighting_direct_score": 0.11318718102027739
+    },
+    {
+      "tick": 38,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.37860113817083857,
+      "one_hop_food_score": 0.1223912519785587,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.37860113817083857,
+      "two_hop_food_score": 0.22193162380579146,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.1223912519785587,
+      "sighting_direct_score": 0.10890551729620505
+    },
+    {
+      "tick": 39,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.37532131232532645,
+      "one_hop_food_score": 0.11777556214886682,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.37532131232532645,
+      "two_hop_food_score": 0.21785475421699155,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.11777556214886682,
+      "sighting_direct_score": 0.10477998350418462
+    },
+    {
+      "tick": 40,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3720653151141257,
+      "one_hop_food_score": 0.11332710761758254,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3720653151141257,
+      "two_hop_food_score": 0.21384675205647688,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.11332710761758254,
+      "sighting_direct_score": 0.10080533117510068
+    },
+    {
+      "tick": 41,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.36883306051993875,
+      "one_hop_food_score": 0.1090403494506021,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.36883306051993875,
+      "two_hop_food_score": 0.20990668521067893,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.1090403494506021,
+      "sighting_direct_score": 0.09697645384407992
+    },
+    {
+      "tick": 42,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.36562446101744184,
+      "one_hop_food_score": 0.10490989185636128,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.36562446101744184,
+      "two_hop_food_score": 0.20603362495990762,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.10490989185636128,
+      "sighting_direct_score": 0.09328838601724056
+    },
+    {
+      "tick": 43,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.36243942761877074,
+      "one_hop_food_score": 0.1009304817988286,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.36243942761877074,
+      "two_hop_food_score": 0.20222664640038,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.1009304817988286,
+      "sighting_direct_score": 0.08973630187054206
+    },
+    {
+      "tick": 44,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3592778699183536,
+      "one_hop_food_score": 0.09709700827455613,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3592778699183536,
+      "two_hop_food_score": 0.19848482884411384,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.09709700827455613,
+      "sighting_direct_score": 0.08631551371062823
+    },
+    {
+      "tick": 45,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3561396961370919,
+      "one_hop_food_score": 0.09340450128854032,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3561396961370919,
+      "two_hop_food_score": 0.19480725619738715,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.09340450128854032,
+      "sighting_direct_score": 0.083021470225347
+    },
+    {
+      "tick": 46,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.35302481316588985,
+      "one_hop_food_score": 0.08984813056118401,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.35302481316588985,
+      "two_hop_food_score": 0.1911930173184492,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.08984813056118401,
+      "sighting_direct_score": 0.079849754549549
+    },
+    {
+      "tick": 47,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.34993312660853565,
+      "one_hop_food_score": 0.0864232039963308,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.34993312660853565,
+      "two_hop_food_score": 0.1876412063551691,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0864232039963308,
+      "sighting_direct_score": 0.07679608216979095
+    },
+    {
+      "tick": 48,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3468645408239368,
+      "one_hop_food_score": 0.08312516593811964,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3468645408239368,
+      "two_hop_food_score": 0.1841509230632812,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.08312516593811964,
+      "sighting_direct_score": 0.07385629868971678
+    },
+    {
+      "tick": 49,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3438189589677097,
+      "one_hop_food_score": 0.0799495952423296,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3438189589677097,
+      "two_hop_food_score": 0.18072127310588743,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0799495952423296,
+      "sighting_direct_score": 0.07102637747613798
+    },
+    {
+      "tick": 50,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3407962830331295,
+      "one_hop_food_score": 0.07689220318590136,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3407962830331295,
+      "two_hop_food_score": 0.17735136833485848,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.07689220318590136,
+      "sighting_direct_score": 0.06830241720420054
+    },
+    {
+      "tick": 51,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.33779641389144016,
+      "one_hop_food_score": 0.07394883123646456,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.33779641389144016,
+      "two_hop_food_score": 0.17404032705476266,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.07394883123646456,
+      "sighting_direct_score": 0.0656806393184796
+    },
+    {
+      "tick": 52,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3348192513315293,
+      "one_hop_food_score": 0.07111544870195079,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3348192513315293,
+      "two_hop_food_score": 0.17078727426994272,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.07111544870195079,
+      "sighting_direct_score": 0.06315738542540994
+    },
+    {
+      "tick": 53,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.33186469409896935,
+      "one_hop_food_score": 0.06838815027872591,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.33186469409896935,
+      "two_hop_food_score": 0.16759134191533992,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.06838815027872591,
+      "sighting_direct_score": 0.06072911463110938
+    },
+    {
+      "tick": 54,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3289326399344322,
+      "one_hop_food_score": 0.0657631535151347,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3289326399344322,
+      "two_hop_food_score": 0.1644516690716641,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0657631535151347,
+      "sighting_direct_score": 0.05839240083740027
+    },
+    {
+      "tick": 55,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3260229856114756,
+      "one_hop_food_score": 0.0632367962059064,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3260229856114756,
+      "two_hop_food_score": 0.1613674021654791,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0632367962059064,
+      "sighting_direct_score": 0.05614393000765972
+    },
+    {
+      "tick": 56,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.32313562697370823,
+      "one_hop_food_score": 0.06080553373152559,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.32313562697370823,
+      "two_hop_food_score": 0.15833769515477372,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.06080553373152559,
+      "sighting_direct_score": 0.05398049741304251
+    },
+    {
+      "tick": 57,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.32027045897133927,
+      "one_hop_food_score": 0.05846593635540629,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.32027045897133927,
+      "two_hop_food_score": 0.1553617097005672,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.05846593635540629,
+      "sighting_direct_score": 0.05189900486860692
+    },
+    {
+      "tick": 58,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.31742737569711094,
+      "one_hop_food_score": 0.056214686490540296,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.31742737569711094,
+      "two_hop_food_score": 0.15243861532508587,
+      "two_hop_selected": [
+        "memory:00000000",
+        "memory:00000001"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.056214686490540296,
+      "sighting_direct_score": 0.0498964579679357
+    },
+    {
+      "tick": 59,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3146062704216235,
+      "one_hop_food_score": 0.054048575946196956,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3146062704216235,
+      "two_hop_food_score": 0.14956758955703445,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.054048575946196956,
+      "sighting_direct_score": 0.04796996332396945
+    },
+    {
+      "tick": 60,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.3118070356280539,
+      "one_hop_food_score": 0.05196450316423459,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.3118070356280539,
+      "two_hop_food_score": 0.146747818064474,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.05196450316423459,
+      "sighting_direct_score": 0.04611672582297061
+    },
+    {
+      "tick": 61,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.30902956304627466,
+      "one_hop_food_score": 0.04995947045364445,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.30902956304627466,
+      "two_hop_food_score": 0.14397849477580163,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.04995947045364445,
+      "sighting_direct_score": 0.04433404589778443
+    },
+    {
+      "tick": 62,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.30627374368637544,
+      "one_hop_food_score": 0.04803058123107469,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.30627374368637544,
+      "two_hop_food_score": 0.14125882198931503,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.04803058123107469,
+      "sighting_direct_score": 0.04261931682588026
+    },
+    {
+      "tick": 63,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.30353946787159386,
+      "one_hop_food_score": 0.04617503727427337,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.30353946787159386,
+      "two_hop_food_score": 0.13858801047183314,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.04617503727427337,
+      "sighting_direct_score": 0.04097002205701991
+    },
+    {
+      "tick": 64,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.30082662527065934,
+      "one_hop_food_score": 0.04439013599464151,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.30082662527065934,
+      "two_hop_food_score": 0.13596527954682913,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.04439013599464151,
+      "sighting_direct_score": 0.039383732574821646
+    },
+    {
+      "tick": 65,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.29813510492955553,
+      "one_hop_food_score": 0.04267326773440191,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.29813510492955553,
+      "two_hop_food_score": 0.133389857172519,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.04267326773440191,
+      "sighting_direct_score": 0.03785810429594312
+    },
+    {
+      "tick": 66,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.29546479530270525,
+      "one_hop_food_score": 0.041021913093249304,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.29546479530270525,
+      "two_hop_food_score": 0.13086098001033777,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.041021913093249304,
+      "sighting_direct_score": 0.036390875510125424
+    },
+    {
+      "tick": 67,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2928155842835854,
+      "one_hop_food_score": 0.03943364028876484,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2928155842835854,
+      "two_hop_food_score": 0.1283778934842202,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.03943364028876484,
+      "sighting_direct_score": 0.034979864363880946
+    },
+    {
+      "tick": 68,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.29018735923477357,
+      "one_hop_food_score": 0.03790610255434181,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.29018735923477357,
+      "two_hop_food_score": 0.12593985183109335,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.03790610255434181,
+      "sighting_direct_score": 0.03362296639020225
+    },
+    {
+      "tick": 69,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2875800070174351,
+      "one_hop_food_score": 0.03643703557787334,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2875800070174351,
+      "two_hop_food_score": 0.12354611814297134,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.03643703557787334,
+      "sighting_direct_score": 0.03231815208628404
+    },
+    {
+      "tick": 70,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.28499341402025385,
+      "one_hop_food_score": 0.035024254984002745,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.28499341402025385,
+      "two_hop_food_score": 0.12119596440103717,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.035024254984002745,
+      "sighting_direct_score": 0.031063464540918476
+    },
+    {
+      "tick": 71,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2824274661878129,
+      "one_hop_food_score": 0.0336656538623222,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2824274661878129,
+      "two_hop_food_score": 0.11888867150207595,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0336656538623222,
+      "sighting_direct_score": 0.029857017112898506
+    },
+    {
+      "tick": 72,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2798820490484295,
+      "one_hop_food_score": 0.03235920034352994,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2798820490484295,
+      "two_hop_food_score": 0.1166235292776227,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.03235920034352994,
+      "sighting_direct_score": 0.02869699116149214
+    },
+    {
+      "tick": 73,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2773570477414531,
+      "one_hop_food_score": 0.03110293522520855,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2773570477414531,
+      "two_hop_food_score": 0.1143998365061635,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.03110293522520855,
+      "sighting_direct_score": 0.027581633829783812
+    },
+    {
+      "tick": 74,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.27485234704402695,
+      "one_hop_food_score": 0.029894969648576596,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.27485234704402695,
+      "two_hop_food_score": 0.11221690091872995,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.029894969648576596,
+      "sighting_direct_score": 0.026509255881451022
+    },
+    {
+      "tick": 75,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2723678313973242,
+      "one_hop_food_score": 0.028733482827278892,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2723678313973242,
+      "two_hop_food_score": 0.11007403919820802,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.028733482827278892,
+      "sighting_direct_score": 0.02547822959133474
+    },
+    {
+      "tick": 76,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2699033849322599,
+      "one_hop_food_score": 0.027616719829022328,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2699033849322599,
+      "two_hop_food_score": 0.10797057697267265,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.027616719829022328,
+      "sighting_direct_score": 0.024486986689969844
+    },
+    {
+      "tick": 77,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.26745889149468804,
+      "one_hop_food_score": 0.026542989410633357,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.26745889149468804,
+      "two_hop_food_score": 0.1059058488030516,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.026542989410633357,
+      "sighting_direct_score": 0.023534016362075333
+    },
+    {
+      "tick": 78,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2650342346700871,
+      "one_hop_food_score": 0.02551066190690034,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2650342346700871,
+      "two_hop_food_score": 0.10387919816540918,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.02551066190690034,
+      "sighting_direct_score": 0.022617863298849645
+    },
+    {
+      "tick": 79,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2626292978077406,
+      "one_hop_food_score": 0.024518167173371724,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2626292978077406,
+      "two_hop_food_score": 0.10188997742812961,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.024518167173371724,
+      "sighting_direct_score": 0.021737125803783498
+    },
+    {
+      "tick": 80,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2602439640444187,
+      "one_hop_food_score": 0.023563992583118837,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2602439640444187,
+      "two_hop_food_score": 0.09993754782427434,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.023563992583118837,
+      "sighting_direct_score": 0.020890453951581813
+    },
+    {
+      "tick": 81,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2578781163275682,
+      "one_hop_food_score": 0.022646681077309164,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2578781163275682,
+      "two_hop_food_score": 0.0980212794193707,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.022646681077309164,
+      "sighting_direct_score": 0.02007654779967736
+    },
+    {
+      "tick": 82,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2555316374380118,
+      "one_hop_food_score": 0.021764829269310216,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2555316374380118,
+      "two_hop_food_score": 0.09614055107488752,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.021764829269310216,
+      "sighting_direct_score": 0.019294155651728772
+    },
+    {
+      "tick": 83,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.25320441001217026,
+      "one_hop_food_score": 0.0209170856019145,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.25320441001217026,
+      "two_hop_food_score": 0.09429475040763835,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0209170856019145,
+      "sighting_direct_score": 0.01854207237241299
+    },
+    {
+      "tick": 84,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.25089631656380545,
+      "one_hop_food_score": 0.020102148557176545,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.25089631656380545,
+      "two_hop_food_score": 0.09248327374534648,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.020102148557176545,
+      "sighting_direct_score": 0.017819137752747134
+    },
+    {
+      "tick": 85,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.24860723950529603,
+      "one_hop_food_score": 0.019318764918255026,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.24860723950529603,
+      "two_hop_food_score": 0.09070552607859785,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.019318764918255026,
+      "sighting_direct_score": 0.017124234925119736
+    },
+    {
+      "tick": 86,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.246337061168449,
+      "one_hop_food_score": 0.01856572808257095,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.246337061168449,
+      "two_hop_food_score": 0.08896092100939672,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.01856572808257095,
+      "sighting_direct_score": 0.0164562888271535
+    },
+    {
+      "tick": 87,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.24408566382485386,
+      "one_hop_food_score": 0.017841876425522797,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.24408566382485386,
+      "two_hop_food_score": 0.08724888069653365,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.017841876425522797,
+      "sighting_direct_score": 0.01581426471347839
+    },
+    {
+      "tick": 88,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2418529297057838,
+      "one_hop_food_score": 0.017146091713937047,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2418529297057838,
+      "two_hop_food_score": 0.0855688357979654,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.017146091713937047,
+      "sighting_direct_score": 0.015197166714459975
+    },
+    {
+      "tick": 89,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.23963874102165333,
+      "one_hop_food_score": 0.016477297568378332,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.23963874102165333,
+      "two_hop_food_score": 0.08392022541039951,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.016477297568378332,
+      "sighting_direct_score": 0.014604036440892768
+    },
+    {
+      "tick": 90,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.23744297998103403,
+      "one_hop_food_score": 0.015834457973402945,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.23744297998103403,
+      "two_hop_food_score": 0.0823024970062682,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.015834457973402945,
+      "sighting_direct_score": 0.014033951633646728
+    },
+    {
+      "tick": 91,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2352655288092377,
+      "one_hop_food_score": 0.015216575834794972,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2352655288092377,
+      "two_hop_food_score": 0.08071510636826858,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.015216575834794972,
+      "sighting_direct_score": 0.013486024857239317
+    },
+    {
+      "tick": 92,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.23310626976647078,
+      "one_hop_food_score": 0.014622691582802397,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.23310626976647078,
+      "two_hop_food_score": 0.07915751752163988,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.014622691582802397,
+      "sighting_direct_score": 0.012959402236282603
+    },
+    {
+      "tick": 93,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.23096508516556716,
+      "one_hop_food_score": 0.014051881820358509,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.23096508516556716,
+      "two_hop_food_score": 0.07762920266434196,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.014051881820358509,
+      "sighting_direct_score": 0.012453262233756368
+    },
+    {
+      "tick": 94,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.22884185738930454,
+      "one_hop_food_score": 0.013503258015260465,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.22884185738930454,
+      "two_hop_food_score": 0.07612964209528941,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.013503258015260465,
+      "sighting_direct_score": 0.011966814470046739
+    },
+    {
+      "tick": 95,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.22673646890731047,
+      "one_hop_food_score": 0.012975965235259276,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.22673646890731047,
+      "two_hop_food_score": 0.07465832414079304,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.012975965235259276,
+      "sighting_direct_score": 0.011499298581687382
+    },
+    {
+      "tick": 96,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2246488022925636,
+      "one_hop_food_score": 0.012469180925007739,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2246488022925636,
+      "two_hop_food_score": 0.07321474507935338,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.012469180925007739,
+      "sighting_direct_score": 0.011049983118747006
+    },
+    {
+      "tick": 97,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.22257874023749763,
+      "one_hop_food_score": 0.011982113723808158,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.22257874023749763,
+      "two_hop_food_score": 0.07179840906494059,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.011982113723808158,
+      "sighting_direct_score": 0.010618164479805686
+    },
+    {
+      "tick": 98,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.22052616556970966,
+      "one_hop_food_score": 0.011514002323097749,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.22052616556970966,
+      "two_hop_food_score": 0.07040882804889648,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.011514002323097749,
+      "sighting_direct_score": 0.010203165883473546
+    },
+    {
+      "tick": 99,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.2184909612672845,
+      "one_hop_food_score": 0.011064114362612678,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.2184909612672845,
+      "two_hop_food_score": 0.06904552170058134,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.011064114362612678,
+      "sighting_direct_score": 0.009804336375412271
+    },
+    {
+      "tick": 100,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.21647301047373563,
+      "one_hop_food_score": 0.010631745364175852,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.21647301047373563,
+      "two_hop_food_score": 0.0677080173268883,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.010631745364175852,
+      "sighting_direct_score": 0.00942104986983262
+    },
+    {
+      "tick": 101,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.21447219651257105,
+      "one_hop_food_score": 0.010216217702060292,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.21447219651257105,
+      "two_hop_food_score": 0.06639584979073895,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.010216217702060292,
+      "sighting_direct_score": 0.00905270422445301
+    },
+    {
+      "tick": 102,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.21248840290148927,
+      "one_hop_food_score": 0.009816879608887623,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.21248840290148927,
+      "two_hop_food_score": 0.06510856142867191,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.009816879608887623,
+      "sighting_direct_score": 0.008698720347918545
+    },
+    {
+      "tick": 103,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.21052151336621136,
+      "one_hop_food_score": 0.009433104216037012,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.21052151336621136,
+      "two_hop_food_score": 0.06384570196762597,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.009433104216037012,
+      "sighting_direct_score": 0.00835854133869834
+    },
+    {
+      "tick": 104,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.20857141185395298,
+      "one_hop_food_score": 0.009064288627545552,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.20857141185395298,
+      "two_hop_food_score": 0.06260682844102267,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.009064288627545552,
+      "sighting_direct_score": 0.008031631654490612
+    },
+    {
+      "tick": 105,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.20663798254654478,
+      "one_hop_food_score": 0.00870985302650263,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.20663798254654478,
+      "two_hop_food_score": 0.06139150510423931,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.00870985302650263,
+      "sighting_direct_score": 0.007717476311188294
+    },
+    {
+      "tick": 106,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.20472110987320494,
+      "one_hop_food_score": 0.008369239812952296,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.20472110987320494,
+      "two_hop_food_score": 0.06019930334956608,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.008369239812952296,
+      "sighting_direct_score": 0.007415580110475061
+    },
+    {
+      "tick": 107,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.20282067852296873,
+      "one_hop_food_score": 0.008041912772335331,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.20282067852296873,
+      "two_hop_food_score": 0.05902980162073293,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.008041912772335331,
+      "sighting_direct_score": 0.007125466895136144
+    },
+    {
+      "tick": 108,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.20093657345678217,
+      "one_hop_food_score": 0.007727356273522608,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.20093657345678217,
+      "two_hop_food_score": 0.057882585327089356,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.007727356273522608,
+      "sighting_direct_score": 0.006846678831197174
+    },
+    {
+      "tick": 109,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.19906867991926458,
+      "one_hop_food_score": 0.0074250744955051805,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.19906867991926458,
+      "two_hop_food_score": 0.056757246757513896,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0074250744955051805,
+      "sighting_direct_score": 0.006578775716016918
+    },
+    {
+      "tick": 110,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1972168834501454,
+      "one_hop_food_score": 0.0071345906818325545,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1972168834501454,
+      "two_hop_food_score": 0.05565338499413023,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0071345906818325545,
+      "sighting_direct_score": 0.006321334311482598
+    },
+    {
+      "tick": 111,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1953810698953797,
+      "one_hop_food_score": 0.00685544642190409,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1953810698953797,
+      "two_hop_food_score": 0.05457060582589898,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.00685544642190409,
+      "sighting_direct_score": 0.00607394770147846
+    },
+    {
+      "tick": 112,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.19356112541794965,
+      "one_hop_food_score": 0.006587200958242576,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.19356112541794965,
+      "two_hop_food_score": 0.053508521662152024,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.006587200958242576,
+      "sighting_direct_score": 0.0058362246728191295
+    },
+    {
+      "tick": 113,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.19175693650835574,
+      "one_hop_food_score": 0.006329430518897967,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.19175693650835574,
+      "two_hop_food_score": 0.05246675144613597,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.006329430518897967,
+      "sighting_direct_score": 0.005607789118857413
+    },
+    {
+      "tick": 114,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.18996838999480223,
+      "one_hop_food_score": 0.006081727674151056,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.18996838999480223,
+      "two_hop_food_score": 0.05144492056862007,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.006081727674151056,
+      "sighting_direct_score": 0.005388279465000771
+    },
+    {
+      "tick": 115,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1881953730530847,
+      "one_hop_food_score": 0.005843700716705486,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1881953730530847,
+      "two_hop_food_score": 0.050442660781631884,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.005843700716705486,
+      "sighting_direct_score": 0.005177348115388955
+    },
+    {
+      "tick": 116,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1864377732161824,
+      "one_hop_food_score": 0.005614973064581415,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1864377732161824,
+      "two_hop_food_score": 0.049459610112369164,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.005614973064581415,
+      "sighting_direct_score": 0.004974660920008161
+    },
+    {
+      "tick": 117,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.18469547838356087,
+      "one_hop_food_score": 0.005395182685941394,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.18469547838356087,
+      "two_hop_food_score": 0.04849541277734333,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.005395182685941394,
+      "sighting_direct_score": 0.00477989666153456
+    },
+    {
+      "tick": 118,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1829683768301907,
+      "one_hop_food_score": 0.005183981545100242,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1829683768301907,
+      "two_hop_food_score": 0.04754971909679953,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.005183981545100242,
+      "sighting_direct_score": 0.0045927465612249025
+    },
+    {
+      "tick": 119,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.18125635721528685,
+      "one_hop_food_score": 0.004981035068995493,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.18125635721528685,
+      "two_hop_food_score": 0.04662218540946092,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.004981035068995493,
+      "sighting_direct_score": 0.004412913803186226
+    },
+    {
+      "tick": 120,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.179559308590773,
+      "one_hop_food_score": 0.004786021633408663,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.179559308590773,
+      "two_hop_food_score": 0.04571247398763966,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.004786021633408663,
+      "sighting_direct_score": 0.004240113076383626
+    },
+    {
+      "tick": 121,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.17787712040947676,
+      "one_hop_food_score": 0.004598632068255699,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.17787712040947676,
+      "two_hop_food_score": 0.04482025295275455,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.004598632068255699,
+      "sighting_direct_score": 0.004074070133756594
+    },
+    {
+      "tick": 122,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.17620968253306057,
+      "one_hop_food_score": 0.00441856918127816,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.17620968253306057,
+      "two_hop_food_score": 0.04394519619129207,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.00441856918127816,
+      "sighting_direct_score": 0.0039145213678413275
+    },
+    {
+      "tick": 123,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1745568852396911,
+      "one_hop_food_score": 0.004245547299490873,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1745568852396911,
+      "two_hop_food_score": 0.043086983271250136,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.004245547299490873,
+      "sighting_direct_score": 0.003761213402309592
+    },
+    {
+      "tick": 124,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1729186192314545,
+      "one_hop_food_score": 0.004079291827760312,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1729186192314545,
+      "two_hop_food_score": 0.04224529935909273,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.004079291827760312,
+      "sighting_direct_score": 0.003613902698854709
+    },
+    {
+      "tick": 125,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1712947756415207,
+      "one_hop_food_score": 0.003919538823906151,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1712947756415207,
+      "two_hop_food_score": 0.041419835137251663,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.003919538823906151,
+      "sighting_direct_score": 0.0034723551788763537
+    },
+    {
+      "tick": 126,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.16968524604106167,
+      "one_hop_food_score": 0.0037660345897392103,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.16968524604106167,
+      "two_hop_food_score": 0.040610286722201405,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0037660345897392103,
+      "sighting_direct_score": 0.0033363458594291707
+    },
+    {
+      "tick": 127,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.16808992244592774,
+      "one_hop_food_score": 0.0036185352774634003,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.16808992244592774,
+      "two_hop_food_score": 0.039816355583134254,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0036185352774634003,
+      "sighting_direct_score": 0.0032056585029191977
+    },
+    {
+      "tick": 128,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1665086973230876,
+      "one_hop_food_score": 0.003476806510895262,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1665086973230876,
+      "two_hop_food_score": 0.03903774846126358,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.003476806510895262,
+      "sighting_direct_score": 0.0030800852800506933
+    },
+    {
+      "tick": 129,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1649414635968353,
+      "one_hop_food_score": 0.003340623020962604,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1649414635968353,
+      "two_hop_food_score": 0.038274177289776175,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.003340623020962604,
+      "sighting_direct_score": 0.0029594264455409117
+    },
+    {
+      "tick": 130,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.16338811465476938,
+      "one_hop_food_score": 0.003209768294968165,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.16338811465476938,
+      "two_hop_food_score": 0.03752535911445701,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.003209768294968165,
+      "sighting_direct_score": 0.0028434900261336883
+    },
+    {
+      "tick": 131,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1618485443535481,
+      "one_hop_food_score": 0.0030840342391196592,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1618485443535481,
+      "two_hop_food_score": 0.03679101601500448,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0030840342391196592,
+      "sighting_direct_score": 0.0027320915204660933
+    },
+    {
+      "tick": 132,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.16032264702442423,
+      "one_hop_food_score": 0.00296322085384147,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.16032264702442423,
+      "two_hop_food_score": 0.03607087502705885,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.00296322085384147,
+      "sighting_direct_score": 0.0026250536103481705
+    },
+    {
+      "tick": 133,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.15881031747856705,
+      "one_hop_food_score": 0.0028471359214020152,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.15881031747856705,
+      "two_hop_food_score": 0.03536466806495525,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0028471359214020152,
+      "sighting_direct_score": 0.0025222058830381183
+    },
+    {
+      "tick": 134,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1573114510121699,
+      "one_hop_food_score": 0.0027355947054062964,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1573114510121699,
+      "two_hop_food_score": 0.03467213184522216,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0027355947054062964,
+      "sighting_direct_score": 0.0024233845641048984
+    },
+    {
+      "tick": 135,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.15582594341135395,
+      "one_hop_food_score": 0.0026284196617169953,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.15582594341135395,
+      "two_hop_food_score": 0.033993007810836445,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0026284196617169953,
+      "sighting_direct_score": 0.0023284322604889053
+    },
+    {
+      "tick": 136,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.15435369095686668,
+      "one_hop_food_score": 0.0025254401603831246,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.15435369095686668,
+      "two_hop_food_score": 0.03332704205624864,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0025254401603831246,
+      "sighting_direct_score": 0.002237197713378324
+    },
+    {
+      "tick": 137,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.15289459042858355,
+      "one_hop_food_score": 0.002426492218169635,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.15289459042858355,
+      "two_hop_food_score": 0.03267398525319061,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.002426492218169635,
+      "sighting_direct_score": 0.0021495355605390338
+    },
+    {
+      "tick": 138,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1514485391098125,
+      "one_hop_food_score": 0.002331418241296671,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1514485391098125,
+      "two_hop_food_score": 0.03203359257727587,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.002331418241296671,
+      "sighting_direct_score": 0.0020653061077453667
+    },
+    {
+      "tick": 139,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.15001543479140994,
+      "one_hop_food_score": 0.0022400667780069915,
+      "one_hop_selected": [
+        "memory:00000000"
+      ],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.15001543479140994,
+      "two_hop_food_score": 0.03140562363540155,
+      "two_hop_selected": [
+        "memory:00000000"
+      ],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0022400667780069915,
+      "sighting_direct_score": 0.0019843751089681934
+    },
+    {
+      "tick": 140,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.14859517577570777,
+      "one_hop_food_score": 0.0021522922805988693,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.14859517577570777,
+      "two_hop_food_score": 0.030789842393960827,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0021522922805988693,
+      "sighting_direct_score": 0.0019066135549989172
+    },
+    {
+      "tick": 141,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.14718766088025856,
+      "one_hop_food_score": 0.0020679548765693413,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.14718766088025856,
+      "two_hop_food_score": 0.030186017107872134,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0020679548765693413,
+      "sighting_direct_score": 0.001831897470185508
+    },
+    {
+      "tick": 142,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.14579278944139967,
+      "one_hop_food_score": 0.001986920148527774,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.14579278944139967,
+      "two_hop_food_score": 0.029593920250433288,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.001986920148527774,
+      "sighting_direct_score": 0.001760107716981469
+    },
+    {
+      "tick": 143,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1444104613176438,
+      "one_hop_food_score": 0.0019090589225535953,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1444104613176438,
+      "two_hop_food_score": 0.029013328444003395,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0019090589225535953,
+      "sighting_direct_score": 0.0016911298080107412
+    },
+    {
+      "tick": 144,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.14304057689289434,
+      "one_hop_food_score": 0.0018342470646771334,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.14304057689289434,
+      "two_hop_food_score": 0.02844402239151867,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0018342470646771334,
+      "sighting_direct_score": 0.0016248537253661208
+    },
+    {
+      "tick": 145,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.14168303707949592,
+      "one_hop_food_score": 0.0017623652851830442,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.14168303707949592,
+      "two_hop_food_score": 0.02788578680884603,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0017623652851830442,
+      "sighting_direct_score": 0.0015611737468673777
+    },
+    {
+      "tick": 146,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1403377433211172,
+      "one_hop_food_score": 0.0016932989504386364,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1403377433211172,
+      "two_hop_food_score": 0.027338410357974803,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0016932989504386364,
+      "sighting_direct_score": 0.0014999882790163262
+    },
+    {
+      "tick": 147,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.13900459759547257,
+      "one_hop_food_score": 0.0016269379019643157,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.13900459759547257,
+      "two_hop_food_score": 0.0268016855810524,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0016269379019643157,
+      "sighting_direct_score": 0.0014411996963945254
+    },
+    {
+      "tick": 148,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.13768350241688787,
+      "one_hop_food_score": 0.0015631762824725105,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.13768350241688787,
+      "two_hop_food_score": 0.026275408835261405,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0015631762824725105,
+      "sighting_direct_score": 0.0013847141872601837
+    },
+    {
+      "tick": 149,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.13637436083870885,
+      "one_hop_food_score": 0.001501912368613035,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.13637436083870885,
+      "two_hop_food_score": 0.025759380228541857,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.001501912368613035,
+      "sighting_direct_score": 0.0013304416051080363
+    },
+    {
+      "tick": 150,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.13507707645556014,
+      "one_hop_food_score": 0.001443048410166702,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.13507707645556014,
+      "two_hop_food_score": 0.02525340355615604,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.001443048410166702,
+      "sighting_direct_score": 0.0012782953259643979
+    },
+    {
+      "tick": 151,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1337915534054564,
+      "one_hop_food_score": 0.0013864904754483267,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1337915534054564,
+      "two_hop_food_score": 0.02475728623809823,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0013864904754483267,
+      "sighting_direct_score": 0.001228192111202413
+    },
+    {
+      "tick": 152,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.13251769637176752,
+      "one_hop_food_score": 0.0013321483026781488,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.13251769637176752,
+      "two_hop_food_score": 0.02427083925734419,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0013321483026781488,
+      "sighting_direct_score": 0.0011800519756618288
+    },
+    {
+      "tick": 153,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.13125541058504317,
+      "one_hop_food_score": 0.0012799351570975605,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.13125541058504317,
+      "two_hop_food_score": 0.023793877098943334,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0012799351570975605,
+      "sighting_direct_score": 0.0011337980608758678
+    },
+    {
+      "tick": 154,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.13000460182469975,
+      "one_hop_food_score": 0.001229767693608549,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.13000460182469975,
+      "two_hop_food_score": 0.023326217689946742,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.001229767693608549,
+      "sighting_direct_score": 0.001089356513206746
+    },
+    {
+      "tick": 155,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.12876517642057111,
+      "one_hop_food_score": 0.0011815658247290722,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.12876517642057111,
+      "two_hop_food_score": 0.02286768234017242,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0011815658247290722,
+      "sighting_direct_score": 0.0010466563667032992
+    },
+    {
+      "tick": 156,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.12753704125432724,
+      "one_hop_food_score": 0.0011352525936576484,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.12753704125432724,
+      "two_hop_food_score": 0.0224180956838008,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0011352525936576484,
+      "sighting_direct_score": 0.0010056294304998244
+    },
+    {
+      "tick": 157,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1263201037607644,
+      "one_hop_food_score": 0.0010907540522548395,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1263201037607644,
+      "two_hop_food_score": 0.021977285621799764,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0010907540522548395,
+      "sighting_direct_score": 0.0009662101805817242
+    },
+    {
+      "tick": 158,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.12511427192896904,
+      "one_hop_food_score": 0.0010479991437524685,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.12511427192896904,
+      "two_hop_food_score": 0.021545083265174767,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0010479991437524685,
+      "sighting_direct_score": 0.0009283356557512804
+    },
+    {
+      "tick": 159,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.12391945430335831,
+      "one_hop_food_score": 0.001006919590009668,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.12391945430335831,
+      "two_hop_food_score": 0.02112132287903675,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.001006919590009668,
+      "sighting_direct_score": 0.0008919453576305669
+    },
+    {
+      "tick": 160,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.12273555998460006,
+      "one_hop_food_score": 0.0009674497831404777,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.12273555998460006,
+      "two_hop_food_score": 0.020705841827487463,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0009674497831404777,
+      "sighting_direct_score": 0.0008569811545483468
+    },
+    {
+      "tick": 161,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1215624986304159,
+      "one_hop_food_score": 0.0009295266813482412,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1215624986304159,
+      "two_hop_food_score": 0.02029848051931423,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0009295266813482412,
+      "sighting_direct_score": 0.0008233871891604388
+    },
+    {
+      "tick": 162,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.12040018045626893,
+      "one_hop_food_score": 0.0008930897088011851,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.12040018045626893,
+      "two_hop_food_score": 0.019899082354489558,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0008930897088011851,
+      "sighting_direct_score": 0.0007911097896595267
+    },
+    {
+      "tick": 163,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.11924851623593981,
+      "one_hop_food_score": 0.0008580806593972498,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.11924851623593981,
+      "two_hop_food_score": 0.01950749367146875,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0008580806593972498,
+      "sighting_direct_score": 0.0007600973844381259
+    },
+    {
+      "tick": 164,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.11810741730199381,
+      "one_hop_food_score": 0.0008244436042669555,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.11810741730199381,
+      "two_hop_food_score": 0.019123563695283195,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0008244436042669555,
+      "sighting_direct_score": 0.0007303004200682332
+    },
+    {
+      "tick": 165,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1169767955461405,
+      "one_hop_food_score": 0.000792124802870631,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1169767955461405,
+      "two_hop_food_score": 0.018747144486417497,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.000792124802870631,
+      "sighting_direct_score": 0.0007016712824727863
+    },
+    {
+      "tick": 166,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.11585656341949054,
+      "one_hop_food_score": 0.0007610726175514323,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.11585656341949054,
+      "two_hop_food_score": 0.018378090890469937,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0007610726175514323,
+      "sighting_direct_score": 0.0006741642211647607
+    },
+    {
+      "tick": 167,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.11474663393270895,
+      "one_hop_food_score": 0.0007312374314124211,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.11474663393270895,
+      "two_hop_food_score": 0.018016260488584488,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0007312374314124211,
+      "sighting_direct_score": 0.0006477352764346432
+    },
+    {
+      "tick": 168,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.11364692065607213,
+      "one_hop_food_score": 0.0007025715693870361,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.11364692065607213,
+      "two_hop_food_score": 0.017661513548651087,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0007025715693870361,
+      "sighting_direct_score": 0.0006223422093728279
+    },
+    {
+      "tick": 169,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.11255733771942623,
+      "one_hop_food_score": 0.0006750292223807105,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.11255733771942623,
+      "two_hop_food_score": 0.017313712977266003,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0006750292223807105,
+      "sighting_direct_score": 0.0005979444346185638
+    },
+    {
+      "tick": 170,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1114777998120525,
+      "one_hop_food_score": 0.0006485663743668414,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1114777998120525,
+      "two_hop_food_score": 0.016972724272444152,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0006485663743668414,
+      "sighting_direct_score": 0.0005745029557270884
+    },
+    {
+      "tick": 171,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.11040822218244015,
+      "one_hop_food_score": 0.0006231407323197873,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.11040822218244015,
+      "two_hop_food_score": 0.01663841547707695,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0006231407323197873,
+      "sighting_direct_score": 0.0005519803030571206
+    },
+    {
+      "tick": 172,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.10934852063797157,
+      "one_hop_food_score": 0.0005987116588772273,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.10934852063797157,
+      "two_hop_food_score": 0.01631065713312941,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0005987116588772273,
+      "sighting_direct_score": 0.0005303404740778963
+    },
+    {
+      "tick": 173,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.10829861154451831,
+      "one_hop_food_score": 0.000575240107626328,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.10829861154451831,
+      "two_hop_food_score": 0.015989322236565264,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.000575240107626328,
+      "sighting_direct_score": 0.000509548876004066
+    },
+    {
+      "tick": 174,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.10725841182595391,
+      "one_hop_food_score": 0.0005526885609104437,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.10725841182595391,
+      "two_hop_food_score": 0.015674286192997086,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0005526885609104437,
+      "sighting_direct_score": 0.0004895722706674767
+    },
+    {
+      "tick": 175,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.10622783896358393,
+      "one_hop_food_score": 0.0005310209700611561,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.10622783896358393,
+      "two_hop_food_score": 0.015365426774049512,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0005310209700611561,
+      "sighting_direct_score": 0.00047037872153942405
+    },
+    {
+      "tick": 176,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.1052068109954947,
+      "one_hop_food_score": 0.0005102026979595813,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.1052068109954947,
+      "two_hop_food_score": 0.015062624074429537,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0005102026979595813,
+      "sighting_direct_score": 0.00045193754281819433
+    },
+    {
+      "tick": 177,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.10419524651582569,
+      "one_hop_food_score": 0.0004902004638375463,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.10419524651582569,
+      "two_hop_food_score": 0.014765760469697277,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.0004902004638375463,
+      "sighting_direct_score": 0.0004342192505058433
+    },
+    {
+      "tick": 178,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.10319306467396387,
+      "one_hop_food_score": 0.00047098229023257327,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.10319306467396387,
+      "two_hop_food_score": 0.014474720574725014,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.00047098229023257327,
+      "sighting_direct_score": 0.00041719551539166655
+    },
+    {
+      "tick": 179,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.10220018517366569,
+      "one_hop_food_score": 0.00045251745201078757,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.10220018517366569,
+      "two_hop_food_score": 0.014189391202841057,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.00045251745201078757,
+      "sighting_direct_score": 0.00040083911787210563
+    },
+    {
+      "tick": 180,
+      "cutoff": 0.15,
+      "one_hop_sighting_score": 0.10121652827210585,
+      "one_hop_food_score": 0.00043477642737994155,
+      "one_hop_selected": [],
+      "one_hop_food_route_edges": 0,
+      "two_hop_sighting_score": 0.10121652827210585,
+      "two_hop_food_score": 0.013909661325647164,
+      "two_hop_selected": [],
+      "two_hop_food_route_edges": 2,
+      "food_direct_score": 0.00043477642737994155,
+      "sighting_direct_score": 0.0003851239045350808
+    }
+  ],
+  "same_time_connection_unchanged": true,
+  "interpretation": "The food episode never mentions the pinwheel. With one hop it enters the prompt only while its own similarity survives. With two hops the pinwheel reaches it through the sighting along the followed edge, which keeps it above the cutoff until the followed-route end tick. The one-record example scores identically under both settings."
+}

@@ -10,6 +10,7 @@ before the runner constructs any agents.
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import copy
@@ -53,6 +54,7 @@ class HouMemoryAgent(LLMAgent):
         self.memory_engine = AssociativeMemory(self.hou_store, cfg, self._count_tokens)
         self._completed_tick = None
         self._completed_action = None
+        self._last_energy = None
         self.current_plan = ""
         self.use_internal_memory = True
         self.internal_memory_size = self.hou_plan_tokens
@@ -176,6 +178,7 @@ class HouMemoryAgent(LLMAgent):
         self.current_plan = payload["plan"]
         self._completed_tick = payload.get("completed_tick")
         self._completed_action = payload.get("completed_action")
+        self._last_energy = payload.get("last_energy")
         self.use_internal_memory = True
         self._rescope_scratchpad_to_plan()
 
@@ -224,6 +227,7 @@ class HouMemoryAgent(LLMAgent):
             "associative": self.memory_engine.to_dict(),
             "completed_tick": self._completed_tick,
             "completed_action": self._completed_action,
+            "last_energy": getattr(self, "_last_energy", None),
         }
 
     def _dump_hou_memory(self) -> None:
@@ -301,6 +305,10 @@ class HouMemoryAgent(LLMAgent):
         return {"people": sorted(people), "artifacts": sorted(artifacts),
                 "places": sorted(set(obs.get("named_places", [])))}
 
+    @staticmethod
+    def _plain_number(value) -> str:
+        return f"{value:.2f}".rstrip("0").rstrip(".")
+
     def _describe_action(self, action: dict) -> str:
         act = action.get("action")
         p = action.get("params", {}) or {}
@@ -335,6 +343,21 @@ class HouMemoryAgent(LLMAgent):
             parts.append(f"Artifacts here: {', '.join(arts)}.")
         if entities["places"]:
             parts.append(f"Visible places: {', '.join(entities['places'])}.")
+        # The world never tells a receiver that someone gave or took its
+        # energy; the only trace is the energy reading itself. Record net
+        # rises (food found, a gift, or the agent's own take) and drops larger
+        # than the normal drain of 1 per tick (a theft, or the agent's own
+        # give or reproduction).
+        energy = obs.get("energy")
+        last = getattr(self, "_last_energy", None)
+        if isinstance(energy, (int, float)) and not isinstance(energy, bool) and math.isfinite(energy):
+            if isinstance(last, (int, float)):
+                delta = round(energy - last, 2)
+                if delta > 0:
+                    parts.append(f"Energy rose from {self._plain_number(last)} to {self._plain_number(energy)}.")
+                elif delta < -1:
+                    parts.append(f"Energy fell from {self._plain_number(last)} to {self._plain_number(energy)}.")
+            self._last_energy = energy
         outcomes = {k: v for k, v in (info or {}).items() if k != "available_actions"}
         if outcomes:
             parts.append(f"Feedback from the preceding action: {outcomes}.")

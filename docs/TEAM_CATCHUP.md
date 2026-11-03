@@ -62,6 +62,25 @@ The live query normally embeds observation, incoming messages and optional envir
 
 The implemented sequence is: notice the pinwheel, retrieve the associated encounter, then interpret it alongside hunger when choosing an action. Hunger alone does not currently activate the unseen pinwheel as a graph source. Adding internal needs or goals as sources would be a new mechanism and should be tested separately.
 
+### The split-record example (added 2026-09-29)
+
+The one-record example has a weakness a reviewer will find: the pinwheel and the food are in the same episode because the writer records everything from one tick together, so similarity already sees the pinwheel in that text. The graph is not linking two memories there; it is a second, slower clock on one memory. To show a relation doing work, the cue and the payoff must be in different records.
+
+`scripts/pinwheel_split_walkthrough.py` builds that case from observation fields the sandbox really provides. Tick 0: Mia and the pinwheel in view, Mia says "I'm usually here," the agent moves. Tick 1: the pinwheel is out of view, Mia says "Here, have some food," and the agent's energy rises from 25 to 45 (the writer now records energy rises; a receiver previously had no trace of a gift at all). The food episode never mentions the pinwheel. Later the pinwheel is in view and the agent is hungry.
+
+| Route to the food episode | Reaches it | Above .15 until tick |
+| --- | --- | --- |
+| Similarity plus decay (r = .354 with the hunger line, .206 without) | yes | 32.7 (19.1 without the hunger line) |
+| One hop from the pinwheel hub (`entity_hops=1`, the old main condition) | never | n/a |
+| Two hops: pinwheel → sighting → followed edge → food (`entity_hops=2`) | yes | 58.8 |
+| Two hops through Mia: pinwheel → sighting → Mia hub → food (three edges) | yes | 31.8 (54.1 if fresh edges started at weight 1) |
+
+**The gap case and the turned-up link weight.** `scripts/pinwheel_gap_walkthrough.py` puts ten ticks between the sighting and the food, with nobody in view in between. Now the tick chain cannot carry the pinwheel either; the only route is pinwheel → sighting → Mia → food, three links multiplied. At the original fresh link weight of .8 that route fades at tick 34.8 while similarity lasts to 41.7, so the graph adds nothing. At a fresh weight of 1.0 the route lasts to 57.1 and keeps the food line in the prompt for 16 ticks after decay has removed it. The `chained` launcher condition therefore starts fresh links at 1.0. When comparing `chained` against `learned`, give `learned` the same weight through `--memory-config` so the two differ only in the extra hop. Chart: `output/analysis/pinwheel-gap-window.png`.
+
+This is the argument to make: the graph is a positive reminder. Because the score is max(direct, graph), a link can only add. When similarity still works, similarity wins. When decay has removed a memory but a thing in view still links to it, the link brings it back. The claim is that links outlast decay, not that links beat similarity.
+
+So with `entity_hops=2` the food memory is in the prompt at ticks 33 to 58 when no similarity setting could put it there. The sighting episode itself is unchanged (one hop, until tick 139), and the original one-record fixture scores identically under both settings. Two honest limits: the winning route is the followed edge, which is content-blind (whatever was recorded the tick after a sighting comes back with it), and the meaningful chain through Mia multiplies three transmissions, so at the current edge weight it fades about when similarity does. That is a calibration decision for the team, not a code fix. The fixture uses vision radius 1 so one move hides the pinwheel; at the project default of 6 the pinwheel stays in view for several ticks and the payoff usually lands in a record that also mentions it, which is the one-record case. Chart: `output/analysis/pinwheel-split-window.png`; numbers: `output/analysis/pinwheel-split-walkthrough.json`.
+
 ## What is implemented
 
 The live entry point is [run_hou_experiment.py](../code/hou_memory/run_hou_experiment.py). [associative_memory.py](../code/hou_memory/associative_memory.py) handles scoring and updates; [memory_agent.py](../code/hou_memory/memory_agent.py) integrates them with TerraLingua.
@@ -111,6 +130,7 @@ The three main presentation conditions are:
 | `hou` | Semantic similarity and ordinary decay |
 | `independent` | Add independently aging associations, without link learning |
 | `learned` | Also rehearse the winning association when it helps an included episode |
+| `chained` | As `learned`, and an observed entity may continue one step past a tagged episode (`entity_hops=2`), so a cue can reach an episode that never mentions it; fresh links start at weight 1.0 |
 
 `gated` remains an implementation/history control, not a fourth main proposal condition. ACT-R is outside the current presentation and active experiment.
 
@@ -128,6 +148,8 @@ See [setup and run instructions](ASSOCIATIVE_IMPLEMENTATION.md). From the reposi
 
 ```bash
 code/terralingua/.venv/bin/python scripts/pinwheel_walkthrough.py
+code/terralingua/.venv/bin/python scripts/pinwheel_split_walkthrough.py
+code/terralingua/.venv/bin/python scripts/pinwheel_gap_walkthrough.py
 code/terralingua/.venv/bin/python scripts/logical_memory_audit.py
 code/terralingua/.venv/bin/python -m unittest discover -s code/hou_memory -p 'test_*memory*.py' -v
 code/terralingua/.venv/bin/python code/hou_memory/test_hou_memory.py

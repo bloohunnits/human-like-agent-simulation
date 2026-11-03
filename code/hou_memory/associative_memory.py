@@ -45,10 +45,16 @@ class MemoryConfig:
     seed_threshold: float = 0.1  # threshold on decayed direct contribution M
     seed_budget: int = 3
     working_history: int = 0  # explicit recent-turn buffer; zero avoids retrieval bypass
+    # 1: an observed entity reaches only episodes tagged with it (a weighted
+    # lookup). 2: it may continue one step, along a followed/co-occurred edge
+    # or through a second hub, to episodes that never mention it.
+    entity_hops: int = 1
 
     def __post_init__(self):
         if self.mode not in {"hou", "gated", "independent"}:
             raise ValueError("mode must be hou, gated or independent")
+        if isinstance(self.entity_hops, bool) or not isinstance(self.entity_hops, int) or self.entity_hops not in (1, 2):
+            raise ValueError("entity_hops must be 1 or 2")
         for key in ("beta", "edge_weight", "learning_rate", "threshold", "seed_threshold"):
             _finite(getattr(self, key), key, hi=1.0)
         if self.threshold == 0:
@@ -248,11 +254,17 @@ class AssociativeMemory:
         routes = {i: [] for i in direct}
         beta = self.config.beta
 
-        def add(source, target, path, cue, hub=None):
+        def other_end(e, node):
+            return e.b if e.a == node else e.a
+
+        def add(source, target, path, cue, hubs=()):
             if target == source or target not in routes:
                 return
-            fan = len(members.get(hub, []))
-            tax = 1.0 if fan <= 3 else 1 / (1 + math.log(fan / 3))
+            tax = 1.0
+            for hub in hubs:  # crowd penalty once per traversed hub
+                fan = len(members.get(hub, []))
+                if fan > 3:
+                    tax *= 1 / (1 + math.log(fan / 3))
             transmissions = tuple(e.transmission(tick) for e in path)
             value = beta * cue * math.prod(transmissions) * tax
             if value > 0:
@@ -261,20 +273,51 @@ class AssociativeMemory:
                 routes[target].append(Route(source, tuple(e.id for e in path), cue, transmissions, tax, value, states))
 
         for source in sources:
-            for e in members.get(source, []):
-                add(source, e.b if e.a == source else e.a, [e], 1.0, source)
+            first_edges = members.get(source, [])
+            for e in first_edges:
+                add(source, other_end(e, source), [e], 1.0, (source,))
+            if self.config.entity_hops < 2:
+                continue
+            # One more step past a tagged episode: along its followed or
+            # co-occurred edge, or through a second hub to that hub's other
+            # members. A hub that is itself in view already reaches its
+            # members directly, so it is not re-entered. Only the strongest
+            # bridge into a second hub can win the max, so keep the best two
+            # (the runner-up covers a target that is the best bridge's own
+            # episode) and emit one route per member instead of one per
+            # bridge, which kept route counts quadratic on crowded hubs.
+            bridges = {}
+            for e in first_edges:
+                first = other_end(e, source)
+                for e2 in adjacency.get(first, []):
+                    if e2.id == e.id:
+                        continue
+                    second = other_end(e2, first)
+                    if e2.kind != "mentions":
+                        add(source, second, [e, e2], 1.0, (source,))
+                    elif second not in sources:
+                        best = bridges.setdefault(second, [])
+                        best.append((e.transmission(tick) * e2.transmission(tick), first, e, e2))
+                        best.sort(key=lambda b: (-b[0], b[1]))
+                        del best[2:]
+            for second, best in bridges.items():
+                for e3 in members.get(second, []):
+                    target = other_end(e3, second)
+                    for _, first, e, e2 in best:
+                        if target != first:
+                            add(source, target, [e, e2, e3], 1.0, (source, second))
+                            break
         if self.config.memory_sources:
             seeds = sorted(direct, key=lambda i: (-direct[i], i))
             seeds = [i for i in seeds if direct[i] > self.config.seed_threshold][:self.config.seed_budget]
             for source in seeds:
                 for e in adjacency.get(source, []):
-                    other = e.b if e.a == source else e.a
+                    other = other_end(e, source)
                     if e.kind != "mentions":
                         add(source, other, [e], direct[source])
                     else:
                         for e2 in members[other]:
-                            target = e2.b if e2.a == other else e2.a
-                            add(source, target, [e, e2], direct[source], other)
+                            add(source, other_end(e2, other), [e, e2], direct[source], (other,))
         return {i: tuple(sorted(rs, key=lambda r: (-r.contribution, r.source, r.edges)))
                 for i, rs in routes.items()}
 
