@@ -61,6 +61,10 @@ def _run_model(dir_path: Path):
     import json as _json
 
     try:
+        # Runs through the proxy save the model that really answered
+        cfg = dir_path.parent / "memory_config.json"
+        if cfg.exists() and (m := _json.load(open(cfg)).get("actor_model")):
+            return m
         p = _json.load(open(dir_path.parent / "params.json"))
         return p.get("agent", {}).get("model")
     except Exception:
@@ -642,28 +646,21 @@ def api_judge_meta():
         runs.append({"path": str(run_dir), "name": run_dir.name, "mtime": agent_logs.stat().st_mtime,
                      "ready": (judging.CARDS_ROOT / run_dir.name / "cards.jsonl").exists()})
     runs.sort(key=lambda r: (not r["ready"], -r["mtime"]))
-    return jsonify({"runs": runs, "prompts": judging.prompts(),
-                    "models": list(judging.JUDGE_MODELS), "labels": judging.LABEL_NAMES})
+    anchor = judging.ANCHOR_SET if judging.ANCHOR_SET in judging.card_sets() else None
+    if anchor:
+        runs.insert(0, {"path": anchor, "name": anchor, "mtime": 0, "ready": True})
+    return jsonify({"runs": runs, "prompts": judging.prompts(), "anchor": anchor,
+                    "models": list(judging.JUDGE_MODELS), "labels": judging.LABEL_NAMES,
+                    "question": judging.QUESTION, "help": judging.ANSWER_HELP, "raters": judging.RATERS,
+                    "goal": len(judging.load_cards(anchor)) if anchor else 0})
 
 
 @app.route("/api/judge/cards")
 def api_judge_cards():
     try:
         card_set, rater = request.args.get("set", ""), request.args.get("rater", "")
-        cards = judging.load_cards(card_set)
-        mine = judging.ratings(card_set).get(judging.safe_name(rater), {}) if rater else {}
-        runs = judging.judge_runs(card_set)
-        out = []
-        for c in cards:
-            memory = c.get("memory") or {}
-            out.append({
-                "card_id": c["card_id"], "split": judging.split_of(c["card_id"]),
-                "text": judging.visible_text(c),
-                "memory": memory.get("text", "") if isinstance(memory, dict) else str(memory),
-                "mine": mine.get(c["card_id"]),
-                "judges": {name: {"label": rows[c["card_id"]]["label"], "reason": rows[c["card_id"]]["reason"]}
-                           for name, rows in runs.items() if c["card_id"] in rows},
-            })
+        out = [{"card_id": c["card_id"], "text": judging.visible_text(c), "mine": mine}
+               for c, mine in judging.for_rater(card_set, rater)]
         return jsonify({"cards": out})
     except (ValueError, OSError) as e:
         return _json_error(e)
@@ -765,6 +762,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-dir", type=Path, help="Explicit agent_logs directory to inspect")
     parser.add_argument("--port", type=int, default=5057)
+    parser.add_argument("--host", default="127.0.0.1", help="0.0.0.0 lets classmates on the same wifi open the page")
     args = parser.parse_args()
     if args.run_dir:
         directory = args.run_dir.resolve()
@@ -774,6 +772,6 @@ if __name__ == "__main__":
     _init_state()
     print(f"\nSimulation audit: http://127.0.0.1:{args.port}/audit")
     print(f"Rescued set and judge: http://127.0.0.1:{args.port}/rescued\n")
-    # threaded=False: STATE is a plain dict shared by every request; the
-    # console is single-user and the client serializes its calls anyway
-    app.run(host="127.0.0.1", port=args.port, debug=False, threaded=False)
+    # threaded=False: STATE is a plain dict shared by every request, and it
+    # also keeps two graders from saving over each other's ratings file
+    app.run(host=args.host, port=args.port, debug=False, threaded=False)

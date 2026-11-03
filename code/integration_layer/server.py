@@ -44,7 +44,9 @@ class ChatCompletionHTTPRequestHandler(BaseHTTPRequestHandler):
         except (KeyError, ValueError, json.JSONDecodeError):
             self._http_make_error(400, "Invalid request body")
             return
-        except Exception:
+        except Exception as e:
+            # Keep the model's own error (e.g. out of credit) in the proxy log
+            self.log_error("%s: %s", type(e).__name__, e)
             self._http_make_error(500, "Internal server error")
             return
 

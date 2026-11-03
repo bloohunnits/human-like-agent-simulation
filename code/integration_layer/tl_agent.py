@@ -19,6 +19,7 @@ class TerraLinguaAgent:
         tl_ports: tuple[int] = (9000, 9001),
         tl_host: str = "127.0.0.1",
         expected_model: str = TL_EXPECTED_MODEL,
+        reasoning_effort: str | None = None,
         ChatClient=OpenAI,
         **client_args,
         ):
@@ -27,11 +28,13 @@ class TerraLinguaAgent:
             model_name: Name of the model to handle requests
             tl_ports, tl_host: The ports/server where TerraLingua assumes the model is
             expected_model: The name of the model expected by TerraLingua
+            reasoning_effort: Added to every request when set (e.g. "low" for GPT-5 models)
             request_lib: Library to make HTTP requests
             ChatClient: class to interface with model
             client_args: Options passed to the client
         """
         self.model_name = model_name
+        self.reasoning_effort = reasoning_effort
         self.tl_ports = tl_ports
         self.tl_host = tl_host
         self.expected_model = expected_model
@@ -64,6 +67,8 @@ class TerraLinguaAgent:
     def _completion_handler(self,payload):
         request = payload.copy()
         request['model'] = self.model_name
+        if self.reasoning_effort:
+            request['reasoning_effort'] = self.reasoning_effort
 
         # make request to model
         try:
@@ -100,8 +105,10 @@ class TerraLinguaAgent:
         Runs the proxy, listening on each port
         """
         servers = []
+        stopped = threading.Event()
 
         def shutdown(signum, frame):
+            stopped.set()
             for server in servers:
                 server.shutdown()
 
@@ -122,8 +129,10 @@ class TerraLinguaAgent:
 
             print(f"Proxy listening on {self.tl_ports}")
 
-            # Block until SIGTERM
-            signal.pause()
+            # Block until SIGTERM. pause() also returns on other signals, like
+            # SIGCHLD when the OpenAI client runs a helper process.
+            while not stopped.is_set():
+                signal.pause()
 
         finally:
             for server in servers:
