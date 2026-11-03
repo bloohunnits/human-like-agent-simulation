@@ -2,115 +2,58 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import urllib.request
 import threading
+from exceptions import UnknownPathError
 
-# ------- Mock Implementations --------
 
-def human_completion(server, **kwargs):
+class ChatCompletionHTTPRequestHandler(BaseHTTPRequestHandler):
     """
-    Replaces the LLM backend with human text
-
-    Parameters:
-        server (BaseHTTPRequestHandler): server handling the request
-        kwargs (Dict[Str, Str]): optional parameters, i.e., HTTP body
-
-    Returns:
-        response (dict): JSON formated response body
+    Abstract class to handle the HTTP requests made by TerraLingua
+    Implement `model_handler` to return TerraLingua expected model
+    and `completion_handler` to return TerraLingua expected chat response
     """
-    body = kwargs.get('body')
-    system_prompt = body['messages'][0]['content']
-    user_prompt = body['messages'][1]['content']
-    print(f"------- System Prompt --------\n{system_prompt}\n")
-    print(f"------- User Prompt --------\n{user_prompt}\n")
 
-    human = input(f'Response: ') # fabricate a response
-    response_message = {
-        "role": "assistant",
-        "content": human,
-    }
+    def model_handler(self):
+        """
+        Responds the the OpenAI API /v1/models endpoint
+        """
+        raise NotImplementedError
 
-    response = {
-        "id": "chatcmpl-mock",
-        "object": "chat.completion",
-        "created": 0,
-        "model": body["model"],
-        "choices": [
-            {
-                "index": 0,
-                "message": response_message,
-                "finish_reason": "stop",
-            }
-        ],
-        "usage": {
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
-            "total_tokens": 0,
-        },
-    }
-    return response
-
-def i_am_deepseek(server):
-    """
-    Creates a response that says that this model is Deepseek
-
-    Parameters:
-        server (BaseHTTPRequestHandler): server handling the request
-
-    Returns:
-        response (dict): JSON formated response body
-    """
-    model_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
-    response = {
-        "object": "list",
-        "data": [{
-            "id": model_name,
-            "object": "model",
-            "owned_by": "deepseek",
-        }],
-    }
-    return response
-
-# ------- Server -------
-
-class Proxy(BaseHTTPRequestHandler):
-    """
-    TerraLingua expects an OpenAI API compatible model to be hosted on localhost:9000 and localhost:9001
-    This sever intercepts those requests.
-    1. This is a reverse proxy so unsupported models can act as Deepseek and integrate into TerraLingua
-       without needing to patch to support them
-    2. We can have a mock LLM call where we manually handle the role of the agent.
-    """
+    def completion_handler(self, request):
+        """
+        Responds the the OpenAI API /v1/chat/completions endpoint
+        """
+        raise NotImplementedError
 
     def do_GET(self):
-        self.handle_request()
+        if self.path != "/v1/models":
+            self._http_make_error()
+        else:
+            response = self.model_handler()
+            self._http_make_response(response)
 
     def do_POST(self):
-        self.handle_request()
+        if self.path != "/v1/chat/completions":
+            self._http_make_error(404)
+            return
 
-    def handle_request(
-        self,
-        model_handler = i_am_deepseek,
-        completion_handler = human_completion,
-        ):
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            json_body = json.loads(body)
+            response = self.completion_handler(json_body)
+        except (KeyError, ValueError, json.JSONDecodeError):
+            self._http_make_error(400, "Invalid request body")
+            return
+        except Exception:
+            self._http_make_error(500, "Internal server error")
+            return
+
+        self._http_make_response(response)
+
+    def _http_make_response(self, response):
         """
-        Routes HTTP request to their mock handlers.
-        Responds to client with handler's response.
-
-        Parameters:
-            model_handler (callable): responds the the OpenAI API /v1/models endpoint
-            completion_handler (callable): responds the the OpenAI API /v1/chat/completions endpoint
+        Responds to client with input response response.
         """
-        
-        match self.path:
-            case "/v1/models":
-                response = model_handler(self)
-            case "/v1/chat/completions":
-                length = int(self.headers["Content-Length"])
-                body = self.rfile.read(length)
-                json_body = json.loads(body)
-                response = completion_handler(self, body=json_body)
-            case _:
-                raise Exception(f'Unknown endpoint {self.path}') # TODO raise a mors specific exception
-
         response_body = json.dumps(response).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -118,13 +61,5 @@ class Proxy(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(response_body)
 
-
-def serve(port):
-    ThreadingHTTPServer(("localhost", port), Proxy).serve_forever()
-
-
-for port in (9000, 9001):
-    threading.Thread(target=serve, args=(port,), daemon=True).start()
-
-print("Proxy listening on 9000 and 9001")
-threading.Event().wait()
+    def _http_make_error(self, status_code, message=None):
+        self.send_error(status_code, message)
