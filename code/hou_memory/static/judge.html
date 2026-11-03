@@ -65,7 +65,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
     <h2>How to answer</h2>
     <p>Press <b>1</b>, <b>2</b> or <b>3</b>, then <b>Enter</b>. You can also click. Each card takes about a minute, since there is a lot to read. Your answers save as you go, and <b>Back</b> lets you change one.</p>
     <p id="how-many"></p>
-    <p><input id="rater" placeholder="Your name" size="16"> <button id="start" class="go">Start</button></p>
+    <p><input id="rater" placeholder="Andre, Ben or Ryan" size="16"> <button id="start" class="go">Start</button></p>
   </div>
 
   <div id="work" hidden>
@@ -109,13 +109,13 @@ const name=l=>meta.labels[l]||l;
 
 async function loadMeta(){meta=await api('/api/judge/meta');$('run').innerHTML=meta.runs.map(r=>`<option value="${esc(r.path)}">${esc(r.name)}</option>`).join('');
   const saved=keep.get('rescued.run');if(saved&&meta.runs.some(r=>r.path===saved))$('run').value=saved;
-  $('question').textContent=meta.question;$('how-many').textContent=`We ask for ${meta.goal} cards, about ${Math.round(meta.goal*70/60)} minutes. You can stop whenever you like and pick up later with the same name.`;
+  $('question').textContent=meta.question;$('how-many').textContent=`Each of us grades all ${meta.goal} cards, about ${Math.round(meta.goal*70/60/60)} hours in all. Stop whenever you like and pick up later with the same name.`;
   const ps=Object.keys(meta.prompts);$('prompt').innerHTML=ps.map(n=>`<option>${esc(n)}</option>`).join('');$('prompt').value=ps[ps.length-1];showPrompt();
   $('model').innerHTML=meta.models.map(m=>`<option>${esc(m)}</option>`).join('');}
 function showPrompt(){const p=meta.prompts[$('prompt').value];if(!p)return;$('d1').value=p.definitions.belongs;$('d2').value=p.definitions.doesnt_matter;$('d3').value=p.definitions.noise;$('world').value=p.world;$('task').value=p.task;$('note').value='';}
 async function ensure(force){const r=run();if(!r)return;if(force||!r.ready){$('left').textContent='Finding rescued memories...';await api('/api/judge/make_cards',{path:r.path});r.ready=true;}}
 async function load(force){err();try{await ensure(force);const d=await api(`/api/judge/cards?set=${encodeURIComponent(set())}&rater=${encodeURIComponent(who())}`);cards=d.cards;pos=cards.filter(c=>c.mine).length;show();if(tab!=='label')await report();}catch(e){err(e);}}
-function show(){const n=cards.filter(c=>c.mine).length,goal=Math.min(meta.goal,cards.length),c=cards[pos],stop=!c||(!c.mine&&n>=goal&&!extra);
+function show(){const n=cards.filter(c=>c.mine).length,goal=cards.length,c=cards[pos],stop=!c||(!c.mine&&n>=goal&&!extra);
   $('left').textContent=cards.length?`${n} of ${extra?cards.length:goal} done`:'No cards here.';$('card').hidden=stop;$('done').hidden=!stop||!cards.length;$('more').hidden=n>=cards.length;if(stop)return;
   $('text').textContent=c.text;pick=c.mine?c.mine.label:null;$('why').value=c.mine?c.mine.reason:'';
   $('answers').innerHTML=L.map((l,i)=>`<button data-l="${l}">${i+1}. ${esc(name(l))}<small>${esc(meta.help[l])}</small></button>`).join('');
@@ -124,7 +124,7 @@ function show(){const n=cards.filter(c=>c.mine).length,goal=Math.min(meta.goal,c
   $('back').disabled=pos===0;scrollTo(0,0);}
 function choose(l){pick=l;$('answers').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));err();}
 let saving=false;async function next(){const c=cards[pos];if(!c||saving)return;if(!pick){err('Pick an answer.');return;}saving=true;if(document.activeElement)document.activeElement.blur();try{await api('/api/judge/label',{set:set(),rater:who(),card_id:c.card_id,label:pick,reason:$('why').value});err();c.mine={label:pick,reason:$('why').value};pos++;show();}catch(e){err(e);}finally{saving=false;}}
-function start(){if(!who()){err('Type your name first.');$('rater').focus();return;}session.set('rescued.rater',who());$('guide').hidden=true;$('work').hidden=false;load();}
+function start(){if(!meta.raters.includes(who().toLowerCase())){err('Type your first name: Andre, Ben or Ryan.');$('rater').focus();return;}session.set('rescued.rater',who());$('guide').hidden=true;$('work').hidden=false;load();}
 
 async function report(){if(!set())return;const r=await api('/api/judge/report?set='+encodeURIComponent(set()));
   const raters=Object.entries(r.raters);$('people').textContent=!raters.length?'Nobody has labeled yet.':raters.map(([n,k])=>`${n} labeled ${k}.`).join(' ')+' '+r.human_pairs.map(p=>`${p.a} and ${p.b} agree on ${p.agree} of ${p.n}.`).join(' ')+(r.stale?` ${r.stale} old labels not counted because the card changed.`:'');

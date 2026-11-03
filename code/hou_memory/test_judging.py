@@ -79,35 +79,40 @@ class Grades(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def test_grade_on_old_wording_stops_counting(self):
-        judging.save_rating("s", "Ann", "card-0", "belongs")
-        self.assertEqual(judging.ratings("s")["ann"]["card-0"]["label"], "belongs")
+        judging.save_rating("s", "Andre", "card-0", "belongs")
+        self.assertEqual(judging.ratings("s")["andre"]["card-0"]["label"], "belongs")
         changed = card("card-0")
         changed["scene"] = ["Energy 13.0."]
         lines = [json.dumps(changed)] + self.path.read_text().splitlines()[1:]
         self.path.write_text("\n".join(lines) + "\n")
         stale = []
-        self.assertEqual(judging.ratings("s", stale)["ann"], {})
+        self.assertEqual(judging.ratings("s", stale)["andre"], {})
         self.assertEqual(stale, ["card-0"])
 
     def test_name_case_does_not_split_one_person(self):
-        judging.save_rating("s", "Ann", "card-0", "belongs")
-        judging.save_rating("s", "ANN", "card-1", "noise")
-        self.assertEqual(len(judging.ratings("s")["ann"]), 2)
+        judging.save_rating("s", "Andre", "card-0", "belongs")
+        judging.save_rating("s", "ANDRE", "card-1", "noise")
+        self.assertEqual(len(judging.ratings("s")["andre"]), 2)
 
     def test_cards_with_fewest_grades_come_first(self):
-        judging.save_rating("s", "ann", "card-0", "belongs")
-        judging.save_rating("s", "bob", "card-1", "noise")
-        order = [c["card_id"] for c, _ in judging.for_rater("s", "cat")]
+        judging.save_rating("s", "andre", "card-0", "belongs")
+        judging.save_rating("s", "ben", "card-1", "noise")
+        order = [c["card_id"] for c, _ in judging.for_rater("s", "ryan")]
         self.assertEqual(order[0], "card-2")
 
     def test_own_finished_cards_lead(self):
-        judging.save_rating("s", "ann", "card-2", "belongs")
-        first, mine = judging.for_rater("s", "ann")[0]
+        judging.save_rating("s", "andre", "card-2", "belongs")
+        first, mine = judging.for_rater("s", "andre")[0]
         self.assertEqual((first["card_id"], mine["label"]), ("card-2", "belongs"))
+
+    def test_only_our_three_names_are_taken(self):
+        with self.assertRaises(ValueError):
+            judging.save_rating("s", "Ann", "card-0", "belongs")
+        judging.save_rating("s", "Ryan", "card-0", "belongs")
 
     def test_unknown_card_is_refused(self):
         with self.assertRaises(ValueError):
-            judging.save_rating("s", "ann", "card-404", "belongs")
+            judging.save_rating("s", "andre", "card-404", "belongs")
 
 
 if __name__ == "__main__":

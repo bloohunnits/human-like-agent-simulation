@@ -651,7 +651,8 @@ def api_judge_meta():
         runs.insert(0, {"path": anchor, "name": anchor, "mtime": 0, "ready": True})
     return jsonify({"runs": runs, "prompts": judging.prompts(), "anchor": anchor,
                     "models": list(judging.JUDGE_MODELS), "labels": judging.LABEL_NAMES,
-                    "question": judging.QUESTION, "help": judging.ANSWER_HELP, "goal": judging.SESSION_CARDS})
+                    "question": judging.QUESTION, "help": judging.ANSWER_HELP, "raters": judging.RATERS,
+                    "goal": len(judging.load_cards(anchor)) if anchor else 0})
 
 
 @app.route("/api/judge/cards")

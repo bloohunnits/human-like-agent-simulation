@@ -36,7 +36,9 @@ LABEL_NAMES = {"belongs": "Yes, and it matters", "doesnt_matter": "Yes, but it d
 JUDGE_MODELS = ("gpt-5-mini", "gpt-5.6-luna", "gpt-6-luna", "gpt-5.4-mini", "gpt-5-nano")
 GATE_KAPPA, GATE_MIN_CARDS, HELD_OUT_SHARE = 0.61, 20, 0.3
 ANCHOR_SET = "anchor_v1"  # the set classmates grade
-SESSION_CARDS = 60  # about 70 minutes, and six people this size give every card three grades
+# The three of us each grade every card, so every card gets three grades.
+# Names are matched without case.
+RATERS = ("andre", "ben", "ryan")
 # People and the judge read these same words.
 QUESTION = "Out of everything this person remembers, this came to mind. Does that make sense right now?"
 ANSWER_HELP = {
@@ -313,6 +315,8 @@ def ratings(card_set: str, stale: list | None = None) -> dict[str, dict[str, dic
 
 def save_rating(card_set: str, rater: str, card_id: str, label: str | None, reason: str = "") -> None:
     rater = safe_name(rater).lower()
+    if rater not in RATERS:
+        raise ValueError("Type your first name: Andre, Ben or Ryan.")
     card = next((c for c in load_cards(card_set) if c["card_id"] == card_id), None)
     if card is None:
         raise ValueError(f"no card {card_id} in {card_set}")
