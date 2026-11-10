@@ -26,12 +26,35 @@ class ScoringTests(unittest.TestCase):
             "useful_precision": 0.6, "irrelevant_inclusion": 0.2, "stale_inclusion": 0.2,
         })
         self.assertEqual(result["by_k"][1]["recall"], 0.5)
-        self.assertEqual(result["by_k"][3]["positive"], 1)
-        self.assertEqual(result["by_k"][3]["recall"], 0.5)
-        self.assertEqual(result["by_k"][3]["all_evidence"], 0.0)
+        self.assertEqual(result["by_k"][3]["positive"], 2)
+        self.assertEqual(result["by_k"][3]["recall"], 0.75)
+        self.assertEqual(result["by_k"][3]["all_evidence"], 0.5)
         self.assertIsNone(result["by_k"][6])
         self.assertIsNone(result["false_recall"])
         self.assertEqual(result["depths"], {1: 1, 5: 1})
+
+    def test_supported_cutoff_counts_short_and_empty_positive_lists(self):
+        full, short, empty = [("run", "ada", tick) for tick in range(3)]
+        cases = {
+            full: sr.Labels({"a"}, {"extra"}, {"x"}, set()),
+            short: sr.Labels({"b", "c"}, set(), set(), set()),
+            empty: sr.Labels({"d"}, set(), set(), set()),
+        }
+        result = sr.score(cases, {full: ["x", "a", "extra"], short: ["b"], empty: []}, [2, 3, 4])
+        self.assertEqual(result["by_k"][2], {
+            "positive": 3, "negative": 0, "retrieved": 3, "judged": 3,
+            "recall": 0.5, "any_evidence": 2 / 3, "all_evidence": 1 / 3,
+            "useful_precision": 2 / 3, "irrelevant_inclusion": 1 / 3, "stale_inclusion": 0.0,
+        })
+        self.assertEqual(result["by_k"][3], result["full_lists"])
+        self.assertIsNone(result["by_k"][4])
+
+    def test_only_empty_lists_leave_positive_cutoffs_unsupported(self):
+        key = ("run", "ada", 1)
+        result = sr.score({key: sr.Labels({"a"}, set(), set(), set())}, {key: []}, [1])
+        self.assertEqual(result["full_lists"]["recall"], 0.0)
+        self.assertEqual(result["depths"], {0: 1})
+        self.assertIsNone(result["by_k"][1])
 
     def test_empty_lists_are_observed_but_missing_rows_and_lists_are_unknown(self):
         empty_positive, empty_negative, false_recall, missing_list, missing_row = [
@@ -50,7 +73,7 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(result["full_lists"]["recall"], 0.0)
         self.assertEqual(result["full_lists"]["all_evidence"], 0.0)
         self.assertEqual(result["full_lists"]["negative"], 2)
-        self.assertIsNone(result["by_k"][1]["recall"])
+        self.assertEqual(result["by_k"][1], result["full_lists"])
         self.assertIsNone(result["by_k"][2])
 
     def test_empty_dataset_has_no_metric_denominators(self):
@@ -205,7 +228,8 @@ class FixtureTests(unittest.TestCase):
         self.assertIn("Observed retrieval depths (depth=case count): 0=1, 1=1, 2=2, 3=8", report)
         self.assertIn("Full observed lists (12 cases: 10 positive, 2 negative; 29/29 retrieved IDs judged)", report)
         self.assertIn("False recall 50.0%", report)
-        self.assertIn("@3 (8 cases:", report)
+        self.assertIn("@1 (12 cases: 10 positive, 2 negative; 11/11 retrieved IDs judged)", report)
+        self.assertIn("@3 (12 cases: 10 positive, 2 negative; 29/29 retrieved IDs judged)", report)
         self.assertIn("@5: unsupported", report)
 
 

@@ -141,18 +141,22 @@ def score(cases: dict[CaseKey, Labels], retrievals: dict[CaseKey, list[str] | No
         else:
             observed.append((labels, ids))
 
+    depths = Counter(len(ids) for _, ids in observed)
+    max_depth = max(depths, default=0)
     by_k = {}
     for k in sorted(set(cutoffs)):
         if k <= 0:
             raise ValueError("K must be positive")
-        supported = [(labels, set(ids[:k])) for labels, ids in observed if len(ids) >= k]
-        by_k[k] = metrics(supported) if supported else None
+        if k > max_depth:
+            by_k[k] = None
+            continue
+        by_k[k] = metrics([(labels, set(ids[:k])) for labels, ids in observed])
     negative_lists = [ids for labels, ids in observed if not labels.relevant]
     return {
         "cases": len(cases),
         "missing_row": missing_row,
         "missing_list": missing_list,
-        "depths": dict(sorted(Counter(len(ids) for _, ids in observed).items())),
+        "depths": dict(sorted(depths.items())),
         "full_lists": metrics([(labels, set(ids)) for labels, ids in observed]),
         "false_recall": ratio(sum(bool(ids) for ids in negative_lists), len(negative_lists)),
         "by_k": by_k,

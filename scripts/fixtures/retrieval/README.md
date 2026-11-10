@@ -48,9 +48,10 @@ leaves decisions, confirmed actions, and outcomes to separate analyses.
   positive case. Missing rows and unavailable lists are counted separately and
   excluded from all metrics. Zero denominators display as `N/A`.
 - **Depth coverage.** Full-list metrics use each observed list as recorded.
-  Each `@K` result uses only cases with at least K distinct retrieved IDs and
-  reports that cohort's size. A cutoff with zero coverage is unsupported.
-  Different cutoffs or fields can cover different cases.
+  Every supported `@K` uses the same observed cases for a given field. It takes
+  the first K IDs from each list, using the entire list when it is shorter and
+  zero IDs when it is empty. A cutoff above the maximum observed depth is
+  unsupported. Different fields can have different sets of observed cases.
 
 ## Synthetic fixtures
 
