@@ -16,12 +16,10 @@ MEMORY_COLUMNS = [
     "memory_id",
     "agent_id",
     "content",
-    "role",
     "t_created",
     "t_last_recalled",
     "g",
-    "recall_count",
-    "metadata",
+    "recall_count"
 ]
 
 CREATE_SQL = """
@@ -29,17 +27,12 @@ CREATE TABLE IF NOT EXISTS memories (
     memory_id UUID PRIMARY KEY,
     agent_id TEXT NOT NULL DEFAULT 'default',
     content TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'user',
     t_created DOUBLE PRECISION NOT NULL,
     t_last_recalled DOUBLE PRECISION,
     g DOUBLE PRECISION NOT NULL DEFAULT 1.0,
-    recall_count INTEGER NOT NULL DEFAULT 0,
-    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    recall_count INTEGER NOT NULL DEFAULT 0
 );
 ALTER TABLE memories ADD COLUMN IF NOT EXISTS agent_id TEXT NOT NULL DEFAULT 'default';
-ALTER TABLE memories ADD COLUMN IF NOT EXISTS score DOUBLE PRECISION;
-CREATE INDEX IF NOT EXISTS idx_memories_agent_score
-    ON memories (agent_id, score DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_t_created
     ON memories (t_created);
 """
@@ -122,7 +115,7 @@ class MemoryDatabase:
 
         update_fields = [
             "agent_id", "content", "role", "t_created", "t_last_recalled",
-            "g", "recall_count", "metadata",
+            "g", "recall_count", "metadata, score",
         ]
         update_sql = ",\n                ".join(
             f"{field} = EXCLUDED.{field}" for field in update_fields
@@ -131,7 +124,7 @@ class MemoryDatabase:
             INSERT INTO memories
                 (memory_id, agent_id, content, role, t_created,
                  t_last_recalled, g, recall_count, metadata, score)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (memory_id) DO UPDATE SET
                 {update_sql}
         """

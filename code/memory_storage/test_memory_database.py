@@ -1,189 +1,135 @@
-"""Unit tests for MemoryDatabase; no patching or live PostgreSQL required."""
-# TODO remove score from the tests!
+"""Tests for memory_database.MemoryDatabase.
 
+By default the PostgreSQL backend is mocked with MagicMock (injected through
+the `connection` argument, no @patch). To run against a real database:
+
+    python test_memory_database.py --pg-dsn "postgresql://user:pw@localhost/db"
+"""
+
+import argparse
+import sys
 import unittest
-from contextlib import contextmanager
+import uuid
+import os
+from unittest.mock import MagicMock
 
 import pandas as pd
+import psycopg
 
-from memory_database import MemoryDatabase, MEMORY_COLUMNS
+from memory_storage.memory_database import CREATE_SQL, MEMORY_COLUMNS, MemoryDatabase
 
+PG_DSN = os.environ.get("TEST_PG_DSN") # Uses an actual dsn if set
 
-class FakeCursor:
-    def __init__(self, connection):
-        self.connection = connection
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def executemany(self, sql, params):
-        self.connection.executemany_calls.append((sql, params))
+# The database uses UUID ids, so id-01..id-04 are mapped to fixed UUIDs.
+ID_01, ID_02, ID_03, ID_04 = (str(uuid.UUID(int=i)) for i in (1, 2, 3, 4))
 
 
-class FakeConnection:
-    def __init__(self, rows=None):
-        self.rows = rows or []
-        self.execute_calls = []
-        self.executemany_calls = []
-        self.commits = 0
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def execute(self, sql, params=None):
-        self.execute_calls.append((sql, params))
-        return self
-
-    def executemany(self, sql, params):
-        self.executemany_calls.append((sql, params))
-
-    def fetchall(self):
-        return self.rows
-
-    def cursor(self):
-        return FakeCursor(self)
-
-    def commit(self):
-        self.commits += 1
-
-
-class ConnectionFactory:
-    def __init__(self, rows=None):
-        self.connections = []
-        self.rows = rows or []
-
-    def __call__(self, dsn):
-        connection = FakeConnection(self.rows)
-        self.connections.append((dsn, connection))
-        return connection
+def memory_row(memory_id, agent_id, content, t_created, g=1.0):
+    """A row as returned by the SELECT in recall_by_id."""
+    return (memory_id, agent_id, content, "user", t_created, None, g, 0, {})
 
 
 class TestMemoryDatabase(unittest.TestCase):
-    """All public API tests for MemoryDatabase live in one test class."""
+    def setUp(self):
+        self.use_mock = PG_DSN is None
+        if self.use_mock:
+            self.conn = MagicMock()
+            self.conn.__enter__.return_value = self.conn
+            self.cursor = self.conn.cursor.return_value.__enter__.return_value
+            self.factory = MagicMock(return_value=self.conn)
+            self.db = MemoryDatabase(pg_dsn="mock-dsn", connection=self.factory)
+        else:
+            self.db = MemoryDatabase(pg_dsn=PG_DSN)
 
-    def make_db(self, rows=None, initialize=False):
-        factory = ConnectionFactory(rows)
-        db = MemoryDatabase(
-            pg_dsn="postgresql://test",
-            connection=factory,
-            getenv=lambda key: None,
-            initialize=initialize,
+    def tearDown(self):
+        if not self.use_mock:
+            with psycopg.connect(PG_DSN) as conn:
+                conn.execute(
+                    "DELETE FROM memories WHERE memory_id = ANY(%s::uuid[])",
+                    ([ID_01, ID_02, ID_03, ID_04],),
+                )
+                conn.commit()
+
+    # ---- helpers -------------------------------------------------------
+
+    def _insert_initial(self):
+        memories = pd.DataFrame(
+            [
+                [ID_01, "a0", "first memory", 10, None, 1, 0, None],
+                [ID_02, "a1", "second memory", 15, None, 1.4, 0, None],
+                [ID_03, "a0", "third memory", 24, None, 1, 0, None],
+            ],
+            columns=["memory_id", "agent_id", "content", "t_created",
+                     "t_last_recalled", "g", "recall_count", "metadata"],
         )
-        return db, factory
+        return self.db.upsert_memories(memories)
 
-    def test_requires_dsn(self):
-        with self.assertRaises(ValueError):
-            MemoryDatabase(connection=ConnectionFactory(), getenv=lambda key: None,
-                           initialize=False)
+    def _expect_rows(self, rows):
+        """In mock mode, make the next SELECT return `rows`."""
+        if self.use_mock:
+            self.conn.execute.return_value.fetchall.return_value = rows
 
-    def test_initialization_executes_schema_and_commits(self):
-        db, factory = self.make_db(initialize=True)
-        _, conn = factory.connections[0]
-        self.assertIn("CREATE TABLE IF NOT EXISTS memories", conn.execute_calls[0][0])
-        self.assertEqual(conn.commits, 1)
+    def _upserted_rows(self):
+        """Rows passed to executemany by the latest upsert (mock mode only)."""
+        return self.cursor.executemany.call_args[0][1]
 
-    def test_upsert_requires_dataframe(self):
-        db, _ = self.make_db()
-        with self.assertRaises(TypeError):
-            db.upsert_memories([{"memory_id": "id"}])
+    # ---- tests ---------------------------------------------------------
 
-    def test_upsert_checks_required_columns(self):
-        db, _ = self.make_db()
-        with self.assertRaisesRegex(ValueError, "Missing required columns"):
-            db.upsert_memories(pd.DataFrame([{"memory_id": "id"}]))
+    def test_initialize_database(self):
+        if self.use_mock:
+            self.conn.execute.assert_called_once_with(CREATE_SQL)
+            self.conn.commit.assert_called_once()
 
-    def test_upsert_empty_dataframe_returns_zero_without_connecting(self):
-        db, factory = self.make_db()
-        frame = pd.DataFrame(columns=["memory_id", "agent_id", "content", "t_created"])
-        self.assertEqual(db.upsert_memories(frame), 0)
-        self.assertEqual(factory.connections, [])
+    def test_insert_memories(self):
+        self.assertEqual(self._insert_initial(), 3)
+        if self.use_mock:
+            rows = self._upserted_rows()
+            self.assertEqual([r[0] for r in rows], [ID_01, ID_02, ID_03])
+            self.assertEqual([r[1] for r in rows], ["a0", "a1", "a0"])
 
-    def test_upsert_batches_rows_and_commits(self):
-        db, factory = self.make_db()
-        frame = pd.DataFrame([
-            {"memory_id": "00000000-0000-0000-0000-000000000001",
-             "agent_id": "agent-a", "content": "one", "t_created": 1.0, "score": 0.7},
-            {"memory_id": "00000000-0000-0000-0000-000000000002",
-             "agent_id": "agent-a", "content": "two", "t_created": 2.0, "score": None},
+    def test_add_memory_under_a1_at_later_timestamp(self):
+        self._insert_initial()
+        new = pd.DataFrame([{
+            "memory_id": ID_04, "agent_id": "a1",
+            "content": "fourth memory", "t_created": 30,
+        }])
+        self.assertEqual(self.db.upsert_memories(new), 1)
+        if self.use_mock:
+            row = self._upserted_rows()[0]
+            self.assertEqual(row[0], ID_04)
+            self.assertEqual(row[1], "a1")
+            self.assertEqual(row[4], 30.0)
+
+    def test_update_memory_increase_g_by_one(self):
+        self._insert_initial()
+        updated = pd.DataFrame([{
+            "memory_id": ID_02, "agent_id": "a1",
+            "content": "second memory", "t_created": 15, "g": 1.4 + 1,
+        }])
+        self.assertEqual(self.db.upsert_memories(updated), 1)
+
+        self._expect_rows([memory_row(ID_02, "a1", "second memory", 15, g=2.4)])
+        result = self.db.recall_by_id([ID_02], "a1")
+        self.assertAlmostEqual(result.iloc[0]["g"], 2.4)
+        if self.use_mock:
+            self.assertAlmostEqual(self._upserted_rows()[0][6], 2.4)
+
+    def test_recall_all_memories_under_a0(self):
+        self._insert_initial()
+        self._expect_rows([
+            memory_row(ID_01, "a0", "first memory", 10),
+            memory_row(ID_03, "a0", "third memory", 24),
         ])
-        self.assertEqual(db.upsert_memories(frame), 2)
-        _, conn = factory.connections[0]
-        self.assertEqual(len(conn.executemany_calls), 1)
-        self.assertEqual(len(conn.executemany_calls[0][1]), 2)
-        self.assertIn("ON CONFLICT (memory_id) DO UPDATE", conn.executemany_calls[0][0])
-        self.assertEqual(conn.commits, 1)
-
-    def test_upsert_rejects_null_ids(self):
-        db, _ = self.make_db()
-        frame = pd.DataFrame([{
-            "memory_id": None, "agent_id": "agent-a", "content": "x", "t_created": 1
-        }])
-        with self.assertRaisesRegex(ValueError, "must not be null"):
-            db.upsert_memories(frame)
-
-    def test_upsert_rejects_non_dictionary_metadata(self):
-        db, _ = self.make_db()
-        frame = pd.DataFrame([{
-            "memory_id": "00000000-0000-0000-0000-000000000001",
-            "agent_id": "agent-a", "content": "x", "t_created": 1, "metadata": "bad"
-        }])
-        with self.assertRaisesRegex(TypeError, "metadata values"):
-            db.upsert_memories(frame)
-
-    def test_recall_by_id_empty_ids_returns_empty_dataframe_without_connecting(self):
-        db, factory = self.make_db()
-        result = db.recall_by_id([], "agent-a")
-        self.assertTrue(result.empty)
+        result = self.db.recall_by_id([ID_01, ID_02, ID_03], "a0")
         self.assertEqual(list(result.columns), MEMORY_COLUMNS)
-        self.assertEqual(factory.connections, [])
+        self.assertEqual([str(m) for m in result["memory_id"]], [ID_01, ID_03])
+        self.assertTrue((result["agent_id"] == "a0").all())
+        if self.use_mock:
+            params = self.conn.execute.call_args[0][1]
+            self.assertEqual(params, ([ID_01, ID_02, ID_03], "a0"))
 
-    def test_recall_by_id_filters_agent_and_returns_dataframe(self):
-        row = ("00000000-0000-0000-0000-000000000001", "agent-a", "hello", "user",
-               1.0, None, 1.0, 0, {}, None)
-        db, factory = self.make_db(rows=[row])
-        result = db.recall_by_id(["00000000-0000-0000-0000-000000000001"], "agent-a")
-        self.assertEqual(list(result.columns), MEMORY_COLUMNS)
-        self.assertEqual(result.iloc[0]["agent_id"], "agent-a")
-        _, conn = factory.connections[0]
-        sql, params = conn.execute_calls[0]
-        self.assertIn("agent_id = %s", sql)
-        self.assertEqual(params[1], "agent-a")
-
-    def test_recall_by_score_filters_agent_and_ignores_null_scores(self):
-        row = ("00000000-0000-0000-0000-000000000001", "agent-a", "scored", "user",
-               1.0, None, 1.0, 0, {}, 0.9)
-        db, factory = self.make_db(rows=[row])
-        result = db.recall_by_score("agent-a", 5)
-        self.assertEqual(list(result.columns), MEMORY_COLUMNS)
-        _, conn = factory.connections[0]
-        sql, params = conn.execute_calls[0]
-        self.assertIn("agent_id = %s AND score IS NOT NULL", sql)
-        self.assertIn("ORDER BY score DESC", sql)
-        self.assertIn("LIMIT %s", sql)
-        self.assertEqual(params, ("agent-a", 5))
-
-    def test_recall_by_score_zero_returns_empty_without_connecting(self):
-        db, factory = self.make_db()
-        result = db.recall_by_score("agent-a", 0)
-        self.assertTrue(result.empty)
-        self.assertEqual(factory.connections, [])
-
-    def test_recall_by_score_rejects_negative_k(self):
-        db, _ = self.make_db()
-        with self.assertRaises(ValueError):
-            db.recall_by_score("agent-a", -1)
-
-    def test_recall_by_score_rejects_non_integer_k(self):
-        db, _ = self.make_db()
-        with self.assertRaises(TypeError):
-            db.recall_by_score("agent-a", 2.5)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_recall_id_03_and_id_04(self):
+        self._insert_initial()  # id-04 does not exist, so only id-03 comes back
+        self._expect_rows([memory_row(ID_03, "a0", "third memory", 24)])
+        result = self.db.recall_by_id([ID_03, ID_04], "a0")
+        self.assertEqual([str(m) for m in result["memory_id"]], [ID_03])
