@@ -133,6 +133,24 @@ python webapp.py
 
 ## Running a sim
 
+New runs use the newer engine (Ben's fork in `code/terralingua-relational-memory`) through Ben's proxy:
+
+```
+make run NAME=world7 TICKS=300
+```
+
+The settings are in `HOU_SIM_ARGS` in `code/__main__.py`. Food is scarce (one piece of food worth 5 energy per turn for 10 beings), beings live about 100 turns, and a child costs 50 energy, so runs see births and a few generations. The newer engine tells a being who gave it energy or stole from it. The launcher is `code/hou_memory/run_hou_new_engine.py`, and runs land in `code/terralingua/logs_dev/logs/`. `make run-anchor` runs the older engine with the settings of the graded anchor_v1 worlds.
+
+One-time setup for the newer engine (needs `uv`):
+
+```
+cd code/terralingua-relational-memory
+uv venv --python 3.13 .venv
+uv pip install --python .venv/bin/python -e . -r ../hou_memory/requirements.txt
+```
+
+The older engine can still be run by hand:
+
 ```
 cd code/terralingua
 source .venv/bin/activate

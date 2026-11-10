@@ -116,6 +116,21 @@ def describe_scene(obs):
     return lines
 
 
+def view_of(obs):
+    """What the agent could see, for the card's map. Cells are (row, column)
+    from the agent, with rows growing downward, so "up" is one row up."""
+    if not obs:
+        return None
+    cells = []
+    for key, contents in (obs.get("observation") or {}).items():
+        try:
+            row, col = (int(v) for v in key.strip("()").split(","))
+        except ValueError:
+            continue
+        cells.append([row, col, [str(x) for x in contents]])
+    return {"radius": obs.get("vision_radius"), "cells": sorted(cells)}
+
+
 def history_block(memories, tick, count):
     before = sorted((m for m in memories if m.get("t_created", 0) < tick),
                     key=lambda m: (m.get("t_created", 0), m.get("memory_id", "")))
@@ -149,6 +164,8 @@ def build_card(run, turn, mem_id, kind, history, condition):
         "history": history_block(turn["memories"], tick, history),
         "scene": describe_scene(step.get("observation")),
         "memory": {"ticks_ago": age, "text": text},
+        "views": {"then": view_of((turn["steps"].get(as_tick(mem["t_created"])) or {}).get("observation")) if mem else None,
+                  "now": view_of(step.get("observation"))},
         "sealed": {
             "run": run, "condition": condition, "kind": kind, "agent_tag": tag, "agent_name": turn["name"],
             "tick": as_tick(tick), "memory_id": mem_id, "memory_age": age,
@@ -231,8 +248,9 @@ def git_state(path):
     return {"commit": run("rev-parse", "HEAD"), "dirty": bool(run("status", "--porcelain"))}
 
 
-def agent_steps_fallback(logs, tag):
-    """Older audits lack agent_step. Join the per-tick agent log by its timestamp."""
+def agent_steps(logs, tag):
+    """The per-tick agent log by timestamp. Older audits lack agent_step, and
+    the memory's own tick is only here."""
     path = logs / f"{tag}.jsonl"
     if not path.exists():
         return {}
@@ -263,15 +281,14 @@ def load_run(run_dir, min_age):
         memories = dump.get("memories", [])
         by_id = {m.get("memory_id"): m for m in memories}
         name = names.get(tag) or dump.get("agent_name") or tag
-        fallback = None
+        steps = agent_steps(logs, tag)
         per_agent[tag] = 0
         for rec in records:
             ticks_total += 1
             if condition is None:
                 condition = (rec.get("config") or {}).get("mode")
             if not isinstance(rec.get("agent_step"), dict):
-                fallback = agent_steps_fallback(logs, tag) if fallback is None else fallback
-                rec["agent_step"] = fallback.get(as_tick(rec["tick"]))
+                rec["agent_step"] = steps.get(as_tick(rec["tick"]))
             selected, solo = list(rec.get("selected", [])), set(rec.get("solo_selected", []))
             rows = {r["id"]: r for r in rec.get("rows", [])}
             rescued = [i for i in selected if i not in solo and
@@ -281,7 +298,7 @@ def load_run(run_dir, min_age):
             if rescued:
                 rescued.sort(key=lambda i: rows.get(i, {}).get("solo_score") or 0)
                 turns.append({"run": run, "condition": condition, "tag": tag, "name": name, "rec": rec,
-                              "memories": memories, "by_id": by_id, "rows": rows, "rescued": rescued,
+                              "memories": memories, "by_id": by_id, "rows": rows, "steps": steps, "rescued": rescued,
                               "displaced": [i for i in rec.get("solo_selected", []) if i not in set(selected)]})
 
     rate = 100.0 * rescues_total / ticks_total if ticks_total else 0.0

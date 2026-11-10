@@ -445,3 +445,17 @@ class AssociativeMemory:
             engine.edges[edge.id] = edge
         engine.last_event = payload.get("last_event")
         return engine
+
+
+# Named conditions for the launchers' --memory-condition.
+MEMORY_CONDITIONS = {
+    "hou": {"mode": "hou", "edge_learning": False},
+    "gated": {"mode": "gated", "edge_learning": False},
+    "independent": {"mode": "independent", "edge_learning": False},
+    "learned": {"mode": "independent", "edge_learning": True},
+    # An observed entity may continue one step past a tagged episode, so a cue
+    # can reach an episode that never mentions it. Fresh links start at full
+    # weight: a route through a person multiplies three links, and at .8 it
+    # fades before similarity does (see scripts/pinwheel_gap_walkthrough.py).
+    "chained": {"mode": "independent", "edge_learning": True, "entity_hops": 2, "edge_weight": 1.0},
+}
