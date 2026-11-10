@@ -179,67 +179,156 @@ def plain(text: str) -> str:
     return re.sub(r"\s+", " ", _speech(text)).strip()
 
 
-def _scene_line(line: str) -> str | None:
-    if line in ("Artifacts nearby: none.", "Incoming messages: none."):
-        return None
-    line = re.sub(r"Energy (\d+)\.0\b", r"Energy \1", line)
-    line = line.replace("ticks of life left", "turns of life left")
-    line = re.sub(r"\b1 steps\b", "1 step", line)
-    line = re.sub(r"Food in sight: \d+ patch(?:es)?, nearest (\d+) steps? away\.",
-                  lambda m: f"Food {m.group(1)} step{'s' if m.group(1) != '1' else ''} away.", line)
-    line = re.sub(r"Food in sight: \d+ patch(?:es)?\.", "Food in sight.", line)
-    line = re.sub(r"Visible named places: ([^.]+)\.",
-                  lambda m: "Can see " + _names([f"the {x.strip()}" for x in m.group(1).split(",")]) + ".", line)
-    line = re.sub(r"Artifacts nearby: ([^.]+)\.", lambda m: f"Notes nearby: {m.group(1)}.", line)
-    line = line.replace("Incoming messages: ", "Just heard: ").replace("Nearby: ", "Near: ")
-    return _speech(line)
+def _quotes(heard: str) -> list[tuple[str, str]]:
+    """'Ada said "hi"; Ben said "ok"' as (speaker, words) pairs."""
+    starts = list(re.finditer(r'(?:^|"; )([\w.-]+) said "', heard))
+    out = []
+    for i, m in enumerate(starts):
+        last = i + 1 == len(starts)
+        words = heard[m.end():len(heard) if last else starts[i + 1].start()]
+        out.append((m.group(1), words[:-1] if last and words.endswith('"') else words))
+    return out
+
+
+def _deed(name: str, params: dict, who: str) -> str:
+    p = params or {}
+    if name == "move":
+        d = p.get("direction", "")
+        return f"{who} stays put." if d == "stay" else f"{who} moves {d}."
+    if name == "give":
+        return f"{who} tries to give {p.get('target')} {p.get('amount')} energy."
+    if name == "take":
+        return f"{who} tries to take {p.get('amount')} energy from {p.get('target')}."
+    if name == "create_artifact":
+        return f'{who} writes a note called "{p.get("name")}".'
+    if name == "pickup_artifact":
+        return f'{who} picks up the note "{p.get("name")}".'
+    if name == "drop_artifact":
+        return f'{who} drops the note "{p.get("name")}".'
+    if name == "give_artifact":
+        return f'{who} gives the note "{p.get("artifact_name")}" to {p.get("target_agent")}.'
+    if name == "reproduce":
+        return f"{who} has a child named {p.get('name')}."
+    return f"{who} does {name.replace('_', ' ')}."
+
+
+def _world(found: str, who: str) -> str:
+    text = plain(f"Feedback from the preceding action: {found}.").removeprefix("The world said: ")
+    text = re.sub(r"\b[Yy]our\b", f"{who}'s", text)
+    return re.sub(r"\b[Yy]ou\b", who, text)
+
+
+def _turn(text: str, who: str) -> list[str]:
+    """One stored memory as script lines, in the order things happened: what
+    was around, what the world reported, what was heard, then the person's own
+    move and words. Memories are stored in the first person, so the name goes back in."""
+    said = world = deed = None
+    heard = []
+    if m := re.search(r'(?:^|\. )I said "(.*)"\.$', text, re.S):
+        said, text = m.group(1), text[:m.start() + 1]
+    if m := re.search(r'(?:^|\. )Heard (.*)\.$', text, re.S):
+        heard, text = _quotes(m.group(1)), text[:m.start() + 1]
+    if m := re.search(r"(?:^|\. )Feedback from the preceding action: (\{.*\})\.$", text, re.S):
+        world, text = _world(m.group(1), who), text[:m.start() + 1]
+    if m := re.match(r"Chose action (\w+): ", text):
+        try:  # a note's text can hold any character, so read the JSON properly
+            params, end = json.JSONDecoder().raw_decode(text, m.end())
+            deed, text = _deed(m.group(1), params, who), text[end:]
+        except ValueError:
+            pass
+    setting = []
+    if m := re.search(r"Nearby: ([^.]+)\.", text):
+        people = m.group(1).split(",")
+        setting.append(f"{_names(people)} {'is' if len(people) == 1 else 'are'} nearby.")
+    if m := re.search(r"Artifacts here: ([^.]+)\.", text):
+        notes = m.group(1).split(",")
+        setting.append(f"{who} sees {'a note' if len(notes) == 1 else 'notes'}: {_names(notes)}.")
+    if m := re.search(r"Visible places: ([^.]+)\.", text):
+        setting.append(f"{who} can see " + _names([f"the {x.strip()}" for x in m.group(1).split(",")]) + ".")
+    if m := re.search(r"Energy (rose|fell) from (\S+) to (\S+?)\.(?= |$)", text):
+        setting.append(f"{who}'s energy {'rises' if m.group(1) == 'rose' else 'falls'} from {m.group(2)} to {m.group(3)}.")
+    lines = [f"({' '.join(setting)})"] if setting else []
+    if world:
+        lines.append(f"({world})")
+    lines += [f'{person}: "{words}"' for person, words in heard]
+    if deed:
+        lines.append(deed)
+    if said is not None:
+        lines.append(f'{who}: "{said}"')
+    return lines
 
 
 def _ago(n) -> str:
     return "1 turn ago" if n == 1 else f"{n} turns ago"
 
 
-def _story(history: list[dict], memory: dict | None = None) -> list[str]:
-    """What happened, oldest first. Repeated turns fold into one line, words
-    already quoted are not quoted again, and the graded memory is marked."""
+def _story(history: list[dict], who: str, memory: dict | None = None) -> list[str]:
+    """What happened, oldest first, as a script. Repeated turns fold into one,
+    long lines already spoken are not repeated, and the graded memory is marked."""
     memory = memory or {}
     groups = []
     for h in history:
-        text = plain(h["text"])
+        lines = _turn(h["text"], who)
         marked = h["ticks_ago"] == memory.get("ticks_ago") and h["text"] == memory.get("text")
-        if groups and groups[-1]["text"] == text and not marked and not groups[-1]["marked"]:
+        if groups and groups[-1]["lines"] == lines and not marked and not groups[-1]["marked"]:
             groups[-1]["last"] = h["ticks_ago"]
             groups[-1]["count"] += 1
         else:
-            groups.append({"text": text, "first": h["ticks_ago"], "last": h["ticks_ago"], "count": 1, "marked": marked})
+            groups.append({"lines": lines, "first": h["ticks_ago"], "last": h["ticks_ago"], "count": 1, "marked": marked})
     seen = set()
 
-    def once(m):
-        if (m.group(1), m.group(2)) in seen and len(m.group(2).split()) > 3:
-            return f"{m.group(1)} said the same again."
-        seen.add((m.group(1), m.group(2)))
-        return m.group(0)
+    def once(line):
+        m = re.fullmatch(r'([\w.-]+): "(.*)"', line, re.S)
+        if not m:
+            return line
+        if m.groups() in seen and len(m.group(2).split()) > 3:
+            return f"{m.group(1)}: (says the same thing again)"
+        seen.add(m.groups())
+        return line
 
-    lines = []
+    out = []
     for g in groups:
-        text = re.sub(r'(\w+) said "([^"]*)"\.?', once, g["text"])
         if g["marked"]:
-            lines.append(f"- {_ago(g['first'])}: {g['text']} [this is the memory below]")
-        elif g["count"] == 1:
-            lines.append(f"- {_ago(g['first'])}: {text}")
+            head, lines = f"{_ago(g['first'])} [this is the memory below]", g["lines"]
         else:
-            head, _, rest = text.partition(". ")
-            head = head.rstrip(".") + f" ({g['count']} times)."
-            lines.append(f"- {g['first']} to {g['last']} turns ago: {head}{' ' + rest if rest else ''}")
-    return lines or ["- Nothing yet."]
+            head = _ago(g["first"]) if g["count"] == 1 else f"{g['first']} to {g['last']} turns ago, the same each turn"
+            lines = [once(x) for x in g["lines"]]
+        out += [head] + [f"  {x}" for x in lines or ["(nothing)"]] + [""]
+    return out[:-1] or ["Nothing yet."]
+
+
+def _now(scene: list[str], who: str) -> list[str]:
+    out = []
+    for line in scene:
+        if m := re.fullmatch(r"Energy (\d+(?:\.\d+)?)\.(?: (\d+) ticks of life left\.)?", line):
+            energy = m.group(1).removesuffix(".0")
+            out.append(f"{who} has {energy} energy" + (f" and {m.group(2)} turns of life left." if m.group(2) else "."))
+        elif people := re.findall(r"([\w.-]+) \((\d+) steps? away\)", line):
+            out.append("(" + _names([f"{name} is {n} step{'' if n == '1' else 's'} away" for name, n in people]) + ".)")
+        elif m := re.fullmatch(r"Food in sight: \d+ patch(?:es)?, nearest (\d+) steps? away\.", line):
+            out.append(f"(Food is {m.group(1)} step{'' if m.group(1) == '1' else 's'} away.)")
+        elif m := re.fullmatch(r"Artifacts nearby: (.+)\.", line):
+            if m.group(1) != "none":
+                out.append(f"(Notes nearby: {_names(m.group(1).split(','))}.)")
+        elif m := re.fullmatch(r"Incoming messages: (.+)\.", line, re.S):
+            if m.group(1) != "none":
+                out += [f'{person}: "{words}"' for person, words in _quotes(m.group(1))]
+        elif m := re.fullmatch(r"Visible named places: ([^.]+)\.", line):
+            out.append(f"({who} can see " + _names([f"the {x.strip()}" for x in m.group(1).split(",")]) + ".)")
+        else:
+            out.append(f"({line})")
+    return out
 
 
 def visible_text(card: dict) -> str:
-    """What a person and the judge both read: what happened, right now, and the memory."""
+    """What a person and the judge both read: what happened, right now, and
+    the memory, written as a script with every line naming who did it."""
+    who = card.get("sealed", {}).get("agent_name") or "This person"
     memory = card.get("memory", {})
-    lines = ["What happened:"] + _story(card.get("history", []), memory)
-    lines += ["", "Right now:"] + [x for x in (_scene_line(l) for l in card.get("scene", [])) if x]
-    lines += ["", "This came to mind:", f"{_ago(memory.get('ticks_ago'))}: {plain(memory.get('text', ''))}"]
+    lines = [f"This is {who}.", "", "What happened:"] + _story(card.get("history", []), who, memory)
+    lines += ["", "Right now:"] + [f"  {x}" for x in _now(card.get("scene", []), who)]
+    lines += ["", f"This came to {who}'s mind:", _ago(memory.get("ticks_ago"))]
+    lines += [f"  {x}" for x in _turn(memory.get("text", ""), who)]
     return "\n".join(lines)
 
 

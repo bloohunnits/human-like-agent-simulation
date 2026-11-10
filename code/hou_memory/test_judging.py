@@ -42,21 +42,33 @@ class PlainText(unittest.TestCase):
 
 class CardText(unittest.TestCase):
     def test_memory_is_marked_and_not_folded_into_its_neighbour(self):
-        text = judging.visible_text(card())
-        self.assertIn("- 3 turns ago: Moved up. Near Ben.\n", text)
-        self.assertIn("- 2 turns ago: Moved up. Near Ben. [this is the memory below]", text)
+        text = judging.visible_text(card(agent_name="Ada"))
+        self.assertIn("3 turns ago\n  (Ben is nearby.)\n  Ada moves up.\n", text)
+        self.assertIn("2 turns ago [this is the memory below]\n  (Ben is nearby.)\n  Ada moves up.", text)
+
+    def test_script_names_who_did_what_in_order(self):
+        text = ('Chose action move: {"direction": "up"}. Nearby: Ben. Energy rose from 5 to 14. '
+                'Heard Ben said "hi; there"; Dov said "ok". I said "yo".')
+        self.assertEqual(judging._turn(text, "Ada"), [
+            "(Ben is nearby. Ada's energy rises from 5 to 14.)",
+            'Ben: "hi; there"', 'Dov: "ok"', "Ada moves up.", 'Ada: "yo"'])
 
     def test_only_long_quotes_are_shortened(self):
         said = 'Chose action move: {"direction": "up"}. Heard Ada said "%s".'
         history = [{"ticks_ago": 2, "text": said % "follow me to the food"},
                    {"ticks_ago": 1, "text": said % "follow me to the food"}]
-        c = {"history": history, "scene": [], "memory": {"ticks_ago": 9, "text": "x"}}
-        self.assertEqual(judging._story(history, c["memory"]).__len__(), 1)  # same whole line folds
+        memory = {"ticks_ago": 9, "text": "x"}
+        self.assertIn("2 to 1 turns ago, the same each turn", judging._story(history, "Cleo", memory))
         history[1]["text"] += ' I said "ok".'
-        lines = judging._story(history, c["memory"])
-        self.assertIn("Ada said the same again.", lines[1])
+        self.assertIn("  Ada: (says the same thing again)", judging._story(history, "Cleo", memory))
         history = [{"ticks_ago": 2, "text": said % "hi"}, {"ticks_ago": 1, "text": (said % "hi") + ' I said "ok".'}]
-        self.assertNotIn("same again", " ".join(judging._story(history, c["memory"])))
+        self.assertNotIn("same thing again", " ".join(judging._story(history, "Cleo", memory)))
+
+    def test_right_now_reads_as_sentences(self):
+        lines = judging._now(["Energy 12.0. 9 ticks of life left.", "Nearby: Ben (1 steps away), Dov (4 steps away).",
+                              "Artifacts nearby: none.", 'Incoming messages: Ben said "hi".'], "Ada")
+        self.assertEqual(lines, ["Ada has 12 energy and 9 turns of life left.",
+                                 "(Ben is 1 step away and Dov is 4 steps away.)", 'Ben: "hi"'])
 
 
 class Split(unittest.TestCase):
