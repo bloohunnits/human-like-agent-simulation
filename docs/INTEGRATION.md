@@ -139,7 +139,7 @@ New runs use the newer engine (Ben's fork in `code/terralingua-relational-memory
 make run NAME=world7 TICKS=300
 ```
 
-The settings are in `HOU_SIM_ARGS` in `code/__main__.py`. Food is scarce (one piece of food worth 5 energy per turn for 10 beings), beings live about 100 turns, and a child costs 50 energy, so runs see births and a few generations. The newer engine tells a being who gave it energy or stole from it. The launcher is `code/hou_memory/run_hou_new_engine.py`, and runs land in `code/terralingua/logs_dev/logs/`. `make run-anchor` runs the older engine with the settings of the graded anchor_v1 worlds.
+The settings are in `HOU_SIM_ARGS` in `code/__main__.py`. Food is scarce (one piece of food worth 8 energy per turn for 10 beings), beings live about 100 turns, and new beings appear for free only when fewer than 2 are left, so the world goes on mainly through births. The lineage rules in `code/hou_memory/lineage.py` add reproductive pressure: a child needs two parents who both ask, each parent gives 25 energy, parents and child are told about each other, and old beings are reminded that only children carry on. The newer engine tells a being who gave it energy or stole from it. The launcher is `code/hou_memory/run_hou_new_engine.py`, and runs land in `code/terralingua/logs_dev/logs/`. `make run-anchor` runs the older engine with the settings of the graded anchor_v1 worlds.
 
 One-time setup for the newer engine (needs `uv`):
 
@@ -160,3 +160,14 @@ python ../hou_memory/run_hou_experiment.py --exp_name myrun --init_agents 3 --ma
 The window size is a launch knob: `--max_history N` (default 1). It cannot be a console slider because the console replays recorded runs, and the window only shapes prompts while the LLM is actually running. Pick N at launch, keep it identical across conditions.
 
 Needs Python 3.13, ffmpeg, and an OpenAI key in `code/terralingua/.env`. Logs and memory dumps land under `logs_myrun/logs/myrun/agent_logs/`, and the console picks up new runs automatically.
+
+## Replaying the memory math
+
+`code/hou_memory/replay.py` feeds a recorded run back through the memory engine under any condition, with no TerraLingua, no embedder and no model. Each audit line already holds every memory's similarity to the cue, and similarity does not depend on the condition. See `docs/MEMORY_REPLAY_BRIEF.md`.
+
+```
+cd code/terralingua
+.venv/bin/python ../hou_memory/replay.py logs_dev/logs/paper_mini_300
+```
+
+It first checks that replaying the recorded condition gives the recorded selections on every tick, then prints rescues per condition. A fresh rescue is one the agent did not already have: not selected the tick before, and older than the recent turns its prompt shows. `scripts/rescued_cards.py` uses the same rule (`--include-repeats` restores the old count).

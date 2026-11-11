@@ -96,9 +96,10 @@ def configure_memory(params, options, resume):
         HouMemoryAgent.plan_notes = saved["plan_notes"]
         ScarceGridWorld.food_value = saved["food_value"]
         return
-    settings = dict(MEMORY_CONDITIONS[options.memory_condition or "learned"])
-    if options.memory_config:
-        settings.update(json.loads(Path(options.memory_config).read_text()))
+    # The condition goes on top of the config file, so a file of tuning values
+    # cannot quietly undo what makes a condition chained or hou.
+    settings = json.loads(Path(options.memory_config).read_text()) if options.memory_config else {}
+    settings.update(MEMORY_CONDITIONS[options.memory_condition or "learned"])
     if options.recent_turns is not None:
         settings["working_history"] = options.recent_turns
     if settings.get("working_history", 0) > params.agent.max_history:

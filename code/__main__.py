@@ -14,27 +14,34 @@ FORK_DIR = Path(__file__).resolve().parent / "terralingua-relational-memory"
 # Our memory runner on the newer engine (Ben's fork), starting from the paper's
 # core settings. It asks for the paper's DeepSeek model on ports 9000/9001, so
 # every request goes through the proxy, which sends it to MODEL_NAME.
-# Food is tight on purpose: about one piece of food spawns per turn, worth 5
-# energy, while 10 beings each burn 1 per turn, so they compete for it.
-# Beings live about 100 turns and a child costs its parent 50 energy, so a
-# 300 turn run sees a few generations.
+# Food is tight on purpose: about one piece of food spawns per turn, worth 8
+# energy, while 10 beings each burn 1 per turn, so they compete for it. At 5,
+# 7 of 10 beings starved by turn 60 and none had a child.
+# Beings live about 100 turns. The lineage rules (code/hou_memory/lineage.py)
+# add reproductive pressure: a child needs two parents who both agree, each
+# gives 25 energy, families are told about each other, and old beings are
+# reminded that only children carry on. Few free respawns, so the world
+# continues mainly through births.
 HOU_SIM_ARGS = [
     "paper_core", "--model", "DeepSeek-R1-32", "--ports", "[9000,9001]",
-    "--init_agents", "10", "--min_agents", "4", "--agent_lifespan", "100", "--reproduction_cost", "50",
+    "--init_agents", "10", "--min_agents", "2", "--agent_lifespan", "100", "--reproduction_cost", "50",
+    "--scenario", "lineage", "--two_parent_spawn",
     "--grid_size", "30", "--vision_radius", "6", "--food_zones", "[[15,15]]",
-    "--init_food", "100", "--food_spawn_rate", "1", "--food-value", "5",
+    "--init_food", "100", "--food_spawn_rate", "1", "--food-value", "8",
     "--max_history", "1", "--recent-turns", "1",
     "--memory-condition", "chained", "--memory-config", "../hou_memory/configs/memory.example.json",
     "--no-save_video",
 ]
 
 # The settings of the graded anchor_v1 worlds, on the older engine in code/terralingua.
+# They were launched as chained, but the config file then reset the chained
+# values, so what they really ran was learned. That is what this reproduces.
 ANCHOR_SIM_ARGS = [
     "--model", "DeepSeek-R1-32", "--ports", "9000", "9001",
     "--init_agents", "8", "--agent_lifespan", "300", "--min_agents", "6",
     "--grid_size", "30", "--vision_radius", "6", "--food_zones", "15,15", "--init_food", "40",
     "--max_history", "1", "--recent-turns", "1",
-    "--memory-condition", "chained", "--memory-config", "../hou_memory/configs/memory.example.json",
+    "--memory-condition", "learned", "--memory-config", "../hou_memory/configs/memory.example.json",
     "--save_root", "./logs_dev", "--no-save_video",
 ]
 

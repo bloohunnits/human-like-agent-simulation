@@ -2,7 +2,9 @@
 
 For every tick the engine logs what it put in the prompt (selected) and what
 plain decay memory would have put there (solo_selected). A rescue is a memory
-id in selected and not in solo_selected. Each moment with a rescue becomes one
+id in selected and not in solo_selected that the agent did not already have:
+not selected the tick before, and older than the recent turns the prompt
+already shows (--include-repeats counts those too). Each moment with a rescue becomes one
 card. With --anchor N, N moments are sampled evenly across kinds of rescue and
 each gives two cards, the rescued memory and the memory it pushed out, so the
 two can be compared blind at the same moment.
@@ -258,7 +260,7 @@ def agent_steps(logs, tag):
             if is_number(r.get("time", r.get("timestamp")))}
 
 
-def load_run(run_dir, min_age):
+def load_run(run_dir, min_age, include_repeats=False):
     """Every turn in one run where linked memory changed what came to mind."""
     logs = run_dir / "agent_logs"
     if not logs.is_dir():
@@ -267,6 +269,8 @@ def load_run(run_dir, min_age):
     run = (params.get("run") or {}).get("exp_name") or run_dir.name
     mem_cfg = load_json(run_dir / "memory_config.json", {})
     condition = (mem_cfg.get("memory") or {}).get("mode") or (params.get("agent") or {}).get("memory_mode")
+    if not include_repeats:  # the prompt already shows the last working_history turns
+        min_age = max(min_age, (mem_cfg.get("memory") or {}).get("working_history", 0) + 1)
     names = load_json(run_dir / "agent_names.json", {})
     tags = sorted(set(names) | {p.name[:-len("_hou_memory.json")] for p in logs.glob("*_hou_memory.json")}
                   | {p.name[:-len("_memory_audit.jsonl")] for p in logs.glob("*_memory_audit.jsonl")})
@@ -283,6 +287,7 @@ def load_run(run_dir, min_age):
         name = names.get(tag) or dump.get("agent_name") or tag
         steps = agent_steps(logs, tag)
         per_agent[tag] = 0
+        previous = set()
         for rec in records:
             ticks_total += 1
             if condition is None:
@@ -292,7 +297,9 @@ def load_run(run_dir, min_age):
             selected, solo = list(rec.get("selected", [])), set(rec.get("solo_selected", []))
             rows = {r["id"]: r for r in rec.get("rows", [])}
             rescued = [i for i in selected if i not in solo and
-                       not (i in by_id and rec["tick"] - by_id[i]["t_created"] < min_age)]
+                       not (i in by_id and rec["tick"] - by_id[i]["t_created"] < min_age)
+                       and (include_repeats or i not in previous)]
+            previous = set(selected)
             rescues_total += len(rescued)
             per_agent[tag] += len(rescued)
             if rescued:
@@ -317,6 +324,8 @@ def main():
     ap.add_argument("--out", default=None, help="default output/analysis/rescued/<exp> for a single run")
     ap.add_argument("--history", type=int, default=8, help="episodes written before the tick to show")
     ap.add_argument("--min-age", type=int, default=0, help="skip rescues younger than this many ticks")
+    ap.add_argument("--include-repeats", action="store_true",
+                    help="also count rescues the agent already had: selected last tick or inside its recent turns")
     ap.add_argument("--anchor", type=int, default=0, help="sample this many moments for human grading, two cards each")
     args = ap.parse_args()
 
@@ -327,7 +336,7 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     turns, runs = [], []
     for run_dir in run_dirs:
-        run_turns, info = load_run(run_dir, args.min_age)
+        run_turns, info = load_run(run_dir, args.min_age, args.include_repeats)
         turns += run_turns
         runs.append(info)
 

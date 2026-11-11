@@ -133,10 +133,13 @@ def configure_memory(params, options, resume):
         HouMemoryAgent.plan_notes = saved.get("plan_notes", not saved.get("paper_prompt", False))
         _effort = saved.get("effort", "low")
     else:
-        settings = dict(MEMORY_CONDITIONS[options.memory_condition or "learned"])
+        # The condition goes on top of the config file, so a file of tuning
+        # values cannot quietly undo what makes a condition chained or hou.
+        settings = {}
         if options.memory_config:
             with open(options.memory_config) as f:
                 settings.update(json.load(f))
+        settings.update(MEMORY_CONDITIONS[options.memory_condition or "learned"])
         if options.recent_turns is not None:
             settings["working_history"] = options.recent_turns
         if settings.get("working_history", 0) > params.agent.max_history:

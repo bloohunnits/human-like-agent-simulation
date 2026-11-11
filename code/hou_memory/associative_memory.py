@@ -340,13 +340,16 @@ class AssociativeMemory:
             reasons.append((row.id, reason))
         return tuple(selected), tuple(reasons), self.token_counter(content)
 
-    def preview(self, cue, tick, entities=None, event_id="preview"):
+    def preview(self, cue, tick, entities=None, event_id="preview", r_by_id=None):
+        """Score every memory for this cue. With r_by_id (memory id to cue
+        similarity, e.g. from a recorded audit) the cue is not embedded, so the
+        math runs with no embedder, as in replay.py."""
         self._validate_time(tick)
         sources = tuple(entity_keys(entities))
-        q = self.store._embed_fn(cue) if self.store.memories else None
+        q = self.store._embed_fn(cue) if self.store.memories and r_by_id is None else None
         raw, decay, direct = {}, {}, {}
         for m in self.store.memories:
-            r = _cosine(q, m.embedding)
+            r = _cosine(q, m.embedding) if r_by_id is None else r_by_id[m.memory_id]
             if not math.isfinite(r):
                 raise ValueError("Embedding similarity must be finite")
             # Floating-point cosine roundoff can exceed 1 by an epsilon.
