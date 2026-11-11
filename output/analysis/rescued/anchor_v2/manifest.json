@@ -1,0 +1,80 @@
+{
+  "runs": [
+    {
+      "run": "paper_mini_300",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
+    },
+    {
+      "run": "paper_mini_300_2",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_2",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
+    },
+    {
+      "run": "paper_mini_300_3",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_3",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
+    },
+    {
+      "run": "paper_mini_300_4",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_4",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
+    },
+    {
+      "run": "paper_mini_300_5",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_5",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
+    },
+    {
+      "run": "paper_mini_300_6",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_6",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
+    },
+    {
+      "run": "newengine_2",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/newengine_2",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
+    }
+  ],
+  "repo": {
+    "commit": "b2736a3ab70babf13d64dc904bd59ff45a50b8b1",
+    "dirty": true
+  },
+  "engine": {
+    "commit": "bf276dbe33e66b2c3b592df27df8ca42c489a4c7",
+    "dirty": true
+  },
+  "memory_text_format": "raw_json_v1",
+  "history_lines": 4,
+  "anchor_moments": 100,
+  "cards": 58,
+  "kinds": {
+    "rescued": 29,
+    "displaced": 29
+  },
+  "splits": {
+    "held_out": 24,
+    "tuning": 34
+  }
+}

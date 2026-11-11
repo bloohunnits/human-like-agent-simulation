@@ -35,7 +35,7 @@ LABELS = ("belongs", "doesnt_matter", "noise")
 LABEL_NAMES = {"belongs": "Yes, and it matters", "doesnt_matter": "Yes, but it doesn't matter", "noise": "No"}
 JUDGE_MODELS = ("gpt-5-mini", "gpt-5.6-luna", "gpt-6-luna", "gpt-5.4-mini", "gpt-5-nano")
 GATE_KAPPA, GATE_MIN_CARDS, HELD_OUT_SHARE = 0.61, 20, 0.3
-ANCHOR_SET = "anchor_v1"  # the set classmates grade
+ANCHOR_SET = "anchor_v2"  # the set classmates grade: real rescues only
 # The three of us each grade every card, so every card gets three grades.
 # Names are matched without case.
 RATERS = ("andre", "ben", "ryan")
