@@ -9,16 +9,44 @@ from integration_layer.tl_agent import TerraLinguaAgent
 from helpers import start_and_log_process as start
 
 TL_DIR = Path(__file__).resolve().parent / "terralingua"
+FORK_DIR = Path(__file__).resolve().parent / "terralingua-relational-memory"
 
-# Our memory runner with the settings of the graded worlds. It asks for the
-# paper's DeepSeek model on ports 9000/9001, so every request goes through the
-# proxy, which sends it to MODEL_NAME.
+# Our memory runner on the newer engine (Ben's fork), starting from the paper's
+# core settings. It asks for the paper's DeepSeek model on ports 9000/9001, so
+# every request goes through the proxy, which sends it to MODEL_NAME.
+# Food is tight on purpose: about one piece of food spawns per turn, worth 8
+# energy, while 10 beings each burn 1 per turn, so they compete for it. At 5,
+# 7 of 10 beings starved by turn 60 and none had a child. Two food areas sit
+# out of sight of each other, so groups form, part and meet again, and a
+# reunion is when an old memory of someone matters.
+# Beings live about 100 turns, and the first ones start at different ages so
+# they do not all die together. The lineage rules (code/hou_memory/lineage.py)
+# add reproductive pressure and witnessing: a child needs two parents who both
+# agree and each gives 25 energy, families are told about each other, old
+# beings are reminded that only children carry on, and beings see gifts,
+# thefts, births, deaths and hunger in sight. Few free respawns, so the world
+# continues mainly through births, and no births past 20 beings, the paper's
+# population, so a baby boom cannot run up the bill.
 HOU_SIM_ARGS = [
+    "paper_core", "--model", "DeepSeek-R1-32", "--ports", "[9000,9001]",
+    "--init_agents", "10", "--min_agents", "2", "--max_agents", "20", "--agent_lifespan", "100", "--reproduction_cost", "50",
+    "--scenario", "lineage", "--two_parent_spawn",
+    "--grid_size", "30", "--vision_radius", "6", "--food_zones", "[[8,8],[22,22]]",
+    "--init_food", "100", "--food_spawn_rate", "1", "--food-value", "8", "--stagger-ages", "0.5",
+    "--max_history", "1", "--recent-turns", "1",
+    "--memory-condition", "chained", "--memory-config", "../hou_memory/configs/memory.example.json",
+    "--no-save_video",
+]
+
+# The settings of the graded anchor_v1 worlds, on the older engine in code/terralingua.
+# They were launched as chained, but the config file then reset the chained
+# values, so what they really ran was learned. That is what this reproduces.
+ANCHOR_SIM_ARGS = [
     "--model", "DeepSeek-R1-32", "--ports", "9000", "9001",
     "--init_agents", "8", "--agent_lifespan", "300", "--min_agents", "6",
     "--grid_size", "30", "--vision_radius", "6", "--food_zones", "15,15", "--init_food", "40",
     "--max_history", "1", "--recent-turns", "1",
-    "--memory-condition", "chained", "--memory-config", "../hou_memory/configs/memory.example.json",
+    "--memory-condition", "learned", "--memory-config", "../hou_memory/configs/memory.example.json",
     "--save_root", "./logs_dev", "--no-save_video",
 ]
 
@@ -56,10 +84,20 @@ def run_terralingua(**kwargs) -> None:
 
 
 def run_hou_sim(name: str, ticks: str) -> None:
-    """Starts our memory runner on the code/terralingua copy"""
+    """Starts our memory runner on the newer engine"""
+    subprocess.run(
+        [str(FORK_DIR / ".venv/bin/python"), "../hou_memory/run_hou_new_engine.py",
+         *HOU_SIM_ARGS, "--exp_name", name, "--max_ts", ticks],
+        cwd=FORK_DIR,
+        check=True,
+    )
+
+
+def run_anchor_sim(name: str, ticks: str) -> None:
+    """Starts our memory runner on the older engine, with the anchor_v1 settings"""
     subprocess.run(
         [str(TL_DIR / ".venv/bin/python"), "../hou_memory/run_hou_experiment.py",
-         "--exp_name", name, "--max_ts", ticks, *HOU_SIM_ARGS],
+         "--exp_name", name, "--max_ts", ticks, *ANCHOR_SIM_ARGS],
         cwd=TL_DIR,
         check=True,
     )
@@ -78,7 +116,7 @@ def wait_for_proxy(port: int = 9000, timeout: float = 30) -> None:
 
 
 if __name__ == "__main__":
-    # usage: __main__.py [<exp_name> <ticks>]   (or "fork" for the fork's paper_core demo)
+    # usage: __main__.py [<exp_name> <ticks> [anchor]]   (or "fork" for the fork's paper_core demo)
     try:
         from dotenv import load_dotenv
         load_dotenv(TL_DIR / ".env")
@@ -102,7 +140,8 @@ if __name__ == "__main__":
             args = sys.argv[1:]
             name = args[0] if args else "hou_sim"
             ticks = args[1] if len(args) > 1 else "50"
-            procs.append(start(run_hou_sim, TERRALINGUA_LOG, name=name, ticks=ticks))
+            runner = run_anchor_sim if args[2:] == ["anchor"] else run_hou_sim
+            procs.append(start(runner, TERRALINGUA_LOG, name=name, ticks=ticks))
         # Wait until the sim exits (or Ctrl+C); the proxy runs until stopped
         while procs[1].is_alive():
             procs[1].join(timeout=0.5)

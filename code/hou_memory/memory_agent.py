@@ -2,29 +2,43 @@
 memory for independently aging associative retrieval. The Hou kernel remains
 the direct pathway and a configurable comparison condition.
 
-Nothing in TerraLingua's own code is edited. run_hou_experiment.py rebinds
-the `LLMAgent` name inside core.experiment.runner's namespace to this class
-before the runner constructs any agents.
+Nothing in TerraLingua's own code is edited. The launcher rebinds the
+`LLMAgent` name inside the runner's namespace to this class before the runner
+constructs any agents. It works on both engines: the newer `terralingua`
+package (run_hou_new_engine.py) when it is installed, else the older `core`
+one in code/terralingua (run_hou_experiment.py).
 """
 
 from __future__ import annotations
 
 import json
 import math
+import re
 import os
 import sys
 import copy
 from pathlib import Path
 
-_TERRALINGUA_ROOT = Path(__file__).resolve().parent.parent / "terralingua"
-if str(_TERRALINGUA_ROOT) not in sys.path:
-    sys.path.insert(0, str(_TERRALINGUA_ROOT))
-
-from core.agents.llm_agent import LLMAgent  # noqa: E402
+try:
+    from terralingua.agents.llm_agent import LLMAgent
+except ImportError:
+    _TERRALINGUA_ROOT = Path(__file__).resolve().parent.parent / "terralingua"
+    if str(_TERRALINGUA_ROOT) not in sys.path:
+        sys.path.insert(0, str(_TERRALINGUA_ROOT))
+    from core.agents.llm_agent import LLMAgent  # noqa: E402
 
 from embedder import SBERTEmbedder  # noqa: E402
 from hou_memory import HouMemoryStore  # noqa: E402
 from associative_memory import AssociativeMemory, MemoryConfig  # noqa: E402
+
+
+# Plain human names, so memories read "Took 20 energy from Ben" instead of
+# "...from being0" or a random word. Both launchers hand these out in order.
+NAME_POOL = [
+    "Ada", "Ben", "Cleo", "Dov", "Esme", "Finn", "Goro", "Hana",
+    "Iris", "Jonas", "Kira", "Levi", "Mara", "Nico", "Opal", "Pax",
+    "Quinn", "Rhea", "Silas", "Tovah", "Uma", "Vero", "Wren", "Yara",
+]
 
 
 class HouMemoryAgent(LLMAgent):
@@ -58,7 +72,8 @@ class HouMemoryAgent(LLMAgent):
         self._completed_action = None
         self._last_energy = None
         self.current_plan = ""
-        self.use_internal_memory = True
+        if not isinstance(getattr(type(self), "use_internal_memory", None), property):
+            self.use_internal_memory = True  # the newer engine derives it from the notes size
         if not self.plan_notes:
             self.hou_plan_tokens = self.internal_memory_size
         self.internal_memory_size = self.hou_plan_tokens
@@ -118,6 +133,30 @@ class HouMemoryAgent(LLMAgent):
     def select_action(
         self, obs, available_actions, reward, info, time, chat_params, client, max_attempts=5
     ):
+        obs, done, injected_slot, trace = self._recall(obs, info, time)
+        if done is not None:
+            return done
+        action = super().select_action(
+            obs=obs, available_actions=available_actions, reward=reward, info=info, time=time,
+            chat_params=chat_params, client=client, max_attempts=max_attempts,
+        )
+        return self._remember(obs, action, info, time, injected_slot, trace)
+
+    async def select_action_async(
+        self, obs, available_actions, reward, info, time, chat_params, client, max_attempts=5
+    ):
+        """The newer engine's turn. Same memory steps around the model call."""
+        obs, done, injected_slot, trace = self._recall(obs, info, time)
+        if done is not None:
+            return done
+        action = await super().select_action_async(
+            obs=obs, available_actions=available_actions, reward=reward, info=info, time=time,
+            chat_params=chat_params, client=client, max_attempts=max_attempts,
+        )
+        return self._remember(obs, action, info, time, injected_slot, trace)
+
+    def _recall(self, obs, info, time):
+        """Pick what comes to mind and put it in the notes slot of the prompt."""
         # Upstream's logger rewrites observation keys in-place for JSON.
         # Keep the caller's live environment observation untouched.
         obs = copy.deepcopy(obs)
@@ -128,25 +167,17 @@ class HouMemoryAgent(LLMAgent):
         preview = self.memory_engine.preview(query_text, time, cue_entities, event_id)
         trace = self.memory_engine.commit(preview)
         if self._completed_tick == time:
-            return self._completed_action
+            return obs, self._completed_action, None, None
         # A retry uses the original pre-update selection, not newly boosted scores.
         by_id = {m.memory_id: m for m in self.hou_store.memories}
         rows = {r["id"]: r for r in trace["rows"]}
         surfaced = [(by_id[i], rows[i]["relevance"], rows[i]["score"]) for i in trace["selected"]]
         injected_slot = self._render_memory_slot(surfaced)
         self.internal_memory = injected_slot
+        return obs, None, injected_slot, trace
 
-        action = super().select_action(
-            obs=obs,
-            available_actions=available_actions,
-            reward=reward,
-            info=info,
-            time=time,
-            chat_params=chat_params,
-            client=client,
-            max_attempts=max_attempts,
-        )
-
+    def _remember(self, obs, action, info, time, injected_slot, trace):
+        """Keep the notes the model wrote, store this turn as a memory, and log it."""
         # After a successful parse, self.internal_memory holds what the LLM
         # wrote in the internal_memory field - under the plan contract, its
         # current plan. When every parse attempt failed, the base class
@@ -170,7 +201,7 @@ class HouMemoryAgent(LLMAgent):
         # against old same-tick log records after a checkpoint replay.
         trace["agent_step"] = self.logger.data_dict[str(time)]
         with open(self._audit_path(), "a") as f:
-            f.write(json.dumps(trace, allow_nan=False) + "\n")
+            f.write(json.dumps(trace, allow_nan=False, default=str) + "\n")
         self._dump_hou_memory()  # written every tick, not just at close() - a
         # killed/crashed run still leaves a real, loadable snapshot for explore.py
         return action
@@ -187,7 +218,8 @@ class HouMemoryAgent(LLMAgent):
         self._completed_tick = payload.get("completed_tick")
         self._completed_action = payload.get("completed_action")
         self._last_energy = payload.get("last_energy")
-        self.use_internal_memory = True
+        if not isinstance(getattr(type(self), "use_internal_memory", None), property):
+            self.use_internal_memory = True
         self._rescope_scratchpad_to_plan()
 
     def get_state_ckpt(self):
@@ -300,7 +332,7 @@ class HouMemoryAgent(LLMAgent):
             if str(item).startswith("A("):
                 artifacts.add(str(item).split(": ", 1)[-1])
 
-        for sender in obs.get("message", {}):
+        for sender in self._heard(obs):
             people.add(sender)
 
         params = action.get("params", {}) or {}
@@ -314,6 +346,11 @@ class HouMemoryAgent(LLMAgent):
 
         return {"people": sorted(people), "artifacts": sorted(artifacts),
                 "places": sorted(set(obs.get("named_places", [])))}
+
+    @staticmethod
+    def _heard(obs: dict) -> dict:
+        """Messages by sender. The newer engine calls them incoming_broadcasts."""
+        return obs.get("message") or obs.get("incoming_broadcasts") or {}
 
     @staticmethod
     def _plain_number(value) -> str:
@@ -368,11 +405,17 @@ class HouMemoryAgent(LLMAgent):
                 elif delta < -1:
                     parts.append(f"Energy fell from {self._plain_number(last)} to {self._plain_number(energy)}.")
             self._last_energy = energy
-        outcomes = {k: v for k, v in (info or {}).items() if k != "available_actions"}
+        # The newer engine also sends bookkeeping receipts, which say nothing a being would notice.
+        outcomes = {k: v for k, v in (info or {}).items() if k not in ("available_actions", "action_receipts")}
+        spawn = outcomes.get("spawn")
+        if isinstance(spawn, dict):  # the engine's birth record, in words
+            outcomes["spawn"] = (f"Child {spawn.get('child_name')} was born." if spawn.get("status") == "successful"
+                                 else f"No child was born: {spawn.get('reason', 'it failed')}.")
         if outcomes:
-            parts.append(f"Feedback from the preceding action: {outcomes}.")
+            # "Ben gave you 3.0 energy." reads as 3
+            parts.append(re.sub(r"\b(\d+)\.0 energy", r"\1 energy", f"Feedback from the preceding action: {outcomes}."))
 
-        heard = obs.get("message", {})
+        heard = self._heard(obs)
         if heard:
             said = "; ".join(f"{who} said \"{msg}\"" for who, msg in heard.items())
             parts.append(f"Heard {said}.")
