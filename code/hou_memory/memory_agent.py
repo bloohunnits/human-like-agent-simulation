@@ -407,6 +407,10 @@ class HouMemoryAgent(LLMAgent):
             self._last_energy = energy
         # The newer engine also sends bookkeeping receipts, which say nothing a being would notice.
         outcomes = {k: v for k, v in (info or {}).items() if k not in ("available_actions", "action_receipts")}
+        spawn = outcomes.get("spawn")
+        if isinstance(spawn, dict):  # the engine's birth record, in words
+            outcomes["spawn"] = (f"Child {spawn.get('child_name')} was born." if spawn.get("status") == "successful"
+                                 else f"No child was born: {spawn.get('reason', 'it failed')}.")
         if outcomes:
             # "Ben gave you 3.0 energy." reads as 3
             parts.append(re.sub(r"\b(\d+)\.0 energy", r"\1 energy", f"Feedback from the preceding action: {outcomes}."))

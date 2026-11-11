@@ -67,6 +67,25 @@ class ScarceGridWorld(runner_module.OpenGridWorld):
 
 runner_module.OpenGridWorld = ScarceGridWorld
 
+_sampled_lifespan = runner_module.SimulationRunner._assign_sampled_lifespan
+STAGGER = {"fraction": 0.0}
+
+
+def _staggered_lifespan(self, agent_tag):
+    """The first beings start at different ages, so they do not all die of
+    old age in the same few turns. Children and newcomers start young."""
+    sampled = _sampled_lifespan(self, agent_tag)
+    if sampled is None or not STAGGER["fraction"] or self.env.step_count or "_" in agent_tag:
+        return sampled
+    left = max(1, round(sampled * self.env.rng.uniform(1 - STAGGER["fraction"], 1)))
+    self.env.agent_time[agent_tag] = left
+    if isinstance(self.obs.get(agent_tag), dict):
+        self.obs[agent_tag]["time"] = left
+    return left
+
+
+runner_module.SimulationRunner._assign_sampled_lifespan = _staggered_lifespan
+
 
 def memory_arguments():
     parser = argparse.ArgumentParser(add_help=False)
@@ -79,6 +98,8 @@ def memory_arguments():
                         help="Limit each agent's notes to a 60-token plan instead of TerraLingua's free notes")
     parser.add_argument("--food-value", type=float, default=None,
                         help="Energy in each piece of food (TerraLingua's default is 10)")
+    parser.add_argument("--stagger-ages", type=float, default=0.0,
+                        help="The first beings start with between (1 - this) and all of their life left")
     mem_args, rest = parser.parse_known_args()
     return mem_args, rest
 
@@ -89,7 +110,7 @@ def configure_memory(params, options, resume):
     path = LOGS_DIR / params.run.exp_name / "memory_config.json"
     if resume:
         if (options.memory_condition or options.memory_config or options.recent_turns is not None
-                or options.plan_notes or options.food_value is not None):
+                or options.plan_notes or options.food_value is not None or options.stagger_ages):
             raise ValueError("Resume uses the saved memory configuration; start a new run to change conditions")
         saved = json.loads(path.read_text())
         HouMemoryAgent.memory_config = MemoryConfig(**saved["memory"])
@@ -114,6 +135,7 @@ def configure_memory(params, options, resume):
     path.write_text(json.dumps({
         "schema_version": 1, "engine": "terralingua-relational-memory", "memory": asdict(cfg), "landmarks": {},
         "plan_notes": options.plan_notes, "food_value": options.food_value or ScarceGridWorld.food_value,
+        "stagger_ages": options.stagger_ages,
         "actor_model": os.environ.get("MODEL_NAME") if proxied else params.agent.model,
         "effort": os.environ.get("REASONING_EFFORT") if proxied else params.agent.reasoning_effort,
     }, indent=2))
@@ -121,6 +143,9 @@ def configure_memory(params, options, resume):
     HouMemoryAgent.plan_notes = options.plan_notes
     if options.food_value:
         ScarceGridWorld.food_value = options.food_value
+    if not 0 <= options.stagger_ages < 1:
+        raise ValueError("--stagger-ages must be at least 0 and below 1")
+    STAGGER["fraction"] = options.stagger_ages
 
 
 def main():

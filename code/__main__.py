@@ -16,18 +16,23 @@ FORK_DIR = Path(__file__).resolve().parent / "terralingua-relational-memory"
 # every request goes through the proxy, which sends it to MODEL_NAME.
 # Food is tight on purpose: about one piece of food spawns per turn, worth 8
 # energy, while 10 beings each burn 1 per turn, so they compete for it. At 5,
-# 7 of 10 beings starved by turn 60 and none had a child.
-# Beings live about 100 turns. The lineage rules (code/hou_memory/lineage.py)
-# add reproductive pressure: a child needs two parents who both agree, each
-# gives 25 energy, families are told about each other, and old beings are
-# reminded that only children carry on. Few free respawns, so the world
-# continues mainly through births.
+# 7 of 10 beings starved by turn 60 and none had a child. Two food areas sit
+# out of sight of each other, so groups form, part and meet again, and a
+# reunion is when an old memory of someone matters.
+# Beings live about 100 turns, and the first ones start at different ages so
+# they do not all die together. The lineage rules (code/hou_memory/lineage.py)
+# add reproductive pressure and witnessing: a child needs two parents who both
+# agree and each gives 25 energy, families are told about each other, old
+# beings are reminded that only children carry on, and beings see gifts,
+# thefts, births, deaths and hunger in sight. Few free respawns, so the world
+# continues mainly through births, and no births past 20 beings, the paper's
+# population, so a baby boom cannot run up the bill.
 HOU_SIM_ARGS = [
     "paper_core", "--model", "DeepSeek-R1-32", "--ports", "[9000,9001]",
-    "--init_agents", "10", "--min_agents", "2", "--agent_lifespan", "100", "--reproduction_cost", "50",
+    "--init_agents", "10", "--min_agents", "2", "--max_agents", "20", "--agent_lifespan", "100", "--reproduction_cost", "50",
     "--scenario", "lineage", "--two_parent_spawn",
-    "--grid_size", "30", "--vision_radius", "6", "--food_zones", "[[15,15]]",
-    "--init_food", "100", "--food_spawn_rate", "1", "--food-value", "8",
+    "--grid_size", "30", "--vision_radius", "6", "--food_zones", "[[8,8],[22,22]]",
+    "--init_food", "100", "--food_spawn_rate", "1", "--food-value", "8", "--stagger-ages", "0.5",
     "--max_history", "1", "--recent-turns", "1",
     "--memory-condition", "chained", "--memory-config", "../hou_memory/configs/memory.example.json",
     "--no-save_video",
