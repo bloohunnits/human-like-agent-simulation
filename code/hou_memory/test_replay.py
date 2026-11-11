@@ -6,7 +6,8 @@ import numpy as np
 
 from associative_memory import MEMORY_CONDITIONS, AssociativeMemory, MemoryConfig
 from hou_memory import HouMemoryStore
-from replay import replay_agent
+from replay import compare, condition_config, replay_agent
+from variants import VARIANTS
 
 WORDS = ["food", "ben", "river", "cave", "trade"]
 
@@ -51,6 +52,27 @@ class ReplayTest(unittest.TestCase):
             self.assertTrue(set(row["fresh"]) <= set(row["rescued"]))
             self.assertFalse(set(row["fresh"]) & previous)
             previous = set(row["selected"])
+
+    def test_variants(self):
+        config = MemoryConfig(**{**MEMORY_CONDITIONS["chained"], "threshold": .05})
+        lines, memories = live_session(config)
+        stock = replay_agent(lines, memories, config, token_counter=len)
+
+        class Same(AssociativeMemory):  # overrides nothing, so must match the stock math
+            pass
+
+        same = replay_agent(lines, memories, config, token_counter=len, engine_class=Same)
+        self.assertEqual(same, stock)
+        recorded = {**MEMORY_CONDITIONS["learned"], "threshold": .05}
+        self.assertEqual(condition_config(recorded, "chained"), config)
+        results = {"chained": {"a": stock}}
+        for name in ("noisy_or", "all_routes"):
+            results[name] = {"a": replay_agent(lines, memories, condition_config(recorded, name),
+                                               token_counter=len, engine_class=VARIANTS[name].engine)}
+        table = compare(results, "chained")
+        self.assertEqual(table["chained"]["only_here"], 0)
+        for row in table.values():
+            self.assertEqual(row["shared"] + row["only_here"], row["fresh"])
 
 
 if __name__ == "__main__":

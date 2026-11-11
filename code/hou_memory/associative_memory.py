@@ -252,7 +252,6 @@ class AssociativeMemory:
                 hub = e.a if e.a.startswith("entity:") else e.b
                 members.setdefault(hub, []).append(e)
         routes = {i: [] for i in direct}
-        beta = self.config.beta
 
         def other_end(e, node):
             return e.b if e.a == node else e.a
@@ -266,7 +265,7 @@ class AssociativeMemory:
                 if fan > 3:
                     tax *= 1 / (1 + math.log(fan / 3))
             transmissions = tuple(e.transmission(tick) for e in path)
-            value = beta * cue * math.prod(transmissions) * tax
+            value = self.route_value(cue, transmissions, tax)
             if value > 0:
                 states = tuple(LinkState(e.id, tick - e.last_reinforced, e.weight,
                                          e.retention, e.last_reinforced) for e in path)
@@ -321,6 +320,23 @@ class AssociativeMemory:
         return {i: tuple(sorted(rs, key=lambda r: (-r.contribution, r.source, r.edges)))
                 for i, rs in routes.items()}
 
+    # The three formulas below are the ones a variant overrides (variants.py).
+    # Replay can then score recorded runs under the new math.
+
+    def route_value(self, cue, transmissions, tax):
+        """What one route from a cue to a memory contributes."""
+        return self.config.beta * cue * math.prod(transmissions) * tax
+
+    def graph_value(self, routes):
+        """A memory's graph score from its routes, strongest first."""
+        return routes[0].contribution if routes else 0.0
+
+    def combine(self, raw, decay, direct, graph):
+        """The memory's final relevance from similarity and graph."""
+        if self.config.mode == "gated":
+            return max(raw, graph) * decay
+        return max(direct, graph)
+
     def _select(self, rows, solo=False):
         ranked = sorted(rows, key=lambda s: (-(s.solo_score if solo else s.score), s.id))
         selected, reasons, content = [], [], ""
@@ -360,11 +376,8 @@ class AssociativeMemory:
         rows = []
         for m in self.store.memories:
             i = m.memory_id
-            graph = paths[i][0].contribution if paths[i] else 0.0
-            if self.config.mode == "gated":
-                x = max(raw[i], graph) * decay[i]
-            else:
-                x = max(direct[i], graph)
+            graph = self.graph_value(paths[i])
+            x = self.combine(raw[i], decay[i], direct[i], graph)
             rows.append(Score(i, m.text, raw[i], decay[i], direct[i], graph, x,
                               recall_probability(x, 0, 1), recall_probability(direct[i], 0, 1),
                               m.g, m.t_last_recalled, paths[i]))

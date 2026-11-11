@@ -166,8 +166,11 @@ Needs Python 3.13, ffmpeg, and an OpenAI key in `code/terralingua/.env`. Logs an
 `code/hou_memory/replay.py` feeds a recorded run back through the memory engine under any condition, with no TerraLingua, no embedder and no model. Each audit line already holds every memory's similarity to the cue, and similarity does not depend on the condition. See `docs/MEMORY_REPLAY_BRIEF.md`.
 
 ```
-cd code/terralingua
-.venv/bin/python ../hou_memory/replay.py logs_dev/logs/paper_mini_300
+make replay RUNS="paper_mini_300_2 newengine_2" VARIANTS="chained noisy_or all_routes"
 ```
 
-It first checks that replaying the recorded condition gives the recorded selections on every tick, then prints rescues per condition. A fresh rescue is one the agent did not already have: not selected the tick before, and older than the recent turns its prompt shows. `scripts/rescued_cards.py` uses the same rule (`--include-repeats` restores the old count).
+It first checks that replaying the recorded condition gives the recorded selections on every tick. Then it prints, for each variant, the rescues and fresh rescues over all the runs, and how many of the fresh ones it shares with the baseline (the first variant, or `--baseline`). The counts are memories, so one turn can count more than once. `--out FILE` saves every variant's picks per turn as JSON.
+
+To try a new formula, add it to `code/hou_memory/variants.py`. The engine has three methods meant to be swapped: `route_value` (one route through a person, place or thing), `graph_value` (all of a memory's routes into one number) and `combine` (that number with plain similarity). Subclass `AssociativeMemory`, override one, and add an entry to `VARIANTS`. Every name in `MEMORY_CONDITIONS` is a variant already.
+
+Replay shows what each formula would have picked on the same turns. It cannot show how the agents would then have acted differently. For that, run the sim with the new formula. A fresh rescue is one the agent did not already have: not selected the tick before, and older than the recent turns its prompt shows. `scripts/rescued_cards.py` uses the same rule (`--include-repeats` restores the old count).
