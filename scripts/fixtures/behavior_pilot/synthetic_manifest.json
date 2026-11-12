@@ -1,0 +1,220 @@
+{
+  "schema_version": 2,
+  "synthetic": true,
+  "private_terms": [
+    "SYN-REVIEWER",
+    "SYN-GOLD-ANSWER",
+    "SYN-SOURCE-FILENAME"
+  ],
+  "pairs": [
+    {
+      "pair_id": "SYN-PAIR-511",
+      "comparison": "matched_checkpoint",
+      "review": "SYN-REVIEW-RECORD",
+      "branches": [
+        {
+          "run_id": "SYN-RUN-47",
+          "agent_id": "syn-being17",
+          "entity_id": "syn-being38",
+          "condition": "SYN-CONDITION-COPPER",
+          "tick": 22,
+          "last_seen_tick": 1,
+          "names": {
+            "syn-being17": [
+              "Sable Reed"
+            ],
+            "syn-being38": [
+              "Juniper Moss",
+              "Juniper"
+            ]
+          },
+          "provenance": {
+            "checkpoint_id": "cbcdbfc50e410698b07f12f2c267e6033db205dea56c2f110b10f1e61374ee5a",
+            "restore_source": "SYN-RUN-47/synthetic-restore",
+            "next_tick": 22,
+            "seed": 8675309,
+            "controls": {
+              "engine_revision": "SYN-ENGINE-REVISION",
+              "actor_model": "SYN-MODEL",
+              "actor_backend": "SYN-BACKEND",
+              "generator_settings": {
+                "temperature": 0.2,
+                "max_output_tokens": 256
+              },
+              "actor_settings": {
+                "prompt_revision": "SYN-PROMPT-V1",
+                "working_history": 4
+              },
+              "environment_settings": {
+                "grid_size": 12
+              },
+              "world_state_sha256": "6d39d24c08736f4e71dfaed338aa93366caff584fb80cff6fb162bef508a5423",
+              "memory_history_sha256": "adea1205e49336112bcaa87b63983467c2d62c147d926cdd8dbb641e360e5ea1",
+              "plan_sha256": "33a2017f528f3452e8e0c5fdeb14d3bff6d24fd8d42e6cbedd721c5df7353d93"
+            }
+          },
+          "observations": [
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 1, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#2/observation", "present": ["syn-being38"]},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 2, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#3/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 3, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#4/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 4, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#5/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 5, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#6/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 6, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#7/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 7, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#8/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 8, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#9/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 9, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#10/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 10, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#11/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 11, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#12/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 12, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#13/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 13, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#14/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 14, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#15/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 15, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#16/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 16, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#17/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 17, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#18/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 18, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#19/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 19, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#20/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 20, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#21/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 21, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#22/observation", "present": []},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 22, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#23/observation", "present": ["syn-being38"], "text": "Sable Reed has 12 energy. Juniper Moss is one tile east. One food tile is west. Moving or staying is available."},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 23, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#24/observation", "present": ["syn-being38"], "text": "Sable Reed has 17 energy. Juniper Moss is two tiles east. Moving is available."}
+          ],
+          "episodes": [
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 1, "source_id": "SYN-RUN-47/agent_logs/syn-being17_hou_memory.json#/memories/0", "episode_id": "SYN-EPISODE-091", "entity_id": "syn-being38", "text": "Heard Juniper Moss say \"There is food to the west.\"", "gold_label": "target"}
+          ],
+          "event": {
+            "run_id": "SYN-RUN-47",
+            "agent_id": "syn-being17",
+            "tick": 1,
+            "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#2/observation/message",
+            "episode_id": "SYN-EPISODE-091",
+            "entity_id": "syn-being38",
+            "kind": "message",
+            "execution_tick": 0,
+            "recorded_tick": 1,
+            "source_kind": "received_message"
+          },
+          "decisions": [
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 22, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#23/action", "action": "Move west", "message": "Thanks for the tip, Juniper!"},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 23, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#24/action", "action": "Move north", "message": ""}
+          ],
+          "outcomes": [
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 22, "source_id": "SYN-RUN-47/probe_events.jsonl#23/ada_after", "recorded_tick": 22, "status": "confirmed", "feedback": "Sable Reed moved west.", "execution_tick": 22, "decision_source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#23/action", "source_kind": "probe_transition"},
+            {"run_id": "SYN-RUN-47", "agent_id": "syn-being17", "tick": 23, "source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#25/previous-action-feedback", "recorded_tick": 24, "status": "unknown", "feedback": "The next decision record contains no movement feedback.", "execution_tick": null, "decision_source_id": "SYN-RUN-47/agent_logs/syn-being17.jsonl#24/action", "source_kind": "upstream_feedback"}
+          ],
+          "dossier_review": {
+            "source_kind": "decision_audit",
+            "source_id": "SYN-RUN-47/agent_logs/syn-being17_memory_audit.jsonl#23",
+            "next_tick": 22,
+            "review_source": "SYN-RUN-47/synthetic-dossier-review",
+            "attestations": {
+              "available_before_t": true,
+              "complete": true,
+              "verbatim": true
+            }
+          }
+        },
+        {
+          "run_id": "SYN-RUN-81",
+          "agent_id": "syn-being17",
+          "entity_id": "syn-being38",
+          "condition": "SYN-CONDITION-INDIGO",
+          "tick": 22,
+          "last_seen_tick": 1,
+          "names": {
+            "syn-being17": [
+              "Sable Reed"
+            ],
+            "syn-being38": [
+              "Juniper Moss",
+              "Juniper"
+            ]
+          },
+          "provenance": {
+            "checkpoint_id": "cbcdbfc50e410698b07f12f2c267e6033db205dea56c2f110b10f1e61374ee5a",
+            "restore_source": "SYN-RUN-81/synthetic-restore",
+            "next_tick": 22,
+            "seed": 8675309,
+            "controls": {
+              "engine_revision": "SYN-ENGINE-REVISION",
+              "actor_model": "SYN-MODEL",
+              "actor_backend": "SYN-BACKEND",
+              "generator_settings": {
+                "temperature": 0.2,
+                "max_output_tokens": 256
+              },
+              "actor_settings": {
+                "prompt_revision": "SYN-PROMPT-V1",
+                "working_history": 4
+              },
+              "environment_settings": {
+                "grid_size": 12
+              },
+              "world_state_sha256": "6d39d24c08736f4e71dfaed338aa93366caff584fb80cff6fb162bef508a5423",
+              "memory_history_sha256": "adea1205e49336112bcaa87b63983467c2d62c147d926cdd8dbb641e360e5ea1",
+              "plan_sha256": "33a2017f528f3452e8e0c5fdeb14d3bff6d24fd8d42e6cbedd721c5df7353d93"
+            }
+          },
+          "observations": [
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 1, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#2/observation", "present": ["syn-being38"]},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 2, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#3/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 3, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#4/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 4, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#5/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 5, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#6/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 6, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#7/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 7, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#8/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 8, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#9/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 9, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#10/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 10, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#11/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 11, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#12/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 12, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#13/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 13, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#14/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 14, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#15/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 15, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#16/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 16, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#17/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 17, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#18/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 18, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#19/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 19, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#20/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 20, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#21/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 21, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#22/observation", "present": []},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 22, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#23/observation", "present": ["syn-being38"], "text": "Sable Reed has 12 energy. Juniper Moss is one tile east. One food tile is west. Moving or staying is available."},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 23, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#24/observation", "present": ["syn-being38"], "text": "Sable Reed has 11 energy. Juniper Moss is one tile east. Moving is available."}
+          ],
+          "episodes": [
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 1, "source_id": "SYN-RUN-81/agent_logs/syn-being17_hou_memory.json#/memories/0", "episode_id": "SYN-EPISODE-091", "entity_id": "syn-being38", "text": "Heard Juniper Moss say \"There is food to the west.\"", "gold_label": "target"}
+          ],
+          "event": {
+            "run_id": "SYN-RUN-81",
+            "agent_id": "syn-being17",
+            "tick": 1,
+            "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#2/observation/message",
+            "episode_id": "SYN-EPISODE-091",
+            "entity_id": "syn-being38",
+            "kind": "message",
+            "execution_tick": 0,
+            "recorded_tick": 1,
+            "source_kind": "received_message"
+          },
+          "decisions": [
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 22, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#23/action", "action": "Move east", "message": ""},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 23, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#24/action", "action": "Move north", "message": ""}
+          ],
+          "outcomes": [
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 22, "source_id": "SYN-RUN-81/probe_events.jsonl#23/ada_after", "recorded_tick": 22, "status": "failed", "feedback": "Sable Reed remained in place.", "execution_tick": 22, "decision_source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#23/action", "source_kind": "probe_transition"},
+            {"run_id": "SYN-RUN-81", "agent_id": "syn-being17", "tick": 23, "source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#25/previous-action-feedback", "recorded_tick": 24, "status": "unknown", "feedback": "The next decision record contains no movement feedback.", "execution_tick": null, "decision_source_id": "SYN-RUN-81/agent_logs/syn-being17.jsonl#24/action", "source_kind": "upstream_feedback"}
+          ],
+          "dossier_review": {
+            "source_kind": "decision_audit",
+            "source_id": "SYN-RUN-81/agent_logs/syn-being17_memory_audit.jsonl#23",
+            "next_tick": 22,
+            "review_source": "SYN-RUN-81/synthetic-dossier-review",
+            "attestations": {
+              "available_before_t": true,
+              "complete": true,
+              "verbatim": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
