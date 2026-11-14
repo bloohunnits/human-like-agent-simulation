@@ -72,7 +72,7 @@ class MemoryDatabase:
         """Insert or update many memories from a DataFrame; return row count.
 
         Required columns: memory_id, agent_id, content, t_created.
-        Optional columns: role, t_last_recalled, g, recall_count, metadata, score.
+        Optional columns: t_last_recalled, g, recall_count.
         If score is absent from the DataFrame, inserts receive NULL and existing
         scores are preserved on conflict. If score is present but null for a row,
         that row's stored score is cleared. Other absent optional columns use
@@ -92,12 +92,6 @@ class MemoryDatabase:
         for row in memories.to_dict(orient="records"):
             if pd.isna(row["memory_id"]) or pd.isna(row["agent_id"]):
                 raise ValueError("memory_id and agent_id must not be null")
-            metadata = row.get("metadata", {})
-            if metadata is None or (isinstance(metadata, float) and pd.isna(metadata)):
-                metadata = {}
-            if not isinstance(metadata, dict):
-                raise TypeError("metadata values must be dictionaries")
-            score = row.get("score")
             t_last_recalled = row.get("t_last_recalled")
             if t_last_recalled is not None and pd.isna(t_last_recalled):
                 t_last_recalled = None
@@ -105,26 +99,23 @@ class MemoryDatabase:
                 str(row["memory_id"]),
                 str(row["agent_id"]),
                 row["content"],
-                row.get("role", "user"),
                 float(row["t_created"]),
                 t_last_recalled,
                 row.get("g", 1.0),
                 row.get("recall_count", 0),
-                Jsonb(metadata),
             ))
 
         update_fields = [
-            "agent_id", "content", "role", "t_created", "t_last_recalled",
-            "g", "recall_count", "metadata, score",
+            "agent_id", "content", "t_created", "t_last_recalled", "g", "recall_count",
         ]
         update_sql = ",\n                ".join(
             f"{field} = EXCLUDED.{field}" for field in update_fields
         )
         sql = f"""
             INSERT INTO memories
-                (memory_id, agent_id, content, role, t_created,
-                 t_last_recalled, g, recall_count, metadata, score)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (memory_id, agent_id, content, t_created,
+                 t_last_recalled, g, recall_count)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (memory_id) DO UPDATE SET
                 {update_sql}
         """
@@ -144,8 +135,8 @@ class MemoryDatabase:
         with self.connection(self.pg_dsn) as conn:
             rows = conn.execute(
                 """
-                SELECT memory_id, agent_id, content, role, t_created,
-                       t_last_recalled, g, recall_count, metadata
+                SELECT memory_id, agent_id, content, t_created,
+                       t_last_recalled, g, recall_count
                 FROM memories
                 WHERE memory_id = ANY(%s::uuid[]) AND agent_id = %s
                 ORDER BY t_created ASC
