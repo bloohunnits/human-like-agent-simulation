@@ -8,6 +8,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
 .go{background:#17383c;color:white;border-color:#17383c}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px;border-bottom:1px solid #ccd8d4}
 .answers small{display:block;font-size:14px;font-weight:400;margin-top:3px;opacity:.8}.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.chips button{font-size:14px;padding:5px 9px;border-radius:14px}.chips button.on{background:#17383c;color:white}
 .guide h2{font-size:19px;margin:20px 0 6px}.guide li{margin:5px 0}.guide p{line-height:1.5;margin:6px 0}.example{background:#f7f6f0;border-radius:8px;padding:10px 12px;margin:10px 0;line-height:1.5}.example b{color:#007c80}[hidden]{display:none!important}
+.maps{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 14px}.maps figure{margin:0}.maps figcaption{font-weight:600;margin-bottom:4px}.maps svg{display:block;width:266px;max-width:100%;height:auto}.key{font-size:14px;margin:0 0 12px}.key span{margin-right:12px;white-space:nowrap}
 .pass{color:#0b7a3b;font-weight:700}.fail{color:#a12d21;font-weight:700}#error{color:#a12d21;min-height:1em}label{display:block;margin:8px 0 4px;font-weight:600}
 </style></head><body>
 <h1>Memory check</h1>
@@ -24,6 +25,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
 
     <h2>What each card shows</h2>
     <ul>
+      <li><b>Two maps:</b> what this person could see when the memory happened, and right now. They are always in the middle.</li>
       <li><b>What happened:</b> this person's last few turns, oldest first, written like a script. Lines in brackets set the scene. A name and a colon is someone talking.</li>
       <li><b>Right now:</b> what they can see and hear at this moment.</li>
       <li><b>This came to their mind:</b> the memory that popped into their head. This is the part you grade.</li>
@@ -73,7 +75,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
 
   <div id="work" hidden>
     <p class="top"><span id="left" class="muted"></span> <button id="helpBtn">Help</button></p>
-    <div id="card" class="box" hidden><pre id="text"></pre>
+    <div id="card" class="box" hidden><div id="maps" class="maps"></div><pre id="text"></pre>
       <p><b id="question"></b></p>
       <div class="answers" id="answers"></div>
       <div class="chips" id="chips"></div>
@@ -118,8 +120,17 @@ async function loadMeta(){meta=await api('/api/judge/meta');$('run').innerHTML=m
 function showPrompt(){const p=meta.prompts[$('prompt').value];if(!p)return;$('d1').value=p.definitions.belongs;$('d2').value=p.definitions.doesnt_matter;$('d3').value=p.definitions.noise;$('world').value=p.world;$('task').value=p.task;$('note').value='';}
 async function ensure(force){const r=run();if(!r)return;if(force||!r.ready){$('left').textContent='Finding rescued memories...';await api('/api/judge/make_cards',{path:r.path});r.ready=true;}}
 async function load(force){err();try{await ensure(force);const d=await api(`/api/judge/cards?set=${encodeURIComponent(set())}&rater=${encodeURIComponent(who())}`);cards=d.cards;pos=cards.filter(c=>c.mine).length;show();if(tab!=='label')await report();}catch(e){err(e);}}
+// What the person could see, centered on them. Rows grow downward, so "up" is up.
+function mapSvg(view,who,title){if(!view)return '';const r=view.radius||6,n=2*r+1,s=18,W=n*s;let food='',others='',notes='';
+  for(const [row,col,items] of view.cells){if(Math.abs(row)>r||Math.abs(col)>r)continue;const x=(col+r)*s+s/2,y=(row+r)*s+s/2;
+    for(const it of items){if(/^[\d.]+$/.test(it))food+=`<circle cx="${x}" cy="${y}" r="${2+Math.min(+it,10)*0.5}" fill="#3f8f5a" opacity=".75"/>`;
+      else if(it.startsWith('A('))notes+=`<rect x="${x-5}" y="${y-5}" width="10" height="10" fill="#c98a1a"><title>${esc(it.replace(/^A\(\w+\): /,''))}</title></rect>`;
+      else others+=`<g><title>${esc(it)}</title><circle cx="${x}" cy="${y}" r="8.5" fill="#2f6db5"/><text x="${x}" y="${y+4}" font-size="11" text-anchor="middle" fill="white" font-weight="700">${esc(it[0])}</text></g><text x="${x}" y="${y-11}" font-size="10" text-anchor="middle" fill="#2f6db5">${esc(it)}</text>`;}}
+  const c=r*s+s/2;
+  return `<figure><figcaption>${esc(title)}</figcaption><svg viewBox="-16 -12 ${W+32} ${W+12}" role="img" aria-label="${esc(title)}: map around ${esc(who)}"><rect y="0" width="${W}" height="${W}" fill="#f7f6f0" stroke="#ccd8d4"/>${food}${notes}${others}<circle cx="${c}" cy="${c}" r="9.5" fill="#17383c"/><text x="${c}" y="${c+4}" font-size="11" text-anchor="middle" fill="white" font-weight="700">${esc(who[0]||'?')}</text><text x="${c}" y="${c-12}" font-size="10" text-anchor="middle" fill="#17383c" font-weight="700">${esc(who)}</text></svg></figure>`;}
 function show(){const n=cards.filter(c=>c.mine).length,goal=cards.length,c=cards[pos],stop=!c||(!c.mine&&n>=goal&&!extra);
   $('left').textContent=cards.length?`${n} of ${extra?cards.length:goal} done`:'No cards here.';$('card').hidden=stop;$('done').hidden=!stop||!cards.length;$('more').hidden=n>=cards.length;if(stop)return;
+  $('maps').innerHTML=c.views?mapSvg(c.views.then,c.who,`The memory (${c.ago===1?'1 turn':c.ago+' turns'} ago)`)+mapSvg(c.views.now,c.who,'Right now')+`<p class="key"><span style="color:#17383c">● ${esc(c.who)}</span><span style="color:#2f6db5">● someone else</span><span style="color:#3f8f5a">● food, bigger is more</span><span style="color:#c98a1a">■ note</span></p>`:'';
   $('text').textContent=c.text;pick=c.mine?c.mine.label:null;$('why').value=c.mine?c.mine.reason:'';
   $('answers').innerHTML=L.map((l,i)=>`<button data-l="${l}">${i+1}. ${esc(name(l))}<small>${esc(meta.help[l])}</small></button>`).join('');
   $('answers').querySelectorAll('button').forEach(b=>{b.onclick=()=>{b.blur();choose(b.dataset.l);};b.classList.toggle('on',b.dataset.l===pick);});

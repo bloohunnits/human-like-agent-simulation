@@ -11,7 +11,10 @@ import numpy as np
 
 from associative_memory import MemoryConfig
 from memory_agent import HouMemoryAgent
-from core.utils.llm_client import Response
+try:
+    from core.utils.llm_client import Response
+except ImportError:  # these drive the older engine's agent; run them with code/terralingua/.venv
+    raise unittest.SkipTest("needs the older engine in code/terralingua")
 
 
 class ScriptedClient:

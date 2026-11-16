@@ -71,6 +71,20 @@ class CardText(unittest.TestCase):
                                  "(Ben is 1 step away and Dov is 4 steps away.)", 'Ben: "hi"'])
 
 
+class Maps(unittest.TestCase):
+    def test_judge_sees_the_map_people_see(self):
+        view = {"radius": 1, "cells": [[-1, 0, ["Ben"]], [1, 1, ["10.0"]], [0, -1, ["A(text): x"]]]}
+        self.assertEqual(judging.map_text(view, "Ada"), [". B .", "n @ .", ". . f",
+                                                         "Key: @ = Ada, B = Ben, f = food, n = note."])
+
+    def test_maps_count_toward_the_grade_fingerprint(self):
+        a = card(agent_name="Ada")
+        a["views"] = {"then": None, "now": {"radius": 1, "cells": []}}
+        b = json.loads(json.dumps(a))
+        b["views"]["now"]["cells"] = [[0, 1, ["Ben"]]]
+        self.assertNotEqual(judging.text_hash(a), judging.text_hash(b))
+
+
 class Split(unittest.TestCase):
     def test_stored_split_wins_and_groups_stay_together(self):
         self.assertEqual(judging.split_of(card(split="held_out")), "held_out")

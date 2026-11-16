@@ -659,7 +659,8 @@ def api_judge_meta():
 def api_judge_cards():
     try:
         card_set, rater = request.args.get("set", ""), request.args.get("rater", "")
-        out = [{"card_id": c["card_id"], "text": judging.visible_text(c), "mine": mine}
+        out = [{"card_id": c["card_id"], "text": judging.visible_text(c), "mine": mine, "views": c.get("views"),
+                "who": c.get("sealed", {}).get("agent_name", ""), "ago": c.get("memory", {}).get("ticks_ago")}
                for c, mine in judging.for_rater(card_set, rater)]
         return jsonify({"cards": out})
     except (ValueError, OSError) as e:

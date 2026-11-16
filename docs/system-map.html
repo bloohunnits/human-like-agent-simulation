@@ -1,0 +1,627 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Relational Memory System Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky header with view tabs, then a two-column body: the map (scrolls sideways when narrow) and a sticky detail panel. */
+:root {
+  --bg: #f3f5f2;
+  --surface: #ffffff;
+  --surface-2: #e9ede9;
+  --fg: #182019;
+  --muted: #5b6963;
+  --line: #c6cfc9;
+  --line-strong: #8a978f;
+  --accent: #0f766e;
+  --accent-soft: #d8efea;
+  --warn: #a16207;
+  --warn-soft: #f6e7c4;
+  --lane: #eef1ee;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111614; --surface: #1a211d; --surface-2: #232c27; --fg: #e4eae6; --muted: #9aa89f;
+    --line: #2f3b35; --line-strong: #5d6d65; --accent: #2fd4bd; --accent-soft: #163a35;
+    --warn: #f0b64a; --warn-soft: #3a2f14; --lane: #161c19; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111614; --surface: #1a211d; --surface-2: #232c27; --fg: #e4eae6; --muted: #9aa89f;
+  --line: #2f3b35; --line-strong: #5d6d65; --accent: #2fd4bd; --accent-soft: #163a35;
+  --warn: #f0b64a; --warn-soft: #3a2f14; --lane: #161c19; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; margin: 0; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 32px; max-width: 1400px; margin: 0 auto; }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding-block: 14px 10px; display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: baseline; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 24px; letter-spacing: .01em; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 13px; margin: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.tab { font: 500 13px var(--body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.tab:hover { border-color: var(--line-strong); }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.tab:focus-visible, .node:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.viewnote { font-size: 14px; color: var(--fg); background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 8px 12px; margin: 14px 0 0; border-radius: 0 6px 6px 0; max-width: 72ch; }
+.body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; margin-top: 16px; align-items: start; }
+.map { min-width: 0; overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.map svg { display: block; min-width: 1040px; width: 100%; height: auto; color: var(--fg); font-family: var(--body); }
+.panel { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 86px); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.panel .eyebrow { font: 500 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.panel h2 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 0 0 6px; line-height: 1.2; }
+.panel .path { font-family: var(--mono); font-size: 12px; color: var(--muted); word-break: break-all; margin: 0 0 10px; }
+.panel h3 { font: 600 12px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
+.panel p, .panel li { font-size: 14px; margin: 0; }
+.panel ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { font: 500 12px var(--body); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; color: var(--fg); background: var(--surface-2); }
+.chip.ben { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+.chip.andre { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.chip.ryan { border-color: var(--line-strong); }
+.chip.gap { border-style: dashed; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); margin-top: 12px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 26px; height: 0; border-top: 2px solid var(--line-strong); display: inline-block; }
+.sw.dash { border-top-style: dashed; }
+.sw.acc { border-top-color: var(--accent); border-top-width: 3px; }
+.box { width: 14px; height: 14px; border: 1px solid var(--line-strong); border-radius: 3px; display: inline-block; background: var(--surface); }
+.box.dash { border-style: dashed; }
+.box.lane { background: var(--lane); border-color: var(--line); }
+/* SVG classes */
+.lane { fill: var(--lane); stroke: var(--line); stroke-width: 1; }
+.lane-label { font: 600 12px var(--display); letter-spacing: .06em; text-transform: uppercase; fill: var(--muted); }
+.node { cursor: pointer; }
+.node rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.2; transition: stroke .15s, fill .15s; }
+.node.planned rect { stroke-dasharray: 5 4; }
+.node:hover rect { stroke: var(--accent); }
+.node.selected rect { stroke: var(--accent); stroke-width: 2.4; fill: var(--accent-soft); }
+.node .t { font: 600 13px var(--body); fill: currentColor; }
+.node .s { font: 400 11px var(--body); fill: var(--muted); }
+.node .m { font: 400 11px var(--mono); fill: var(--muted); }
+.edge { fill: none; stroke: var(--line-strong); stroke-width: 1.4; }
+.edge.ret { stroke-dasharray: 4 3; }
+.edge.planned { stroke-dasharray: 5 4; stroke: var(--line); }
+.elabel { font: 400 10.5px var(--body); fill: var(--muted); }
+.elabel tspan.k { font-family: var(--mono); }
+#arrow path { fill: var(--line-strong); }
+#arrow-acc path { fill: var(--accent); }
+svg.focused .node:not(.focus) { opacity: .28; }
+svg.focused .edge:not(.focus) { opacity: .18; }
+svg.focused .elabel:not(.focus) { opacity: .18; }
+svg.focused .node.focus rect { stroke: var(--accent); stroke-width: 2; }
+svg.focused .edge.focus { stroke: var(--accent); stroke-width: 2.2; marker-end: url(#arrow-acc); }
+@media (max-width: 900px) {
+  .body { grid-template-columns: 1fr; }
+  .panel { position: static; }
+  .tabs { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .node rect { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Relational Memory System Map</h1>
+      <p class="sub">Every box is clickable. Updated Nov 10: our memory now runs on Ben's newer engine. Tabs show the options from the Nov 5 review.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Views">
+      <button class="tab" role="tab" id="tab-today" aria-selected="true" data-view="today">As it runs today</button>
+      <button class="tab" role="tab" id="tab-sub" aria-selected="false" data-view="sub">Subcommands</button>
+      <button class="tab" role="tab" id="tab-opt1" aria-selected="false" data-view="opt1">Split 1 · runner plugin</button>
+      <button class="tab" role="tab" id="tab-opt2" aria-selected="false" data-view="opt2">Split 2 · memory in proxy</button>
+      <button class="tab" role="tab" id="tab-opt3" aria-selected="false" data-view="opt3">Split 3 · remote agent</button>
+    </div>
+  </header>
+
+  <p class="viewnote" id="viewnote">Two processes. The simulation process runs Ben's newer engine with our memory agent swapped in by one rebind and two small hooks (names and food value). The proxy process holds only the model call. The run folder on disk is what every analysis tool reads. The older engine stays only to re-run the graded anchor_v1 worlds.</p>
+
+  <div class="body">
+    <div class="map">
+<figure style="margin:0">
+<svg viewBox="0 0 1200 830" role="img" aria-label="System map: make run starts the proxy and the simulation. Inside the simulation process, on Ben's newer engine, the launcher rebinds TerraLingua's agent class to our memory agent, which consults the memory engine every tick and sends prompts through TerraLingua's router to the proxy on ports 9000 and 9001. The proxy forwards to OpenAI. Logs land in the run folder, read by God Mode, the card builder, the judge, and Ryan's extractor." id="svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="arrow-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+  </defs>
+
+  <!-- lanes -->
+  <rect class="lane" x="230" y="44" width="490" height="458" rx="8"/>
+  <text class="lane-label" x="244" y="63">Simulation process · Ben's engine venv</text>
+  <rect class="lane" x="750" y="44" width="200" height="458" rx="8"/>
+  <text class="lane-label" x="764" y="63">Proxy process</text>
+  <rect class="lane" x="980" y="44" width="200" height="458" rx="8"/>
+  <text class="lane-label" x="994" y="63">Model</text>
+  <rect class="lane" x="230" y="530" width="490" height="110" rx="8"/>
+  <text class="lane-label" x="244" y="549">Run folder on disk</text>
+  <rect class="lane" x="20" y="670" width="1160" height="150" rx="8"/>
+  <text class="lane-label" x="34" y="689">Analysis and grading</text>
+  <text class="lane-label" x="30" y="63">Launch</text>
+
+  <!-- edges -->
+  <path class="edge" data-ends="make main" d="M110,104 V150" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="make main" x="118" y="131">runs</text>
+
+  <path class="edge" data-ends="env main" d="M110,260 V206" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="env main" x="118" y="238">env vars</text>
+
+  <path class="edge" data-ends="main launcher" d="M190,168 H215 V98 H250" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="main launcher" x="196" y="90">starts sim</text>
+
+  <path class="edge" data-ends="main proxy" d="M190,188 H215 V515 H735 V340 H770" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="main proxy" x="520" y="511">starts proxy first, waits for /v1/models</text>
+
+  <path class="edge" data-ends="launcher runner" d="M450,98 H490" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="launcher runner" x="452" y="90">rebinds</text>
+
+  <path class="edge" data-ends="launcher agent" d="M350,126 V160" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="launcher agent" x="356" y="147">installs</text>
+
+  <path class="edge" data-ends="runner world" d="M595,126 V160" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="runner world" x="604" y="147">step / obs, info</text>
+
+  <path class="edge" data-ends="runner agent" d="M490,112 H470 V188 H450" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="runner agent" x="420" y="152" text-anchor="end">select_action</text>
+
+  <path class="edge" data-ends="agent memory" d="M350,216 V260" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="agent memory" x="356" y="243">cue, recall, write</text>
+
+  <path class="edge" data-ends="agent router" d="M450,200 H470 V308 H490" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="agent router" x="462" y="258" text-anchor="end">prompt</text>
+
+  <path class="edge" data-ends="router proxy" d="M700,300 H770" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="router proxy" x="735" y="293" text-anchor="middle">POST :9000/:9001</text>
+  <path class="edge ret" data-ends="router proxy" d="M770,322 H700" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="router proxy" x="735" y="336" text-anchor="middle">action JSON</text>
+
+  <path class="edge" data-ends="proxy openai" d="M930,300 H1000" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="proxy openai" x="965" y="293" text-anchor="middle">as MODEL_NAME</text>
+  <path class="edge ret" data-ends="proxy openai" d="M1000,322 H930" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="proxy openai" x="965" y="336" text-anchor="middle">reply</text>
+
+  <path class="edge" data-ends="proxy proxylog" d="M850,350 V400" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="proxy proxylog" x="856" y="380">errors, 500s</text>
+
+  <path class="edge" data-ends="memory memlogs" d="M350,350 V560" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="memory memlogs" x="356" y="420">audit + dump</text>
+  <text class="elabel" data-ends="memory memlogs" x="356" y="433">every tick</text>
+
+  <path class="edge" data-ends="world worldlogs" d="M700,200 H730 V590 H700" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="world worldlogs" x="736" y="420">checkpoint,</text>
+  <text class="elabel" data-ends="world worldlogs" x="736" y="433">logs, messages</text>
+
+  <path class="edge" data-ends="memlogs godmode" d="M300,620 V655 H140 V700" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="memlogs godmode" x="150" y="650">reads dumps, follows live</text>
+
+  <path class="edge" data-ends="memlogs cards" d="M470,640 V700" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="memlogs cards" x="478" y="672">6 worlds pooled</text>
+
+  <path class="edge" data-ends="cards anchor" d="M490,735 H530" marker-end="url(#arrow)"/>
+  <path class="edge" data-ends="anchor judge" d="M730,735 H770" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="anchor judge" x="750" y="726" text-anchor="middle">cards</text>
+
+  <path class="edge ret" data-ends="anchor godmode" d="M630,770 V798 H140 V770" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="anchor godmode" x="385" y="810" text-anchor="middle">/rescued serves the cards to raters, saves grades</text>
+
+  <path class="edge" data-ends="worldlogs extract" d="M700,575 H1080 V700" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="worldlogs extract" x="890" y="568" text-anchor="middle">agent logs + audit + messages</text>
+
+  <path class="edge planned" data-ends="fork proxy" d="M190,395 H230" marker-end="url(#arrow)"/>
+  <text class="elabel" data-ends="fork proxy" x="196" y="430" text-anchor="start">run-anchor</text>
+
+  <!-- nodes: launch column -->
+  <g class="node" id="n-make" tabindex="0" role="button" aria-label="make run">
+    <rect x="30" y="60" width="160" height="44" rx="6"/>
+    <text class="t" x="40" y="79">make run</text>
+    <text class="m" x="40" y="95">NAME=world7 TICKS=300</text>
+  </g>
+  <g class="node" id="n-main" tabindex="0" role="button" aria-label="code/__main__.py entry point">
+    <rect x="30" y="150" width="160" height="56" rx="6"/>
+    <text class="m" x="40" y="169">code/__main__.py</text>
+    <text class="s" x="40" y="185">starts proxy, waits,</text>
+    <text class="s" x="40" y="198">starts the sim</text>
+  </g>
+  <g class="node" id="n-env" tabindex="0" role="button" aria-label="environment variables">
+    <rect x="30" y="260" width="160" height="56" rx="6"/>
+    <text class="t" x="40" y="279">.env and variables</text>
+    <text class="m" x="40" y="295">MODEL_NAME</text>
+    <text class="m" x="40" y="308">REASONING_EFFORT, key</text>
+  </g>
+  <g class="node planned" id="n-fork" tabindex="0" role="button" aria-label="Older engine">
+    <rect x="30" y="360" width="160" height="70" rx="6"/>
+    <text class="t" x="40" y="379">Older engine</text>
+    <text class="s" x="40" y="395">upstream bf276db</text>
+    <text class="s" x="40" y="408">made the graded worlds</text>
+    <text class="m" x="40" y="421">make run-anchor</text>
+  </g>
+  <g class="node planned" id="n-pg" tabindex="0" role="button" aria-label="Postgres memory store branch">
+    <rect x="30" y="455" width="160" height="56" rx="6"/>
+    <text class="t" x="40" y="474">Postgres store</text>
+    <text class="s" x="40" y="490">branch bs/mem-storage</text>
+    <text class="s" x="40" y="503">unmerged, not wired</text>
+  </g>
+
+  <!-- nodes: simulation process -->
+  <g class="node" id="n-launcher" tabindex="0" role="button" aria-label="run_hou_experiment launcher">
+    <rect x="250" y="70" width="200" height="56" rx="6"/>
+    <text class="m" x="260" y="89">run_hou_new_engine.py</text>
+    <text class="s" x="260" y="105">rebinds agent class,</text>
+    <text class="s" x="260" y="118">name pool, food value</text>
+  </g>
+  <g class="node" id="n-runner" tabindex="0" role="button" aria-label="TerraLingua SimulationRunner">
+    <rect x="490" y="70" width="210" height="56" rx="6"/>
+    <text class="t" x="500" y="89">SimulationRunner</text>
+    <text class="s" x="500" y="105">TerraLingua v0.2.1, Ben's engine</text>
+    <text class="s" x="500" y="118">ticks, births, respawns</text>
+  </g>
+  <g class="node" id="n-world" tabindex="0" role="button" aria-label="OpenGridWorld">
+    <rect x="490" y="160" width="210" height="56" rx="6"/>
+    <text class="t" x="500" y="179">OpenGridWorld</text>
+    <text class="s" x="500" y="195">30×30, food worth 5, vision 6</text>
+    <text class="s" x="500" y="208">lifespan about 100, child costs 50</text>
+  </g>
+  <g class="node" id="n-agent" tabindex="0" role="button" aria-label="HouMemoryAgent">
+    <rect x="250" y="160" width="200" height="56" rx="6"/>
+    <text class="t" x="260" y="179">HouMemoryAgent ×10</text>
+    <text class="s" x="260" y="195">subclass of TerraLingua's LLMAgent</text>
+    <text class="s" x="260" y="208">one per being, ours</text>
+  </g>
+  <g class="node" id="n-memory" tabindex="0" role="button" aria-label="Memory engine">
+    <rect x="250" y="260" width="200" height="90" rx="6"/>
+    <text class="t" x="260" y="279">Memory engine</text>
+    <text class="s" x="260" y="295">Hou recall kernel + ACT-R kernel</text>
+    <text class="s" x="260" y="308">SBERT similarity</text>
+    <text class="s" x="260" y="321">entity hubs, typed edges, routes</text>
+    <text class="s" x="260" y="334">conditions hou / independent / learned / chained</text>
+  </g>
+  <g class="node" id="n-router" tabindex="0" role="button" aria-label="LLMRouter">
+    <rect x="490" y="280" width="210" height="56" rx="6"/>
+    <text class="t" x="500" y="299">LLMRouter</text>
+    <text class="s" x="500" y="315">asks for DeepSeek-R1-32</text>
+    <text class="m" x="500" y="328">http://127.0.0.1:9000 and :9001</text>
+  </g>
+
+  <!-- nodes: proxy -->
+  <g class="node" id="n-proxy" tabindex="0" role="button" aria-label="TerraLinguaAgent proxy">
+    <rect x="770" y="260" width="160" height="90" rx="6"/>
+    <text class="t" x="780" y="279">Proxy</text>
+    <text class="m" x="780" y="295">tl_agent.py</text>
+    <text class="s" x="780" y="308">says it is DeepSeek</text>
+    <text class="s" x="780" y="321">rewrites model, adds effort</text>
+    <text class="s" x="780" y="334">keeps the last JSON object</text>
+  </g>
+  <g class="node" id="n-proxylog" tabindex="0" role="button" aria-label="process logs">
+    <rect x="770" y="400" width="160" height="44" rx="6"/>
+    <text class="m" x="780" y="419">logs/proxy.log</text>
+    <text class="m" x="780" y="434">logs/terralingua.log</text>
+  </g>
+
+  <!-- nodes: model -->
+  <g class="node" id="n-openai" tabindex="0" role="button" aria-label="OpenAI API">
+    <rect x="1000" y="265" width="160" height="70" rx="6"/>
+    <text class="t" x="1010" y="284">OpenAI API</text>
+    <text class="s" x="1010" y="300">gpt-5-mini, effort low</text>
+    <text class="s" x="1010" y="313">about $3 to $4 per world</text>
+    <text class="s" x="1010" y="326">any compatible URL works</text>
+  </g>
+
+  <!-- nodes: run folder -->
+  <g class="node" id="n-memlogs" tabindex="0" role="button" aria-label="memory logs">
+    <rect x="250" y="560" width="210" height="60" rx="6"/>
+    <text class="t" x="260" y="579">Memory logs</text>
+    <text class="m" x="260" y="595">&lt;tag&gt;_memory_audit.jsonl</text>
+    <text class="m" x="260" y="610">&lt;tag&gt;_hou_memory.json</text>
+  </g>
+  <g class="node" id="n-worldlogs" tabindex="0" role="button" aria-label="world logs">
+    <rect x="490" y="560" width="210" height="60" rx="6"/>
+    <text class="t" x="500" y="579">World logs</text>
+    <text class="m" x="500" y="595">checkpoint.pkl, agent_logs/*.jsonl</text>
+    <text class="m" x="500" y="610">messages.json, params.json</text>
+  </g>
+
+  <!-- nodes: analysis -->
+  <g class="node" id="n-godmode" tabindex="0" role="button" aria-label="God Mode console">
+    <rect x="30" y="700" width="220" height="70" rx="6"/>
+    <text class="t" x="40" y="719">God Mode</text>
+    <text class="m" x="40" y="735">webapp.py · 127.0.0.1:5057</text>
+    <text class="s" x="40" y="748">memory viewer, /audit,</text>
+    <text class="s" x="40" y="761">/rescued grading page</text>
+  </g>
+  <g class="node" id="n-cards" tabindex="0" role="button" aria-label="card builder">
+    <rect x="290" y="700" width="200" height="70" rx="6"/>
+    <text class="t" x="300" y="719">Card builder</text>
+    <text class="m" x="300" y="735">scripts/rescued_cards.py</text>
+    <text class="s" x="300" y="748">script of who did what,</text>
+    <text class="s" x="300" y="761">plus maps, paired blind</text>
+  </g>
+  <g class="node" id="n-anchor" tabindex="0" role="button" aria-label="anchor set">
+    <rect x="530" y="700" width="200" height="70" rx="6"/>
+    <text class="t" x="540" y="719">Grading set anchor_v1</text>
+    <text class="s" x="540" y="735">114 cards from six Mini worlds</text>
+    <text class="s" x="540" y="748">Andre, Ben, Ryan each grade all</text>
+    <text class="s" x="540" y="761">script cards with two maps</text>
+  </g>
+  <g class="node" id="n-judge" tabindex="0" role="button" aria-label="judge and match">
+    <rect x="770" y="700" width="180" height="70" rx="6"/>
+    <text class="t" x="780" y="719">Judge and Match</text>
+    <text class="s" x="780" y="735">LLM judge on labeled cards</text>
+    <text class="s" x="780" y="748">agreement gate κ ≥ .61</text>
+    <text class="s" x="780" y="761">protocol D1 to D5 (Ryan)</text>
+  </g>
+  <g class="node" id="n-extract" tabindex="0" role="button" aria-label="log extractor">
+    <rect x="990" y="700" width="180" height="70" rx="6"/>
+    <text class="t" x="1000" y="719">Log extractor</text>
+    <text class="m" x="1000" y="735">probe_signatures.py</text>
+    <text class="s" x="1000" y="748">one row per agent-tick</text>
+    <text class="s" x="1000" y="761">Ryan, PR 6, open</text>
+  </g>
+</svg>
+<figcaption class="legend">
+  <span><i class="box lane"></i> process or storage boundary</span>
+  <span><i class="box"></i> running today</span>
+  <span><i class="box dash"></i> exists but not wired in</span>
+  <span><i class="sw"></i> call or write</span>
+  <span><i class="sw dash"></i> reply or read-back</span>
+  <span><i class="sw acc"></i> highlighted by the chosen tab</span>
+</figcaption>
+</figure>
+    </div>
+
+    <aside class="panel" id="panel" aria-live="polite">
+      <p class="eyebrow" id="p-eyebrow">Start here</p>
+      <h2 id="p-title">Pick a box</h2>
+      <p class="path" id="p-path"></p>
+      <div id="p-body">
+        <p>Click any box on the map to see what it does, what goes in and out, which files hold it, and who owns it. Use the tabs above to see the four proposals from the Nov 5 review against the same map.</p>
+        <h3>Reading the map</h3>
+        <ul>
+          <li>Left to right is one agent turn: launch, simulation, proxy, model.</li>
+          <li>Top to bottom is time after the run: logs land on disk, then the grading tools read them.</li>
+          <li>Dashed boxes exist but are not part of a new run: the older engine (kept for the graded worlds) and Ben's Postgres branch.</li>
+        </ul>
+      </div>
+      <div class="chips" id="p-chips"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  var NODES = {
+    make: {
+      eyebrow: "Launch", title: "make run", path: "Makefile (repo root)",
+      body: [
+        ["What it does", "The one command the team uses. It runs the entry point with a run name and a tick count, using the root venv if there is one and the TerraLingua venv otherwise.  `make clean` empties logs/."],
+        ["Known gap", "Exits 0 even when the sim fails. Check the end of logs/terralingua.log."],
+        ["Targets", "`make run` runs our memory on Ben's engine. `make run-anchor` runs it on the older engine with the graded worlds' settings. `make run-fork` runs the stock paper_core demo."],
+        ["Ben's ask", "Replace the positional arguments and the 'fork' magic word with subcommands, one per process. See the Subcommands tab."]
+      ], chips: [["Ben", "ben"], ["Andre", "andre"], ["Makefile", ""]]
+    },
+    main: {
+      eyebrow: "Launch", title: "Entry point", path: "code/__main__.py · code/helpers.py",
+      body: [
+        ["What it does", "Starts the proxy as a child process with output redirected to logs/proxy.log, polls port 9000 for /v1/models for up to 30 seconds, then starts the memory sim as a second child process logging to logs/terralingua.log. Ctrl+C stops both."],
+        ["Defaults", "MODEL_NAME falls back to gpt-5-mini and REASONING_EFFORT to low. Loads code/terralingua/.env."],
+        ["Run settings", "HOU_SIM_ARGS: the paper_core preset on Ben's engine with 10 agents, minimum 4, lifespan about 100, a child costs 50, grid 30, vision 6, one food zone at 15,15, 100 starting food, one piece of food per turn worth 5, history window 1, recent turns 1, condition chained. Food is scarce on purpose: about 5 energy appears per turn and 10 beings burn 10."],
+        ["Older settings", "ANCHOR_SIM_ARGS keeps the settings of the six graded worlds (8 agents, lifespan 300, food worth 10) on the older engine. `make run-anchor` uses them."],
+        ["Why it matters for the split", "This is the only place that knows about both processes. A subcommand CLI would live here."]
+      ], chips: [["Ben", "ben"], ["Andre", "andre"], ["PR 4, PR 5", ""]]
+    },
+    env: {
+      eyebrow: "Launch", title: "Environment variables", path: "code/terralingua/.env · shell",
+      body: [
+        ["Read by the proxy", "MODEL_NAME is the model that really answers. REASONING_EFFORT is added to each request. OPENAI_API_KEY and OPENAI_BASE_URL point at OpenAI or any compatible service."],
+        ["Read by the sim", "Only the .env file for TerraLingua's own settings. The sim never sees the real model name. It asks for the paper's DeepSeek model on local ports, and the launcher saves the proxy's MODEL_NAME as actor_model in memory_config.json so analysis knows what answered."]
+      ], chips: [["Config", ""]]
+    },
+    fork: {
+      eyebrow: "Kept for the graded worlds", title: "Older engine", path: "code/terralingua (upstream bf276db, Aug 28) · code/hou_memory/run_hou_experiment.py",
+      body: [
+        ["What it is", "The TerraLingua copy that made the six worlds behind anchor_v1. Its launcher needs seven patches on upstream internals (names, blocked moves, checkpoints and more)."],
+        ["When to use it", "Only to re-run or extend the graded worlds with the same rules: `make run-anchor NAME=... TICKS=...`. New worlds use Ben's engine."],
+        ["What it lacks", "No feedback to the receiver of a gift or theft, no seeds, no varied lifespans, no presets."]
+      ], chips: [["Andre", "andre"], ["legacy", "gap"]]
+    },
+    pg: {
+      eyebrow: "Not wired in", title: "Postgres memory store", path: "branch bs/mem-storage · code/memory_storage/",
+      body: [
+        ["What it is", "A Postgres table mirroring the Hou memory fields: content, created time, last recalled, consolidation g, recall count, JSON metadata. Batch insert and retrieve, a stub multi-agent store, a pyproject. Three commits, last Oct 16."],
+        ["Status", "Unmerged. The tip does not compile (trailing SQL comma, column count mismatch, a method without def). Listed in ROADMAP section 1."],
+        ["Roadmap decision", "Use it as an analysis sink keyed by run, condition, seed, agent and tick, never as a resume source. The checkpoint stays the only source of truth."]
+      ], chips: [["Ben", "ben"], ["unmerged", "gap"]]
+    },
+    launcher: {
+      eyebrow: "Simulation process · ours", title: "Launcher", path: "code/hou_memory/run_hou_new_engine.py",
+      body: [
+        ["What it does", "Runs with Ben's engine venv. Before any agent is built it rebinds the name LLMAgent inside TerraLingua's runner module to HouMemoryAgent. Every agent, child and respawn is made through that name, so one rebind covers them all."],
+        ["Two small hooks", "Names come from a pool of plain human names (Ada, Ben, Cleo...) so memories read 'Ben gave you 3 energy'. A --food-value flag sets the energy in each piece of food, which the engine has no setting for."],
+        ["What it no longer needs", "Ben's engine already gives gift and theft feedback, blocked-move feedback, seeds, varied lifespans and cost logs, so the older launcher's seven patches are gone."],
+        ["Memory flags", "--memory-condition (hou, independent, learned, chained), --memory-config, --recent-turns, --plan-notes, --food-value. Every other flag goes to TerraLingua's own CLI. Resume reuses the saved settings."],
+        ["Why Ben was concerned", "This file is still where the engine and our agent meet, but the coupling shrank from seven patches to one rebind and two hooks."]
+      ], chips: [["Andre", "andre"], ["Nov 10", ""]]
+    },
+    runner: {
+      eyebrow: "Simulation process · Ben's engine", title: "SimulationRunner", path: "code/terralingua-relational-memory/terralingua/experiment/runner.py",
+      body: [
+        ["What it does", "The async tick loop. Asks every agent for an action, steps the world, adds children born that turn, respawns beings down to min_agents, checkpoints, logs messages and costs."],
+        ["Our contact points", "The launcher rebinds LLMAgent and the random-name function in this module and swaps in a grid world with a set food value. Nothing in the file is edited."],
+        ["Cleaner option later", "`run.runner_class` could load a subclass that overrides `_make_llm_agent` instead of the rebind. That is Split 1 done by config."]
+      ], chips: [["Upstream", ""], ["Ben", "ben"]]
+    },
+    world: {
+      eyebrow: "Simulation process · Ben's engine", title: "OpenGridWorld", path: "code/terralingua-relational-memory/terralingua/environment/",
+      body: [
+        ["What it does", "A 30×30 grid. Beings see a square of radius 6, hear broadcasts from beings in view, lose 1 energy per turn, and die at 0 or at the end of a lifespan of about 100 turns (varies by up to 20%). Actions: move, give, take, spawn a child, create or pick up an artifact, speak."],
+        ["Food", "About one piece of food spawns per turn, worth 5 energy (the engine default is 10). Ten beings burn about 10 per turn, so they compete. In a free test, food leveled off near 230 energy instead of climbing past 1,000."],
+        ["Births", "A being with at least 50 energy can spawn a child, which costs it 50. The child gets our memory agent too."],
+        ["What it hands each agent", "An observation dict (grid, incoming broadcasts, energy, time left) and an info dict. The info now tells the receiver 'Ben gave you 3 energy' or 'Esme stole 3 energy from you', which lands in our memories."]
+      ], chips: [["Upstream", ""], ["Ben", "ben"]]
+    },
+    agent: {
+      eyebrow: "Simulation process · ours", title: "HouMemoryAgent", path: "code/hou_memory/memory_agent.py",
+      body: [
+        ["What it does each tick", "Copies the observation. Builds the cue text from the observation, incoming messages and feedback. Extracts entities in view (people, artifacts, places). Asks the memory engine for a preview and commits it, once per tick (retries reuse it). Renders the surfaced memories into the prompt's memory slot and trims the history window to --recent-turns. Calls the parent select_action, which builds the prompt and talks to the router. Then writes one plain-English episode, appends the audit trace, and dumps the full store to disk."],
+        ["An episode line", "'Chose action move: {\"direction\": \"up\"}. Nearby: Ben. Energy fell from 40 to 28. Heard Ben said \"Share the food?\". I said \"Yes, half each.\"'"],
+        ["Notes", "By default the agent keeps TerraLingua's own 150-token free notes and prompt text, as in the paper. --plan-notes swaps in a 60-token plan instead."],
+        ["Checkpoint", "Memory state saves and restores with the world checkpoint. A checkpoint without it is refused."],
+        ["Both engines", "The same file runs on either engine. On Ben's engine it uses the async action path and drops the engine's bookkeeping receipts from memory text."]
+      ], chips: [["Andre", "andre"], ["tests pass on both engines", ""]]
+    },
+    memory: {
+      eyebrow: "Simulation process · ours", title: "Memory engine", path: "code/hou_memory/hou_memory.py · associative_memory.py · memory_graph.py · embedder.py",
+      body: [
+        ["Recall kernel", "Hou et al. CHI 2024: recall probability combines similarity r, time since last recall t, and strength g, with time scale 25 ticks per paper unit. A recall grows g and resets the clock. The ACT-R kernel runs alongside for comparison."],
+        ["Similarity", "SBERT all-MiniLM-L6-v2 on CPU, one shared model per process."],
+        ["Graph", "Entity hubs from the tags on each episode. Edges: mentions, co-occurred, followed. A cue in view can reach an episode through routes of up to three links. Final relevance is the larger of direct similarity and what arrived through the graph. Only the winning route of a selected memory learns. Crowded hubs pay a tax."],
+        ["Conditions", "hou (no graph), independent, learned (edges learn), chained (two hops, fresh edges at weight 1.0). The default run uses chained."],
+        ["Budget", "Top 3 memories above .15 within 600 tokens of retrieved text."]
+      ], chips: [["Andre", "andre"], ["Hou 2024", ""], ["Honda 2025", ""]]
+    },
+    router: {
+      eyebrow: "Simulation process · upstream", title: "LLMRouter", path: "TerraLingua's LLM router (both engines)",
+      body: [
+        ["What it does", "Resolves --model DeepSeek-R1-32 to the DeepSeek-R1-Distill-Qwen-32B id and treats it as a local vLLM model. At startup it asks each of --ports 9000 9001 what it serves, keeps the ports that answer, and round-robins calls across them."],
+        ["The request", "model, messages (system prompt and user prompt), response options. No agent tag and no raw observation. Who is speaking exists only as text inside the prompt. This is the main obstacle for Split 2."],
+        ["Side effect", "In this mode TerraLingua appends the paper's DeepSeek line ('do not spend too much time reasoning') to each prompt. Proxy worlds are labeled separately from direct runs when pooling."]
+      ], chips: [["Upstream", ""]]
+    },
+    proxy: {
+      eyebrow: "Proxy process · Ben", title: "Proxy", path: "code/integration_layer/tl_agent.py · server.py",
+      body: [
+        ["What it does", "Two threaded HTTP servers on 127.0.0.1:9000 and :9001. GET /v1/models answers with the DeepSeek id TerraLingua expects. POST /v1/chat/completions copies the body, sets model to MODEL_NAME, adds reasoning_effort, calls the OpenAI client, relabels the reply as DeepSeek, and keeps only the last JSON object in the reply text."],
+        ["Errors", "Out of credit or unreachable model: the error is logged to logs/proxy.log, then TerraLingua gets a bare 500 and retries."],
+        ["History", "Started as Ben's mock where a human typed every reply (PR 2, Oct 6). Rewritten as a class with pluggable handlers (PR 4, Nov 3). Fixed to survive SIGCHLD and to log errors (PR 5)."],
+        ["Why it matters", "This is the only process boundary in the system today. It separates the model, not the memory. Split 2 would put the memory here."]
+      ], chips: [["Ben", "ben"], ["PR 2, 4, 5", ""]]
+    },
+    proxylog: {
+      eyebrow: "Proxy process", title: "Process logs", path: "logs/proxy.log · logs/terralingua.log",
+      body: [
+        ["What they hold", "Stdout and stderr of each child process, redirected at the file-descriptor level so library output is captured too. Model errors appear in proxy.log, sim errors and the final tick in terralingua.log."],
+        ["Gap", "The Makefile does not propagate a failed sim's exit code, so these files are the only signal."]
+      ], chips: [["Ben", "ben"]]
+    },
+    openai: {
+      eyebrow: "Model", title: "OpenAI API", path: "api.openai.com or OPENAI_BASE_URL",
+      body: [
+        ["Current choice", "gpt-5-mini at reasoning effort low. It is the model behind every card in anchor_v1. A full 8-agent, 300-tick world costs about $3 to $4 and takes about 18 minutes."],
+        ["Rejected", "GPT-5 Nano, the proposal's model: under the paper's wording it spoke on about 3% of turns. Local Qwen3-30B in LM Studio: too slow for 8-agent worlds on the 32 GB M1 Max."],
+        ["Swapping", "Any OpenAI-compatible service works by setting OPENAI_BASE_URL and OPENAI_API_KEY. TerraLingua never needs to know."]
+      ], chips: [["External", ""]]
+    },
+    memlogs: {
+      eyebrow: "Run folder", title: "Memory logs", path: "code/terralingua/logs_dev/logs/<NAME>/agent_logs/ · memory_config.json",
+      body: [
+        ["Per agent, per tick", "<tag>_memory_audit.jsonl: one trace per retrieval with every memory's relevance and score, the selected set, the solo_selected set (what similarity and decay alone would have picked), the winning route, alternatives, and the exact prompt and action bound to it. <tag>_hou_memory.json: the full store, written atomically every tick so a killed run still loads."],
+        ["Per run", "memory_config.json: condition, MemoryConfig, landmarks, plan_notes, actor_model (what the proxy really called), effort."],
+        ["The rescued set", "selected minus solo_selected. Pure arithmetic over the audit file, no model involved. It is the unit everything downstream grades."]
+      ], chips: [["Andre", "andre"]]
+    },
+    worldlogs: {
+      eyebrow: "Run folder", title: "World logs", path: "code/terralingua/logs_dev/logs/<NAME>/",
+      body: [
+        ["TerraLingua's own files", "params.json, the checkpoint .pkl (world plus agents, including our memory payload), agent_logs/<tag>.jsonl (observation, action, notes and prompt per tick), token_counts.jsonl, messages.json, agent_names.json, and the environment log."],
+        ["Who reads them", "God Mode for token cost and plans. The card builder for the stories around each rescued moment. Ryan's extractor joins them with the memory audit by tag and tick."],
+        ["Split warning", "Any split that moves memory out of the sim process must still write into this folder with the same tags, or the join in the extractor breaks."]
+      ], chips: [["Upstream", ""]]
+    },
+    godmode: {
+      eyebrow: "Analysis", title: "God Mode", path: "code/hou_memory/webapp.py · static/ · judging.py",
+      body: [
+        ["Pages", "/ is the what-if console: pick an agent, slide the clock, change g0 and the surface limit, type a cue, reinforce. /audit shows the real committed trace per tick with scores before and after. /rescued is the grading page: a plain-language guide, then cards to label as 'Yes, and it matters', 'Yes, but it doesn't matter', or 'No'."],
+        ["Admin", "?admin adds the run picker, the Judge tab (run a model on labeled cards with versioned prompts from output/analysis/judge_prompts/) and the Match tab (agreement on practice and held-out cards)."],
+        ["How it runs", "Flask on 127.0.0.1:5057, reads the dumps straight from disk, can follow a live run. Launch config hou-memory-explorer in ai-capstone."],
+        ["Owner's rule", "Grade-school wording, no verbose UI."]
+      ], chips: [["Andre", "andre"], ["Flask", ""]]
+    },
+    cards: {
+      eyebrow: "Analysis", title: "Card builder", path: "scripts/rescued_cards.py",
+      body: [
+        ["What it does", "Reads one or more run folders (needs --out when pooling) and writes cards.jsonl plus manifest.json. Each rescued moment becomes a plain-English story with four turns of history, paired with a card for the memory it pushed out of the prompt. Median card about 355 words, about a minute to read."],
+        ["Format", "Cards read like a script: 'This is Dov.', what happened turn by turn, right now, and what came to mind. Two maps show who and what was around when the memory happened and right now."],
+        ["Grades", "Tied to a hash of the card text, so a changed card drops its old grades."]
+      ], chips: [["Andre", "andre"]]
+    },
+    anchor: {
+      eyebrow: "Analysis", title: "Grading set anchor_v1", path: "output/analysis/rescued/anchor_v1/ (cards.jsonl, manifest.json, ratings_*.csv)",
+      body: [
+        ["Contents", "57 moments, 114 cards, pooled from six gpt-5-mini worlds run with the paper's wording (paper_mini_300 through _6). 68 practice cards, 46 held out for the final judge test. 60 cards per grader."],
+        ["Headline number", "The 'Yes, and it matters' share on rescued cards minus the same share on pushed-out cards."],
+        ["Graders", "Andre, Ben and Ryan. Each grades all 114 cards, about two hours each. Names are checked, case does not matter."],
+        ["Status", "Grading has started. A gpt-5-mini judge baseline over all cards is saved in judge_runs/. A small tuned judge (SFT on our labels) is planned once grades are in."]
+      ], chips: [["Andre", "andre"], ["ungraded", "gap"]]
+    },
+    judge: {
+      eyebrow: "Analysis", title: "Judge and Match", path: "code/hou_memory/judging.py · docs/EVALUATION_PROTOCOL.md (PR 6)",
+      body: [
+        ["The gate", "An LLM judge grades the same cards. It is promoted to unrated items only if its agreement with the human majority reaches kappa .61 on at least 20 held-out cards, in both card orders. Disagreements between orders go to a human."],
+        ["Why the human anchor", "The first test had GPT-5 mini and GPT-5.6 Luna disagree on 31 cards with kappa .15."],
+        ["Protocol", "Ryan's D1 to D5 believability protocol: fact-check dimensions, a Likert diagnostic, and pairwise preference as the primary measure. Open in PR 6."]
+      ], chips: [["Ryan", "ryan"], ["Andre", "andre"], ["PR 6 open", "gap"]]
+    },
+    extract: {
+      eyebrow: "Analysis", title: "Log extractor", path: "scripts/probe_signatures.py · scripts/test_probe_signatures.py (PR 6)",
+      body: [
+        ["What it does", "Joins agent_logs/<tag>.jsonl, <tag>_memory_audit.jsonl, messages.json and agent_names.json into one row per agent-tick: action, target, parameters, nearby agents, incoming and outgoing messages, energy, selected and solo_selected memory ids. No model, no inference, malformed data reported rather than guessed."],
+        ["Role", "Every later metric in the roadmap reads this table: partner choice versus gap, reminding opportunities per run, rescued fraction, retrieval hit rate."],
+        ["Status", "Open in PR 6 since Nov 3, with unit tests."]
+      ], chips: [["Ryan", "ryan"], ["PR 6 open", "gap"]]
+    }
+  };
+
+  var VIEWS = {
+    today: { focus: null, note: "Two processes. The simulation process runs Ben's newer engine with our memory agent swapped in by one rebind and two small hooks (names and food value). The proxy process holds only the model call. The run folder on disk is what every analysis tool reads. The older engine stays only to re-run the graded anchor_v1 worlds." },
+    sub: { focus: ["make", "main", "proxy", "launcher", "godmode", "cards"], note: "Subcommands. Replace the positional arguments and the 'fork' magic word in the entry point with one subcommand per process: proxy, sim, run (both), fork, console, cards. Each gets its own process and log file. About a day of work, independent of any split, and the Makefile targets stay as thin aliases." },
+    opt1: { focus: ["launcher", "agent", "memory", "runner", "world"], note: "Split 1, runner plugin. Mostly done on Nov 10: our memory runs on Ben's engine and the seven patches are gone, replaced by one rebind and two small hooks. What is left is optional: load a runner subclass through run.runner_class instead of the rebind. Still one process." },
+    opt2: { focus: ["router", "proxy", "memory", "openai", "memlogs"], note: "Split 2, memory in the proxy. TerraLingua stays stock. The proxy finds the agent's name in the system prompt, parses the rendered observation out of the user prompt, inserts surfaced memories, forwards to the model, and records the episode from the reply. A real process split, but it parses prose that upstream can change, must recognize TerraLingua's retries so a tick is not rehearsed twice, loses checkpoint sync, and must be told the run folder so the audit file still lands where the extractor joins it." },
+    opt3: { focus: ["runner", "agent", "memory", "proxy", "openai", "memlogs"], note: "Split 3, remote agent. Ben's engine has a RemoteAgent that sends each turn to an outside client as structured data (step, agent tag, system prompt, user prompt, available actions, raw observation) and takes back action, message, params and notes. Our memory agent becomes that client in its own process. Needs Redis and the dashboard API server, or a short in-process connection manager, plus a runner subclass that registers the agents at start and care with the heartbeat window. Same mechanism as TerraLingua Live. Three to four days." }
+  };
+
+  var svg = document.getElementById("svg");
+  var nodes = Array.prototype.slice.call(svg.querySelectorAll(".node"));
+  var edges = Array.prototype.slice.call(svg.querySelectorAll("[data-ends]"));
+  var pEyebrow = document.getElementById("p-eyebrow"), pTitle = document.getElementById("p-title"),
+      pPath = document.getElementById("p-path"), pBody = document.getElementById("p-body"), pChips = document.getElementById("p-chips");
+
+  function idOf(el) { return el.id.replace(/^n-/, ""); }
+
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function fmt(s) { return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>"); }
+
+  function show(id) {
+    var d = NODES[id]; if (!d) return;
+    nodes.forEach(function (n) { n.classList.toggle("selected", idOf(n) === id); });
+    pEyebrow.textContent = d.eyebrow; pTitle.textContent = d.title; pPath.textContent = d.path;
+    pBody.innerHTML = d.body.map(function (sec) { return "<h3>" + esc(sec[0]) + "</h3><p>" + fmt(sec[1]) + "</p>"; }).join("");
+    pChips.innerHTML = d.chips.map(function (c) { return '<span class="chip ' + c[1] + '">' + esc(c[0]) + "</span>"; }).join("");
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+    if (window.innerWidth <= 900) { document.getElementById("panel").scrollIntoView({ behavior: "smooth", block: "start" }); }
+  }
+
+  nodes.forEach(function (n) {
+    n.addEventListener("click", function () { show(idOf(n)); });
+    n.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(idOf(n)); } });
+  });
+
+  function setView(v) {
+    var view = VIEWS[v]; if (!view) return;
+    document.querySelectorAll(".tab").forEach(function (t) { t.setAttribute("aria-selected", String(t.dataset.view === v)); });
+    document.getElementById("viewnote").textContent = view.note;
+    if (!view.focus) { svg.classList.remove("focused"); nodes.concat(edges).forEach(function (el) { el.classList.remove("focus"); }); return; }
+    svg.classList.add("focused");
+    nodes.forEach(function (n) { n.classList.toggle("focus", view.focus.indexOf(idOf(n)) !== -1); });
+    edges.forEach(function (e) {
+      var ends = e.dataset.ends.split(" ");
+      e.classList.toggle("focus", view.focus.indexOf(ends[0]) !== -1 && view.focus.indexOf(ends[1]) !== -1);
+    });
+  }
+  document.querySelectorAll(".tab").forEach(function (t) { t.addEventListener("click", function () { setView(t.dataset.view); }); });
+
+  var h = (location.hash || "").slice(1);
+  if (NODES[h]) show(h);
+})();
+</script>
+
+</body></html>

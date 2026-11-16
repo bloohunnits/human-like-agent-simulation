@@ -29,8 +29,8 @@ sys.path.insert(0, str(_TERRALINGUA_ROOT))
 
 from dotenv import load_dotenv  # noqa: E402
 
-from memory_agent import HouMemoryAgent  # noqa: E402
-from associative_memory import MemoryConfig  # noqa: E402
+from memory_agent import NAME_POOL, HouMemoryAgent  # noqa: E402
+from associative_memory import MEMORY_CONDITIONS, MemoryConfig  # noqa: E402
 
 import core.experiment.runner as runner_module  # noqa: E402
 from core.environment.env import OpenGridWorld  # noqa: E402
@@ -84,17 +84,6 @@ def _atomic_checkpoint(self, *args, **kwargs):
 
 CheckpointManager.save_checkpoint = _atomic_checkpoint
 
-MEMORY_CONDITIONS = {
-    "hou": {"mode": "hou", "edge_learning": False},
-    "gated": {"mode": "gated", "edge_learning": False},
-    "independent": {"mode": "independent", "edge_learning": False},
-    "learned": {"mode": "independent", "edge_learning": True},
-    # An observed entity may continue one step past a tagged episode, so a cue
-    # can reach an episode that never mentions it. Fresh links start at full
-    # weight: a route through a person multiplies three links, and at .8 it
-    # fades before similarity does (see scripts/pinwheel_gap_walkthrough.py).
-    "chained": {"mode": "independent", "edge_learning": True, "entity_hops": 2, "edge_weight": 1.0},
-}
 _landmarks = {}
 _orig_build_obs = OpenGridWorld._build_obs
 
@@ -144,10 +133,13 @@ def configure_memory(params, options, resume):
         HouMemoryAgent.plan_notes = saved.get("plan_notes", not saved.get("paper_prompt", False))
         _effort = saved.get("effort", "low")
     else:
-        settings = dict(MEMORY_CONDITIONS[options.memory_condition or "learned"])
+        # The condition goes on top of the config file, so a file of tuning
+        # values cannot quietly undo what makes a condition chained or hou.
+        settings = {}
         if options.memory_config:
             with open(options.memory_config) as f:
                 settings.update(json.load(f))
+        settings.update(MEMORY_CONDITIONS[options.memory_condition or "learned"])
         if options.recent_turns is not None:
             settings["working_history"] = options.recent_turns
         if settings.get("working_history", 0) > params.agent.max_history:
@@ -220,17 +212,10 @@ def _create_video_if_frames(pattern, *args, **kwargs):
 
 runner_module.create_video = _create_video_if_frames
 
-# A pool of plain human names so memories read "Took 20 energy from Ben"
-# instead of "...from being0". TerraLingua resolves give/take by name and
+# Names come from NAME_POOL in memory_agent.py. TerraLingua resolves give/take by name and
 # renders observations by name, so real names flow natively into every
 # memory's text and entity tags - no sim mechanics touched. Offspring keep
 # whatever name their parent picks at reproduction.
-NAME_POOL = [
-    "Ada", "Ben", "Cleo", "Dov", "Esme", "Finn", "Goro", "Hana",
-    "Iris", "Jonas", "Kira", "Levi", "Mara", "Nico", "Opal", "Pax",
-    "Quinn", "Rhea", "Silas", "Tovah", "Uma", "Vero", "Wren", "Yara",
-]
-
 # Patch add_agent to rename default-named initial agents BEFORE they're added.
 # This matters because an agent's very first observation is built inside
 # add_agent - renaming afterward leaves step-0 memories tagged "being0".

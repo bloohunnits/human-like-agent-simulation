@@ -35,7 +35,7 @@ LABELS = ("belongs", "doesnt_matter", "noise")
 LABEL_NAMES = {"belongs": "Yes, and it matters", "doesnt_matter": "Yes, but it doesn't matter", "noise": "No"}
 JUDGE_MODELS = ("gpt-5-mini", "gpt-5.6-luna", "gpt-6-luna", "gpt-5.4-mini", "gpt-5-nano")
 GATE_KAPPA, GATE_MIN_CARDS, HELD_OUT_SHARE = 0.61, 20, 0.3
-ANCHOR_SET = "anchor_v1"  # the set classmates grade
+ANCHOR_SET = "anchor_v2"  # the set classmates grade: real rescues only
 # The three of us each grade every card, so every card gets three grades.
 # Names are matched without case.
 RATERS = ("andre", "ben", "ryan")
@@ -109,7 +109,8 @@ def split_of(card: dict) -> str:
 
 
 def text_hash(card: dict) -> str:
-    return hashlib.sha1(visible_text(card).encode()).hexdigest()[:12]
+    """Covers the text and the maps, so a grade stops counting if either changes."""
+    return hashlib.sha1(judge_text(card).encode()).hexdigest()[:12]
 
 
 def _names(items: list[str]) -> str:
@@ -332,6 +333,47 @@ def visible_text(card: dict) -> str:
     return "\n".join(lines)
 
 
+def map_text(view: dict | None, who: str) -> list[str]:
+    """The map people see, as a grid of letters for the judge. Top is up."""
+    if not view:
+        return ["(no map)"]
+    r = view.get("radius") or 6
+    grid = [["." for _ in range(2 * r + 1)] for _ in range(2 * r + 1)]
+    letters = {who: "@"}
+    for row, col, items in view["cells"]:
+        if abs(row) > r or abs(col) > r:
+            continue
+        for item in items:
+            if re.fullmatch(r"[\d.]+", item):
+                mark = "f"
+            elif item.startswith("A("):
+                mark = "n"
+            else:
+                if item not in letters:
+                    free = [ch for ch in item.upper() + "123456789" if ch.isalnum() and ch not in letters.values()
+                            and ch not in "FN"]
+                    letters[item] = free[0] if free else "?"
+                mark = letters[item]
+            if grid[row + r][col + r] in ".fn" or mark not in "fn":
+                grid[row + r][col + r] = mark
+    grid[r][r] = "@"
+    key = [f"@ = {who}"] + [f"{ch} = {name}" for name, ch in letters.items() if name != who] + ["f = food", "n = note"]
+    return [" ".join(line) for line in grid] + ["Key: " + ", ".join(key) + "."]
+
+
+def judge_text(card: dict) -> str:
+    """The card text plus its two maps, which people see as pictures."""
+    who = card.get("sealed", {}).get("agent_name") or "This person"
+    views = card.get("views") or {}
+    if not views:
+        return visible_text(card)
+    lines = [visible_text(card), "", f"Maps of what {who} could see, top is up, one character per square."]
+    lines += ["", f"When the memory happened ({_ago(card.get('memory', {}).get('ticks_ago'))}):"]
+    lines += map_text(views.get("then"), who)
+    lines += ["", "Right now:"] + map_text(views.get("now"), who)
+    return "\n".join(lines)
+
+
 # ---------- judge instructions ----------
 
 def prompts() -> dict[str, dict]:
@@ -471,7 +513,7 @@ def ask(client, model: str, prompt: dict, card: dict) -> dict:
     reply = client.chat.completions.create(
         model=model,
         messages=[{"role": "system", "content": system_prompt(prompt, card["card_id"])},
-                  {"role": "user", "content": visible_text(card)}],
+                  {"role": "user", "content": judge_text(card)}],
         response_format={"type": "json_object"},
         **kwargs,
     )
