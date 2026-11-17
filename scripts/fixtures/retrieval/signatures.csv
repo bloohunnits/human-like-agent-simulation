@@ -1,0 +1,14 @@
+run_dir,agent_id,timestep,selected_memory_ids,solo_selected_memory_ids
+synthetic-retrieval-v1,being0,32,"[""knot"", ""weave"", ""splint-kit""]","[""knot"", ""splint-kit""]"
+synthetic-retrieval-v1,being0,47,"[""green-pennant"", ""signal-drill"", ""deepwater""]","[""signal-drill"", ""green-pennant""]"
+synthetic-retrieval-v1,being0,53,"[""ivy-chat"", ""ivo-gift"", ""ivy-gift""]","[""ivo-gift"", ""ivy-chat"", ""ivy-gift""]"
+synthetic-retrieval-v1,being0,60,"[""cache-bell"", ""river-bell""]","[""river-bell""]"
+synthetic-retrieval-v1,being0,64,"[""splash"", ""path"", ""rain""]","[""water-test"", ""splash""]"
+synthetic-retrieval-v1,being0,67,"[""north-store"", ""south-store"", ""store-building""]","[""north-store"", ""store-building""]"
+synthetic-retrieval-v1,being0,78,"[""tess-keeper"", ""office-window"", ""jo-keeper""]","[""jo-keeper"", ""office-window""]"
+synthetic-retrieval-v1,being0,86,"[""gift"", ""mia-marker"", ""kai-trade""]","[""kai-trade"", ""mia-marker""]"
+synthetic-retrieval-v1,being0,91,[],"[""river-rumor""]"
+synthetic-retrieval-v1,being0,96,"[""audit-blue"", ""regular-gift"", ""river-market""]",[]
+synthetic-retrieval-v1,being0,109,"[""rail-shelter""]","[""rail-shelter"", ""quarry-shelter""]"
+synthetic-retrieval-v1,being0,125,"[""camp"", ""trip""]","[""trip"", ""toll""]"
+synthetic-retrieval-v1,being0,130,null,"[""borrowed-pan""]"
