@@ -5,7 +5,7 @@ blank human rating sheet. The bundled manifest contains invented observations,
 episodes and behavior for testing the format.
 
 ```powershell
-python -B -m unittest scripts.test_build_behavior_pilot scripts.test_collect_behavior_pilot scripts.test_package_behavior_pilot -v
+python -B -m unittest scripts.test_build_behavior_pilot scripts.test_collect_behavior_pilot scripts.test_package_behavior_pilot scripts.test_score_behavior_pilot -v
 New-Item -ItemType Directory -Path output/validation -Force | Out-Null
 python -B scripts/build_behavior_pilot.py scripts/fixtures/behavior_pilot/synthetic_manifest.json --seed 17 --out-dir output/validation/behavior-pilot-synthetic-v2
 ```
@@ -109,6 +109,60 @@ key later for canonical orientation, history groups and self-pair status.
 The custodian confirms who submitted each file. Assignment IDs verify which
 assignment a response names. Earlier per-rater exports can be regenerated to
 obtain assignment IDs. Files labeled `synthetic` exercise ingestion only.
+
+## Offline statistical analysis
+
+Run the scorer under custodian access against one validated archive and its
+original, byte-identical private key. Use a fresh report path in an existing
+private directory outside the archive. The following paths use the synthetic
+collection example above. A validated blank template exercises coverage only.
+
+```powershell
+python -B -m scripts.score_behavior_pilot `
+  --key output/validation/behavior-pilot-assigned-demo/private_key.json `
+  --validated-dir output/validation/behavior-pilot-validated-demo `
+  --output output/validation/synthetic-behavior-pilot-score.json
+```
+
+The scorer checks the key hash recorded by the collector and revalidates each
+embedded submission, including export and rubric identity, assignment, citations,
+and rating values. The original submission hash is retained in the archive as
+collector provenance. The scorer needs only the archive and key. The report
+contains aggregate statistics and pseudonymous rater IDs for pairwise agreement.
+It also identifies the export, rubric, and synthetic status.
+
+| Output | Definition |
+| --- | --- |
+| Split and contrast | Development and held-out inventories have separate counts. Within each split, report each condition pair separately for reviewer-attested matched checkpoints and exploratory separate runs. The current exporter assigns development cards only. Held-out contrasts have inventory counts and zero assignments. |
+| Coverage | D5 has one slot per assignment and card. Each D1–D4 field has one slot per assignment, card, and branch. `unsubmitted` counts slots in assignments with no archive file. `missing` and `nei` count explicit `MISSING` and `NEI` within submitted assignments. `evaluable` counts the remaining submitted values, including D5 ties and zero D1 claims. |
+| D5 preference | The private orientation map converts displayed choices to condition choices. `conditions` is in lexical order, and wins/losses are relative to its first condition. Wins, losses, and ties count individual ratings. Within each card, compute `(wins + 0.5 × ties) / evaluable ratings`, then average across evaluable cards with equal card weight. The second condition gets the complementary share. `tie_rate` uses evaluable ratings as its denominator. `nei_rate_among_submitted` uses all submitted D5 values, including explicit missing values. |
+| D5 majority | Count cards with a strict majority for either condition or for a natural tie. A majority requires at least three evaluable votes and more than half of those votes for one label. Cards with no nonmissing votes, a strict NEI majority among nonmissing votes, fewer than three evaluable votes, or a divided vote remain unresolved. |
+| Human agreement | D5 uses one canonical unit per card. D1–D4 use one canonical branch per card. Krippendorff alpha uses only units with at least two evaluable ratings from distinct raters. It uses nominal distance for D5 and D1–D3 flags, and ordinal distance for D4. Pairwise Cohen kappa uses jointly evaluable units and exact-category agreement, including for the five D4 levels. D1 counts report pairwise exact agreement and mean absolute difference in lieu of a kappa or alpha. |
+| D1–D3 summaries | Each flag reports Yes and No with a Yes rate over evaluable ratings for that field and condition. D2 implicit use has its own denominator. D1 contradictions per claim uses only branch ratings with both counts evaluable and divides summed contradictions by summed claims. Branches with zero claims still contribute their evaluable flag and count ratings. |
+| D4 descriptions | The distribution over levels 1–5, median and mean use evaluable branch ratings by condition. |
+| Self-pair controls | Condition effects and ordinary-card agreement exclude self-pairs. Control D5 uses displayed sides. Tie rate is ties divided by evaluable control ratings. Side score is `(A wins + 0.5 × ties) / evaluable control ratings`, with .5 indicating balance. |
+| Human cross-order diagnostic | On each ordinary card, pair distinct raters who received opposite display orders and whose votes were both evaluable. Report the number of such cards, comparisons and raw canonical agreement across those rater pairs. This diagnostic includes differences between raters. |
+
+The scorer reports exploratory 95% percentile intervals for D5 preference,
+human alpha, and self-pair tie and side scores. It uses seed 17 for 1,000 draws
+that sample whole source-history groups and whole rater identities with
+replacement across the contributing units. Related cards and both branches of
+a card carry the same source-group weight. A sampled rater carries the same
+weight across their cards, and an alpha coincidence always requires two
+distinct people. The report gives contributing group and rater counts and the
+number of defined draws. It suppresses bounds when cluster metadata is absent,
+there are fewer than two contributing groups or raters, or fewer than 80% of
+draws are defined. Undefined statistics use JSON `null`, with agreement and
+interval status fields explaining common causes. Legacy v2 synthetic assignments
+have descriptive results and no source-group intervals.
+
+The report leaves the judge gate unevaluated. The existing rescue judge uses a
+memory-appropriateness rubric. Judge–human agreement, D4 Spearman, the
+human-range comparison, and judge swap and length checks require validated
+D1–D5 judge outputs and the study's independent held-out human assignments.
+The pilot report covers the currently exported comparison strata. Eligibility,
+sampling exclusions, probe/control strata, and an eventual human audit require
+their own study records. Synthetic runs provide workflow checks only.
 
 ## Per-rater sharing packages
 
