@@ -9,7 +9,13 @@ card. With --anchor N, N moments are sampled evenly across kinds of rescue and
 each gives two cards, the rescued memory and the memory it pushed out, so the
 two can be compared blind at the same moment.
 
-Usage: rescued_cards.py <run_dir> [--out DIR] [--history 8] [--min-age 0] [--anchor 60]
+With --variant NAME the picks are not the recorded ones. The run is replayed
+under that formula (code/hou_memory/variants.py) and the cards show what it
+would have brought to mind on the same turns. A moment where it pushed
+nothing out gives one card. The agents still acted on the recorded picks.
+This needs the engine's Python: code/terralingua/.venv/bin/python.
+
+Usage: rescued_cards.py <run_dir> [--out DIR] [--history 8] [--min-age 0] [--anchor 60] [--variant actr]
 where run_dir is a TerraLingua logs/<exp>/ folder.
 """
 import argparse
@@ -21,13 +27,16 @@ import re
 import subprocess
 import sys
 from collections import Counter, defaultdict
+from concurrent.futures import ProcessPoolExecutor
+from itertools import repeat
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "code/hou_memory"))  # for --variant
 # How the agents' own memory lines were written. Graders read them through
 # judging.plain(), so a change to this format must be recorded with the set.
 MEMORY_TEXT_FORMAT = "raw_json_v1"
-TRUE_RESCUE_SCORE = 0.15
+TRUE_RESCUE_SCORE = 0.15  # the cutoff, for audits that do not record it
 HELD_OUT_SLOTS = (0, 2, 5, 7)  # four in every ten sampled moments
 
 
@@ -194,15 +203,21 @@ def stratum(turn):
     people = [n.strip() for n in named.group(1).split(",")] if named else []
     scene = " ".join(describe_scene((rec.get("agent_step") or {}).get("observation")))
     view = "nobody" if not people else "here" if all(p in scene for p in people) else "gone"
-    return bucket, (row.get("solo_score") or 1) <= TRUE_RESCUE_SCORE, view
+    cutoff = (rec.get("config") or {}).get("threshold", TRUE_RESCUE_SCORE)
+    return bucket, (row.get("solo_score") or 1) <= cutoff, view
 
 
-def sample_moments(turns, count, seed):
+def sample_moments(turns, count, seed, pairs=True):
     """Take moments from each kind in turn. Skip any that reuse a memory or sit
     close enough to a chosen moment to share its history, so no two sampled
-    moments are near copies of each other."""
-    pool = [t for t in turns if t["displaced"] and
-            t["by_id"].get(t["rescued"][0], {}).get("text") != t["by_id"].get(t["displaced"][0], {}).get("text")]
+    moments are near copies of each other. Without pairs, a moment where
+    nothing was pushed out counts too."""
+    def usable(t):
+        if not t["displaced"]:
+            return not pairs
+        return t["by_id"].get(t["rescued"][0], {}).get("text") != t["by_id"].get(t["displaced"][0], {}).get("text")
+
+    pool = [t for t in turns if usable(t)]
     random.Random(seed).shuffle(pool)
     strata = defaultdict(list)
     for turn in pool:
@@ -213,7 +228,7 @@ def sample_moments(turns, count, seed):
             while strata[key] and len(chosen) < count:
                 turn = strata[key].pop()
                 who = (turn["run"], turn["tag"])
-                pair = {(who, turn["rescued"][0]), (who, turn["displaced"][0])}
+                pair = {(who, turn[kind][0]) for kind in ("rescued", "displaced") if turn[kind]}
                 near = any(abs(turn["rec"]["tick"] - t) <= 4 for t in spots[who])
                 if pair & used or near:
                     continue
@@ -260,7 +275,19 @@ def agent_steps(logs, tag):
             if is_number(r.get("time", r.get("timestamp")))}
 
 
-def load_run(run_dir, min_age, include_repeats=False):
+def replayed(logs, tag, variant):
+    """The audit lines this agent would have written under a variant."""
+    from replay import condition_config, load_agent, replay_agent
+    from variants import VARIANTS
+    lines, memories = load_agent(logs, tag)
+    if not lines:
+        return []
+    rows = replay_agent(lines, memories, condition_config(lines[-1]["config"], variant),
+                        engine_class=VARIANTS[variant].engine, events=True)
+    return [{**row["event"], "agent_step": line.get("agent_step")} for row, line in zip(rows, lines)]
+
+
+def load_run(run_dir, min_age, include_repeats=False, variant=None):
     """Every turn in one run where linked memory changed what came to mind."""
     logs = run_dir / "agent_logs"
     if not logs.is_dir():
@@ -268,19 +295,22 @@ def load_run(run_dir, min_age, include_repeats=False):
     params = load_json(run_dir / "params.json", {})
     run = (params.get("run") or {}).get("exp_name") or run_dir.name
     mem_cfg = load_json(run_dir / "memory_config.json", {})
-    condition = (mem_cfg.get("memory") or {}).get("mode") or (params.get("agent") or {}).get("memory_mode")
+    condition = variant or (mem_cfg.get("memory") or {}).get("mode") or (params.get("agent") or {}).get("memory_mode")
     if not include_repeats:  # the prompt already shows the last working_history turns
         min_age = max(min_age, (mem_cfg.get("memory") or {}).get("working_history", 0) + 1)
     names = load_json(run_dir / "agent_names.json", {})
     tags = sorted(set(names) | {p.name[:-len("_hou_memory.json")] for p in logs.glob("*_hou_memory.json")}
                   | {p.name[:-len("_memory_audit.jsonl")] for p in logs.glob("*_memory_audit.jsonl")})
 
+    tags = [t for t in tags if (logs / f"{t}_memory_audit.jsonl").exists()]  # the rest never took a turn
+    replays = {}
+    if variant:  # about a minute per 300-tick agent, so one process each
+        with ProcessPoolExecutor() as pool:
+            replays = dict(zip(tags, pool.map(replayed, repeat(logs), tags, repeat(variant))))
+
     turns, ticks_total, rescues_total, per_agent = [], 0, 0, {}
     for tag in tags:
-        audit_path = logs / f"{tag}_memory_audit.jsonl"
-        if not audit_path.exists():
-            continue  # a being that never took a turn
-        records = load_jsonl(audit_path)
+        records = replays[tag] if variant else load_jsonl(logs / f"{tag}_memory_audit.jsonl")
         dump = load_json(logs / f"{tag}_hou_memory.json", {})
         memories = dump.get("memories", [])
         by_id = {m.get("memory_id"): m for m in memories}
@@ -327,6 +357,7 @@ def main():
     ap.add_argument("--include-repeats", action="store_true",
                     help="also count rescues the agent already had: selected last tick or inside its recent turns")
     ap.add_argument("--anchor", type=int, default=0, help="sample this many moments for human grading, two cards each")
+    ap.add_argument("--variant", help="replay the runs under this formula from variants.py and card its picks")
     args = ap.parse_args()
 
     run_dirs = [Path(d).resolve() for d in args.run_dirs]
@@ -336,16 +367,16 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     turns, runs = [], []
     for run_dir in run_dirs:
-        run_turns, info = load_run(run_dir, args.min_age, args.include_repeats)
+        run_turns, info = load_run(run_dir, args.min_age, args.include_repeats, args.variant)
         turns += run_turns
         runs.append(info)
 
     cards = []
     if args.anchor:
         seed = "|".join(r["run"] for r in runs)
-        for i, turn in enumerate(sample_moments(turns, args.anchor, seed)):
+        for i, turn in enumerate(sample_moments(turns, args.anchor, seed, pairs=not args.variant)):
             pair = [build_card(turn["run"], turn, turn[kind][0], kind, args.history, turn["condition"] or "unknown")
-                    for kind in ("rescued", "displaced")]
+                    for kind in ("rescued", "displaced") if turn[kind]]
             for card in pair:
                 card["sealed"]["split"] = "held_out" if i % 10 in HELD_OUT_SLOTS else "tuning"
             cards += pair
@@ -359,7 +390,7 @@ def main():
         for c in cards:
             f.write(json.dumps(c, ensure_ascii=False) + "\n")
     (out_dir / "manifest.json").write_text(json.dumps({
-        "runs": runs, "repo": git_state(ROOT), "engine": git_state(ROOT / "code/terralingua"),
+        "runs": runs, "variant": args.variant, "repo": git_state(ROOT), "engine": git_state(ROOT / "code/terralingua"),
         "memory_text_format": MEMORY_TEXT_FORMAT, "history_lines": args.history, "anchor_moments": args.anchor,
         "cards": len(cards), "kinds": Counter(c["sealed"]["kind"] for c in cards),
         "splits": Counter(c["sealed"].get("split", "by hash") for c in cards),

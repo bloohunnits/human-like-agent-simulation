@@ -139,7 +139,7 @@ New runs use the newer engine (Ben's fork in `code/terralingua-relational-memory
 make run NAME=world7 TICKS=300
 ```
 
-The settings are in `HOU_SIM_ARGS` in `code/__main__.py`. Food is scarce (one piece of food worth 8 energy per turn for 10 beings, split between two areas), beings live about 100 turns, and new beings appear for free only when fewer than 2 are left, so the world goes on mainly through births. The lineage rules in `code/hou_memory/lineage.py` add reproductive pressure: a child needs two parents who both ask, each parent gives 25 energy (so 25 is enough to start a family), parents and child are told about each other, and old beings are reminded that only children carry on. They also add witnessing: beings in sight are told about gifts, thefts, births, deaths and anyone who looks weak from hunger. Births stop at 20 beings. Two food areas sit out of sight of each other, and the first beings start at different ages (`--stagger-ages 0.5`). The newer engine tells a being who gave it energy or stole from it. The launcher is `code/hou_memory/run_hou_new_engine.py`, and runs land in `code/terralingua/logs_dev/logs/`. `make run-anchor` runs the older engine with the settings of the graded anchor_v1 worlds.
+The settings are in `HOU_SIM_ARGS` in `code/__main__.py`. Food is scarce (one piece of food worth 8 energy per turn for 10 beings, split between two areas), beings live about 100 turns, and new beings appear for free only when fewer than 2 are left, so the world goes on mainly through births. The lineage rules in `code/hou_memory/lineage.py` add reproductive pressure: a child needs two parents who both ask, each parent gives 25 energy (so 25 is enough to start a family), parents and child are told about each other, and old beings are reminded that only children carry on. They also add witnessing: beings in sight are told about gifts, thefts, births, deaths and anyone who looks weak from hunger. Births stop at 20 beings. Two food areas sit out of sight of each other, and the first beings start at different ages (`--stagger-ages 0.5`). The newer engine tells a being who gave it energy or stole from it. The launcher is `code/hou_memory/run_hou_new_engine.py`, and runs land in `code/terralingua/logs_dev/logs/`. `make run-anchor` runs the older engine with the settings of the graded anchor_v1 worlds. Add `CONDITION=actr` to `make run` to use a formula from `code/hou_memory/variants.py`.
 
 One-time setup for the newer engine (needs `uv`):
 
@@ -171,6 +171,116 @@ make replay RUNS="paper_mini_300_2 newengine_2" VARIANTS="chained noisy_or all_r
 
 It first checks that replaying the recorded condition gives the recorded selections on every tick. Then it prints, for each variant, the rescues and fresh rescues over all the runs, and how many of the fresh ones it shares with the baseline (the first variant, or `--baseline`). The counts are memories, so one turn can count more than once. `--out FILE` saves every variant's picks per turn as JSON.
 
-To try a new formula, add it to `code/hou_memory/variants.py`. The engine has three methods meant to be swapped: `route_value` (one route through a person, place or thing), `graph_value` (all of a memory's routes into one number) and `combine` (that number with plain similarity). Subclass `AssociativeMemory`, override one, and add an entry to `VARIANTS`. Every name in `MEMORY_CONDITIONS` is a variant already.
+To try a new formula, add it to `code/hou_memory/variants.py`. Subclass `AssociativeMemory`, override the methods the formula changes, and add an entry to `VARIANTS`. Every name in `MEMORY_CONDITIONS` is a variant already. The methods meant to be swapped:
 
-Replay shows what each formula would have picked on the same turns. It cannot show how the agents would then have acted differently. For that, run the sim with the new formula. A fresh rescue is one the agent did not already have: not selected the tick before, and older than the recent turns its prompt shows. `scripts/rescued_cards.py` uses the same rule (`--include-repeats` restores the old count).
+| Method | What it decides |
+|---|---|
+| `prepare` | Called once per retrieval with every similarity and the things in view, for formulas that need them |
+| `decay_value` | What a memory's history says |
+| `direct_value` | Similarity and history into the no-links value |
+| `crowd_tax` | The penalty for a route through a crowded entity |
+| `route_value` | One route through a person, place or thing |
+| `graph_value` | All of a memory's routes into one number |
+| `combine` | That number with the no-links value |
+| `probability` | The value turned into the score the cutoff reads |
+| `graph_won` | Whether the links carried the memory, which is when links are strengthened |
+
+`actr` is a full example, explained in the next section. `actr_solo` is the same with links off.
+
+To check a formula against the human grades while designing it:
+
+```
+make grades VARIANTS="hou chained actr_solo actr"
+```
+
+This rebuilds the memory at each graded moment and asks each variant to score it there, so every variant sees the same history. It prints how many memories graded "belongs" each one picks, how many of the others, and how often it ranks a "belongs" memory above one of the others. The grades are few and all come from the recorded formula's picks, so read it as a check, not a result.
+
+Replay shows what each formula would have picked on the same turns. It cannot show how the agents would then have acted differently. For that, run the sim with the new formula (below). A fresh rescue is one the agent did not already have: not selected the tick before, and older than the recent turns its prompt shows. `scripts/rescued_cards.py` uses the same rule (`--include-repeats` restores the old count).
+
+## The `actr` formula
+
+`actr` is ACT-R's memory equation, written as odds so it fits the engine. Three numbers are multiplied, and the memory comes to mind when the result is above 1.
+
+```math
+\text{odds} = H \times M \times L \qquad\quad \text{recalled when odds} > 1
+```
+
+**History** $`H`$ asks how much the memory has been used and how long ago.
+
+```math
+H = \sum_{k} w_k \,(t - t_k)^{-0.5}
+\qquad\quad w_1 = 1, \quad w_k = \tanh\frac{t_k - t_{k-1}}{2\tau}
+```
+
+$`t`$ is the tick now. $`t_1`$ is when the memory was written and each later $`t_k`$ is a tick it was recalled. Every use leaves a trace that fades with age. The weight $`w_k`$ is small when a recall came right after the one before, so being picked every tick adds almost nothing and one reminder after a long gap adds a lot. $`\tau`$ is the run's `time_scale` (25 ticks). A turn the prompt still shows gets $`H = 0`$, because it needs no recall.
+
+**Match** $`M`$ asks how much better the memory fits the cue than the other memories do.
+
+```math
+M = e^{\,11\,(r - \bar{r})}
+```
+
+$`r`$ is the memory's similarity to the cue and $`\bar{r}`$ is the mean similarity of all the being's memories at this tick. An average memory gets $`M = 1`$.
+
+**Links** $`L`$ asks how much likelier the things in view make this memory.
+
+```math
+L = \prod_{s \,\in\, \text{view}} \ell_s^{\,1/n}
+\qquad\quad \ell_s = \max\left(1,\ \frac{N \, z_s}{f_s}\right)
+```
+
+$`n`$ is the number of things in view, which share attention. $`N`$ is the number of memories the being has. $`f_s`$ is how many of them are tagged with thing $`s`$, and $`z_s`$ is the strength of the link from $`s`$ to this memory (0 to 1). A thing tagged on a few memories points hard at each of them. A thing tagged on nearly every memory points at nothing, so its lift $`\ell_s`$ is 1. When the route goes over two links, the strengths multiply and both counts divide. When a thing reaches the memory by several routes, the best one counts.
+
+The audit files save the score $`\text{odds} / (\text{odds} + 1)`$, so the cutoff there is 0.5.
+
+### An example
+
+It is tick 50. Ada has 60 memories. One of them, "Ben gave me 20 energy", was written at tick 10 and never recalled. Its similarity to the cue is 0.45 and the mean is 0.40. Ben walks into view, alone. Four of Ada's memories are tagged Ben, and the link from Ben to this one has strength 0.8.
+
+```math
+H = (50 - 10)^{-0.5} = 0.16
+\qquad M = e^{\,11 \times 0.05} = 1.73
+\qquad L = \frac{60 \times 0.8}{4} = 12
+```
+
+```math
+\text{odds} = 0.16 \times 1.73 \times 12 = 3.3 > 1
+```
+
+The memory comes to mind. Without Ben in view $`L = 1`$ and the odds are $`0.16 \times 1.73 = 0.27`$, so it stays out. Ben is the reason it came back.
+
+Change one thing at a time:
+
+| Change | What moves | Odds | Recalled |
+|---|---|---|---|
+| Nothing (Ben alone in view) | | 3.3 | yes |
+| Ben is not in view | $`L = 1`$ | 0.27 | no |
+| Ben is tagged on 50 of the 60 memories | $`\ell = 0.96`$, counts as 1 | 0.27 | no |
+| One more thing is in view, with no link to it | $`L = \sqrt{12} = 3.5`$ | 0.95 | no, just misses |
+| It was also recalled once at tick 40 | $`H = 0.33`$ | 6.8 | yes |
+| It was recalled every tick from 11 to 49 | $`H = 0.38`$ | 7.9 | yes |
+
+The last two rows show the spacing rule. One reminder after 30 ticks doubles the history. Thirty-nine recalls in a row add barely more than that one did.
+
+### Running the sim with a formula
+
+`--memory-condition` on both launchers takes any name in `VARIANTS`, so a formula tested in replay can run live:
+
+```
+make run NAME=world8 TICKS=300 CONDITION=actr
+```
+
+The run saves the name as `variant` in `memory_config.json`. Resuming the run and replaying it both read that and use the same formula. `python code/hou_memory/smoke_associative_sim.py --sbert --condition actr` runs a few ticks with a fake model to check the wiring.
+
+### Grading a formula's own picks
+
+The graded sets so far hold picks of the recorded formula. To grade what another formula would pick, build cards from its replay:
+
+```
+code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs_dev/logs/paper_mini_300 ... \
+    --variant actr --anchor 40 --out output/analysis/rescued/actr_v1
+```
+
+`output/analysis/rescued/actr_v1` was built this way from the seven graded worlds (66 cards from 40 moments). It shows up on the Rescued set page like any other set. With `--variant`, a moment where the rescue pushed nothing out gives one card instead of a pair. The beings in these runs acted on the recorded picks, so the "what happened next" on a card is not a result of the memory shown.
+
+Known limits: replaying a stock condition on a run that was made with `actr` keeps actr's cutoff of 0.5. The God Mode console does its own what-if scoring with the Hou kernel and has not been tried on a run made with `actr`.

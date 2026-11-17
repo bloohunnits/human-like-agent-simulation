@@ -31,7 +31,8 @@ sys.path.insert(0, str(_HERE))
 from dotenv import load_dotenv  # noqa: E402
 
 from memory_agent import NAME_POOL, HouMemoryAgent  # noqa: E402
-from associative_memory import MEMORY_CONDITIONS, MemoryConfig  # noqa: E402
+from associative_memory import MemoryConfig  # noqa: E402
+from variants import VARIANTS, variant_settings  # noqa: E402
 
 import terralingua.experiment.runner as runner_module  # noqa: E402
 from terralingua.cli import _run  # noqa: E402
@@ -90,7 +91,8 @@ runner_module.SimulationRunner._assign_sampled_lifespan = _staggered_lifespan
 def memory_arguments():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--memory-help", action="help", help="Show memory configuration options")
-    parser.add_argument("--memory-condition", choices=MEMORY_CONDITIONS, default=None)
+    parser.add_argument("--memory-condition", choices=VARIANTS, default=None,
+                        help="A condition, or a formula from variants.py such as actr")
     parser.add_argument("--memory-config", help="JSON file of MemoryConfig overrides")
     parser.add_argument("--recent-turns", type=int, default=None,
                         help="Show each agent its last N turns, the same for every condition (default 0)")
@@ -114,13 +116,16 @@ def configure_memory(params, options, resume):
             raise ValueError("Resume uses the saved memory configuration; start a new run to change conditions")
         saved = json.loads(path.read_text())
         HouMemoryAgent.memory_config = MemoryConfig(**saved["memory"])
+        # Runs saved before variants used the stock engine, as learned does.
+        HouMemoryAgent.memory_engine_class = VARIANTS[saved.get("variant", "learned")].engine
         HouMemoryAgent.plan_notes = saved["plan_notes"]
         ScarceGridWorld.food_value = saved["food_value"]
         return
     # The condition goes on top of the config file, so a file of tuning values
     # cannot quietly undo what makes a condition chained or hou.
     settings = json.loads(Path(options.memory_config).read_text()) if options.memory_config else {}
-    settings.update(MEMORY_CONDITIONS[options.memory_condition or "learned"])
+    variant = options.memory_condition or "learned"
+    settings.update(variant_settings(variant))
     if options.recent_turns is not None:
         settings["working_history"] = options.recent_turns
     if settings.get("working_history", 0) > params.agent.max_history:
@@ -133,13 +138,15 @@ def configure_memory(params, options, resume):
     # model TerraLingua asked for. Save the one that answered.
     proxied = params.run.ports and params.agent.model.startswith(("DeepSeek", "QWEN"))
     path.write_text(json.dumps({
-        "schema_version": 1, "engine": "terralingua-relational-memory", "memory": asdict(cfg), "landmarks": {},
+        "schema_version": 1, "engine": "terralingua-relational-memory", "variant": variant,
+        "memory": asdict(cfg), "landmarks": {},
         "plan_notes": options.plan_notes, "food_value": options.food_value or ScarceGridWorld.food_value,
         "stagger_ages": options.stagger_ages,
         "actor_model": os.environ.get("MODEL_NAME") if proxied else params.agent.model,
         "effort": os.environ.get("REASONING_EFFORT") if proxied else params.agent.reasoning_effort,
     }, indent=2))
     HouMemoryAgent.memory_config = cfg
+    HouMemoryAgent.memory_engine_class = VARIANTS[variant].engine
     HouMemoryAgent.plan_notes = options.plan_notes
     if options.food_value:
         ScarceGridWorld.food_value = options.food_value
