@@ -660,7 +660,8 @@ def api_judge_cards():
     try:
         card_set, rater = request.args.get("set", ""), request.args.get("rater", "")
         out = [{"card_id": c["card_id"], "text": judging.visible_text(c), "mine": mine, "views": c.get("views"),
-                "who": c.get("sealed", {}).get("agent_name", ""), "ago": c.get("memory", {}).get("ticks_ago")}
+                "who": c.get("sealed", {}).get("agent_name", ""), "ago": c.get("memory", {}).get("ticks_ago"),
+                "tick": c.get("sealed", {}).get("tick")}
                for c, mine in judging.for_rater(card_set, rater)]
         return jsonify({"cards": out})
     except (ValueError, OSError) as e:
@@ -733,6 +734,14 @@ def api_judge_job(job_id):
 def api_judge_report():
     try:
         return jsonify(judging.report(request.args.get("set", "")))
+    except (ValueError, OSError) as e:
+        return _json_error(e)
+
+
+@app.route("/api/judge/compare")
+def api_judge_compare():
+    try:
+        return jsonify(judging.compare(request.args.get("set", "")))
     except (ValueError, OSError) as e:
         return _json_error(e)
 

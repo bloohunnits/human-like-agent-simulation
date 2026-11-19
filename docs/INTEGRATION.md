@@ -283,4 +283,27 @@ code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs
 
 `output/analysis/rescued/actr_v1` was built this way from the seven graded worlds (66 cards from 40 moments). It shows up on the Rescued set page like any other set. With `--variant`, a moment where the rescue pushed nothing out gives one card instead of a pair. The beings in these runs acted on the recorded picks, so the "what happened next" on a card is not a result of the memory shown.
 
+### One set for every formula, past the warm-up
+
+`output/analysis/rescued/anchor_v3` is the set classmates grade now (`judging.ANCHOR_SET`). It pools the formulas, so one grade on a memory counts for every formula that brought it to mind:
+
+```
+code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs_dev/logs/paper_mini_300 ... \
+    --variant hou learned chained actr --anchor 30 --history 4 \
+    --keep output/analysis/rescued/anchor_v2 --out output/analysis/rescued/anchor_v3
+```
+
+- **Pooled formulas.** A moment counts when any formula rescued a memory there. Each formula's strongest rescue becomes a card, plus one memory that was pushed out. The set has 61 cards from 30 moments. A card's `sealed.picked_by` lists the formulas that brought that memory to mind.
+- **Warm-up.** No card comes from a world's first 30 turns (`judging.WARMUP_TURNS`). In the seven graded worlds, under 1 turn in 100 before turn 30 is anything but a step, and about 6 in 100 after. Yet 20 of learned's 46 rescue moments and 56 of chained's 133 fell in those turns, because a being with a dozen memories and nothing to remember has its top three reshuffled by any link. The grading page and its report also leave out early cards in older sets.
+- **Kept grades.** `--keep` samples the earlier set's moments first, with the same cards, and copies each grade whose card still reads exactly the same.
+- **Compare tab.** The builder writes `moments.json`: what every formula brought to mind at each sampled moment. The Compare tab (http://127.0.0.1:5057/rescued?admin) shows it as one table per moment, with a dot for each formula that brought a memory to mind, a gold dot when only links brought it, a ring when links pushed it out, and what people said about it. Graders work without `?admin` and never see it, so grading stays blind.
+
+A grading card:
+
+![A grading card](img/grader-card.png)
+
+The Compare tab:
+
+![The Compare tab](img/grader-compare.png)
+
 Known limits: replaying a stock condition on a run that was made with `actr` keeps actr's cutoff of 0.5. The God Mode console does its own what-if scoring with the Hou kernel and has not been tried on a run made with `actr`.

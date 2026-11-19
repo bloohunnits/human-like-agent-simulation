@@ -33,8 +33,25 @@ class PlainText(unittest.TestCase):
         plain = judging.plain(text)
         self.assertNotIn("[", plain)
         self.assertNotIn("np.", plain)
-        self.assertIn("Note a says: hi", plain)
+        self.assertIn('The note "a" says: hi', plain)
         self.assertIn("someone stands there", plain)
+
+    def test_newer_engine_notes_drop_who_and_when(self):
+        text = ("Feedback from the preceding action: {'Passive interaction result - Artifacts at position': "
+                "['Artifact note_for_you_79\\n\\tCreated by being9_0 at time 81\\n\\tLast modified at time 90 "
+                "by being9_0 (version 1)\\n\\tContent: Thank you. Your turn.']}.")
+        line = judging._world(text.removeprefix("Feedback from the preceding action: ").rstrip("."), "Ada")
+        self.assertEqual(line, 'The note "note for you" says: "Thank you. Your turn."')
+
+    def test_child_requests_and_note_text_are_spelled_out(self):
+        asked = 'Chose action spawn: {"energy": "", "name": "Kit", "partner": "Ben"}. Nearby: Ben.'
+        self.assertEqual(judging._turn(asked, "Ada")[-1], "Ada asks Ben to have a child named Kit.")
+        wrote = 'Chose action modify_artifact_east_claim_9: {"lifespan": -1, "payload": "Mine."}.'
+        self.assertEqual(judging._turn(wrote, "Ada"), ['Ada rewrites the note "east claim": "Mine."'])
+
+    def test_notes_with_one_name_are_counted(self):
+        lines = judging._now(["Artifacts nearby: east_claim_1, east_claim_2, west_claim_7."], "Ada")
+        self.assertEqual(lines, ['(Notes nearby: "east claim" (2 notes) and "west claim".)'])
 
     def test_gives_are_attempts(self):
         self.assertTrue(judging.plain('Chose action give: {"amount": 5, "target": "Ben"}.').startswith("Tried to give"))
@@ -130,6 +147,37 @@ class Grades(unittest.TestCase):
         judging.save_rating("s", "andre", "card-2", "belongs")
         first, mine = judging.for_rater("s", "andre")[0]
         self.assertEqual((first["card_id"], mine["label"]), ("card-2", "belongs"))
+
+    def test_warm_up_cards_are_left_out(self):
+        early = card("card-early", tick=judging.WARMUP_TURNS - 1)
+        self.path.write_text(self.path.read_text() + json.dumps(early) + "\n")
+        self.assertNotIn("card-early", [c["card_id"] for c in judging.load_cards("s")])
+
+    def test_grades_follow_a_card_that_reads_the_same(self):
+        judging.save_rating("s", "andre", "card-0", "belongs")
+        judging.save_rating("s", "andre", "card-1", "noise")
+        new = self.path.parent.parent / "t"
+        new.mkdir()
+        changed = card("card-1")
+        changed["scene"] = ["Energy 13.0."]
+        (new / "cards.jsonl").write_text(json.dumps(card("card-0")) + "\n" + json.dumps(changed) + "\n")
+        self.assertEqual(judging.carry_ratings("s", "t"), 1)
+        self.assertEqual(list(judging.ratings("t")["andre"]), ["card-0"])
+
+    def test_compare_shows_who_brought_each_memory(self):
+        graded = card("card-0", run="w", agent_tag="a", agent_name="Ada", tick=40, memory_id="m1")
+        self.path.write_text(json.dumps(graded) + "\n")
+        judging.save_rating("s", "andre", "card-0", "belongs")
+        (self.path.parent / "moments.json").write_text(json.dumps({"formulas": ["hou", "chained"], "moments": [{
+            "run": "w", "agent_tag": "a", "agent_name": "Ada", "tick": 40, "scene": ["Energy 12.0."],
+            "picks": {"hou": {"selected": ["m2"], "solo": ["m2"]}, "chained": {"selected": ["m1", "m2"], "solo": ["m2", "m3"]}},
+            "memories": {"m1": {"ticks_ago": 9, "text": 'Chose action give: {"amount": 5, "target": "Ben"}.'},
+                         "m2": {"ticks_ago": 1, "text": 'Chose action move: {"direction": "up"}.'},
+                         "m3": {"ticks_ago": 12, "text": 'Chose action move: {"direction": "up"}.'}}}]}))
+        rows = judging.compare("s")["moments"][0]["rows"]
+        self.assertEqual([(r["by"], r["grade"]) for r in rows],
+                         [({"hou": "yes", "chained": "yes"}, None), ({"chained": "links"}, "belongs"),
+                          ({"chained": "out"}, None)])
 
     def test_only_our_three_names_are_taken(self):
         with self.assertRaises(ValueError):

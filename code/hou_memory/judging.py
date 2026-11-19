@@ -35,7 +35,10 @@ LABELS = ("belongs", "doesnt_matter", "noise")
 LABEL_NAMES = {"belongs": "Yes, and it matters", "doesnt_matter": "Yes, but it doesn't matter", "noise": "No"}
 JUDGE_MODELS = ("gpt-5-mini", "gpt-5.6-luna", "gpt-6-luna", "gpt-5.4-mini", "gpt-5-nano")
 GATE_KAPPA, GATE_MIN_CARDS, HELD_OUT_SHARE = 0.61, 20, 0.3
-ANCHOR_SET = "anchor_v2"  # the set classmates grade: real rescues only
+ANCHOR_SET = "anchor_v3"  # the set classmates grade: real rescues by any formula, past the warm-up
+# A world's first turns are not graded. In the seven graded worlds fewer than
+# 1 turn in 100 before turn 30 is anything but a step, and about 6 in 100 after.
+WARMUP_TURNS = 30
 # The three of us each grade every card, so every card gets three grades.
 # Names are matched without case.
 RATERS = ("andre", "ben", "ryan")
@@ -93,6 +96,7 @@ def set_dir(card_set: str) -> Path:
 def load_cards(card_set: str) -> list[dict]:
     path = set_dir(card_set) / "cards.jsonl"
     cards = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    cards = [c for c in cards if c.get("sealed", {}).get("tick", WARMUP_TURNS) >= WARMUP_TURNS]
     cards.sort(key=lambda c: c["card_id"])
     random.Random(card_set).shuffle(cards)
     return cards
@@ -118,6 +122,28 @@ def _names(items: list[str]) -> str:
     return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1] if items else ""
 
 
+def _note(name) -> str:
+    """note_for_allies_79 reads as "note for allies"."""
+    return '"' + re.sub(r"_\d+$", "", str(name).strip()).replace("_", " ") + '"'
+
+
+def _notes(names) -> str:
+    """Note names in plain words. Notes that share a name are counted, not repeated."""
+    counts = Counter(_note(n) for n in names if n.strip())
+    return _names([name if n == 1 else f"{name} ({n} notes)" for name, n in counts.items()])
+
+
+def _note_text(value: str) -> str:
+    """The newer engine's note dump, without who made it and when."""
+    m = re.match(r"Artifact (\S+)\s+Created by .*?Content: (.*)", value, re.S)
+    return f'The note {_note(m.group(1))} says: "{m.group(2).strip()}"' if m else value
+
+
+def _note_name(action: str, params: dict) -> str:
+    """Some models put the note's name in the action: modify_artifact_east_claim_9."""
+    return params.get("name") or re.sub(r"^(modify|destroy)_artifact_?", "", action) or "untitled"
+
+
 def _action(name: str, params: dict) -> str:
     p = params or {}
     if name == "move":
@@ -128,15 +154,19 @@ def _action(name: str, params: dict) -> str:
     if name == "take":
         return f"Tried to take {p.get('amount')} energy from {p.get('target')}."
     if name == "create_artifact":
-        return f'Wrote a note called "{p.get("name")}".'
+        return f'Wrote a note called {_note(p.get("name"))}.'
     if name == "pickup_artifact":
-        return f'Picked up the note "{p.get("name")}".'
+        return f'Picked up the note {_note(p.get("name"))}.'
     if name == "drop_artifact":
-        return f'Dropped the note "{p.get("name")}".'
+        return f'Dropped the note {_note(p.get("name"))}.'
     if name == "give_artifact":
-        return f'Gave the note "{p.get("artifact_name")}" to {p.get("target_agent")}.'
+        return f'Gave the note {_note(p.get("artifact_name"))} to {p.get("target_agent")}.'
     if name == "reproduce":
         return f"Had a child named {p.get('name')}."
+    if name == "spawn":
+        return f"Asked {p.get('partner')} to have a child."
+    if name.startswith(("modify_artifact", "destroy_artifact")):
+        return f"{'Rewrote' if name.startswith('modify') else 'Destroyed'} the note {_note(_note_name(name, p))}."
     return f"Did {name.replace('_', ' ')}."
 
 
@@ -159,8 +189,9 @@ def plain(text: str) -> str:
             values = [v for item in found.values() for v in _flat(item)]
         except (ValueError, SyntaxError):
             values = [m.group(1)]
-        said = " ".join(v.rstrip(".") + "." for v in values)
-        said = re.sub(r"Artifact (.+?) content: ", r"Note \1 says: ", said)
+        values = [_note_text(v) for v in values]
+        said = " ".join(v if v.endswith('"') else v.rstrip(".") + "." for v in values)
+        said = re.sub(r"Artifact (.+?) content: ", lambda m: f"The note {_note(m.group(1))} says: ", said)
         return "The world said: " + said.replace("another being", "someone")
 
     chosen = re.search(r"Chose action (\w+): ", text)
@@ -172,7 +203,7 @@ def plain(text: str) -> str:
         except ValueError:
             pass
     text = re.sub(r"Nearby: ([^.]+)\.", lambda m: f"Near {_names(m.group(1).split(','))}.", text)
-    text = re.sub(r"Artifacts here: ([^.]+)\.", lambda m: f"Saw a note: {_names(m.group(1).split(','))}.", text)
+    text = re.sub(r"Artifacts here: ([^.]+)\.", lambda m: f"Saw a note: {_notes(m.group(1).split(','))}.", text)
     text = re.sub(r"Visible places: ([^.]+)\.",
                   lambda m: "Could see " + _names([f"the {x.strip()}" for x in m.group(1).split(",")]) + ".", text)
     text = re.sub(r"Feedback from the preceding action: (\{.*?\})\.(?= |$)", feedback, text)
@@ -200,23 +231,33 @@ def _deed(name: str, params: dict, who: str) -> str:
         return f"{who} tries to give {p.get('target')} {p.get('amount')} energy."
     if name == "take":
         return f"{who} tries to take {p.get('amount')} energy from {p.get('target')}."
+    wrote = f': "{p["payload"]}"' if p.get("payload") else "."
     if name == "create_artifact":
-        return f'{who} writes a note called "{p.get("name")}".'
+        return f'{who} writes a note called {_note(p.get("name"))}{wrote}'
     if name == "pickup_artifact":
-        return f'{who} picks up the note "{p.get("name")}".'
+        return f'{who} picks up the note {_note(p.get("name"))}.'
     if name == "drop_artifact":
-        return f'{who} drops the note "{p.get("name")}".'
+        return f'{who} drops the note {_note(p.get("name"))}.'
     if name == "give_artifact":
-        return f'{who} gives the note "{p.get("artifact_name")}" to {p.get("target_agent")}.'
+        return f'{who} gives the note {_note(p.get("artifact_name"))} to {p.get("target_agent")}.'
     if name == "reproduce":
         return f"{who} has a child named {p.get('name')}."
+    if name == "spawn":
+        return f"{who} asks {p.get('partner')} to have a child" + (f" named {p['name']}." if p.get("name") else ".")
+    if name.startswith("modify_artifact"):
+        return f"{who} rewrites the note {_note(_note_name(name, p))}{wrote}"
+    if name.startswith("destroy_artifact"):
+        return f"{who} destroys the note {_note(_note_name(name, p))}."
     return f"{who} does {name.replace('_', ' ')}."
 
 
 def _world(found: str, who: str) -> str:
     text = plain(f"Feedback from the preceding action: {found}.").removeprefix("The world said: ")
-    text = re.sub(r"\b[Yy]our\b", f"{who}'s", text)
-    return re.sub(r"\b[Yy]ou\b", who, text)
+    # "you" is the person, except inside a note or a quote, which keep their words.
+    parts = re.split(r'("[^"]*")', text)
+    for i in range(0, len(parts), 2):
+        parts[i] = re.sub(r"\b[Yy]ou\b", who, re.sub(r"\b[Yy]our\b", f"{who}'s", parts[i]))
+    return "".join(parts)
 
 
 def _turn(text: str, who: str) -> list[str]:
@@ -243,7 +284,7 @@ def _turn(text: str, who: str) -> list[str]:
         setting.append(f"{_names(people)} {'is' if len(people) == 1 else 'are'} nearby.")
     if m := re.search(r"Artifacts here: ([^.]+)\.", text):
         notes = m.group(1).split(",")
-        setting.append(f"{who} sees {'a note' if len(notes) == 1 else 'notes'}: {_names(notes)}.")
+        setting.append(f"{who} sees {'a note' if len(notes) == 1 else 'notes'}: {_notes(notes)}.")
     if m := re.search(r"Visible places: ([^.]+)\.", text):
         setting.append(f"{who} can see " + _names([f"the {x.strip()}" for x in m.group(1).split(",")]) + ".")
     if m := re.search(r"Energy (rose|fell) from (\S+) to (\S+?)\.(?= |$)", text):
@@ -276,9 +317,14 @@ def _story(history: list[dict], who: str, memory: dict | None = None) -> list[st
             groups[-1]["count"] += 1
         else:
             groups.append({"lines": lines, "first": h["ticks_ago"], "last": h["ticks_ago"], "count": 1, "marked": marked})
-    seen = set()
+    seen, notes = set(), set()
 
     def once(line):
+        if line.startswith("(") and ' says: "' in line:  # a note on the ground, read every turn
+            if line in notes:
+                return "(The same notes as before.)"
+            notes.add(line)
+            return line
         m = re.fullmatch(r'([\w.-]+): "(.*)"', line, re.S)
         if not m:
             return line
@@ -289,8 +335,9 @@ def _story(history: list[dict], who: str, memory: dict | None = None) -> list[st
 
     out = []
     for g in groups:
-        if g["marked"]:
+        if g["marked"]:  # shown in full, but later turns still count it as already said
             head, lines = f"{_ago(g['first'])} [this is the memory below]", g["lines"]
+            [once(x) for x in lines]
         else:
             head = _ago(g["first"]) if g["count"] == 1 else f"{g['first']} to {g['last']} turns ago, the same each turn"
             lines = [once(x) for x in g["lines"]]
@@ -310,7 +357,7 @@ def _now(scene: list[str], who: str) -> list[str]:
             out.append(f"(Food is {m.group(1)} step{'' if m.group(1) == '1' else 's'} away.)")
         elif m := re.fullmatch(r"Artifacts nearby: (.+)\.", line):
             if m.group(1) != "none":
-                out.append(f"(Notes nearby: {_names(m.group(1).split(','))}.)")
+                out.append(f"(Notes nearby: {_notes(m.group(1).split(','))}.)")
         elif m := re.fullmatch(r"Incoming messages: (.+)\.", line, re.S):
             if m.group(1) != "none":
                 out += [f'{person}: "{words}"' for person, words in _quotes(m.group(1))]
@@ -459,12 +506,30 @@ def save_rating(card_set: str, rater: str, card_id: str, label: str | None, reas
                          "text_hash": text_hash(card), "saved_at": round(time.time(), 1)}
     else:
         rows.pop(card_id, None)
+    _write_ratings(path, rows)
+
+
+def _write_ratings(path: Path, rows: dict[str, dict]) -> None:
     tmp = path.with_suffix(".tmp")
     with open(tmp, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["card_id", "label", "reason", "text_hash", "saved_at"])
         writer.writeheader()
         writer.writerows(rows.values())
     os.replace(tmp, path)
+
+
+def carry_ratings(old_set: str, new_set: str) -> int:
+    """Copy grades for cards that are in both sets and read exactly the same.
+    A person who already has grades in the new set keeps those."""
+    current = {c["card_id"]: text_hash(c) for c in load_cards(new_set)}
+    moved = 0
+    for path in sorted(set_dir(old_set).glob("ratings_*.csv")):
+        rows = {k: r for k, r in _read_ratings(path).items() if current.get(k) == r.get("text_hash")}
+        target = set_dir(new_set) / path.name
+        if rows and not target.exists():
+            _write_ratings(target, rows)
+            moved += len(rows)
+    return moved
 
 
 def for_rater(card_set: str, rater: str) -> list[tuple[dict, dict | None]]:
@@ -495,6 +560,33 @@ def human_majority(rated: dict[str, dict[str, dict]]) -> dict[str, str]:
         if count > sum(counter.values()) / 2:
             majority[card_id] = label
     return majority
+
+
+def compare(card_set: str) -> dict:
+    """For each moment in the set, the memories each formula brought to mind,
+    and what people said about the ones that were graded. A set has this only
+    when it was built from several formulas (rescued_cards.py --variant)."""
+    path = set_dir(card_set) / "moments.json"
+    if not path.exists():
+        return {"formulas": [], "moments": []}
+    data = json.loads(path.read_text())
+    majority = human_majority(ratings(card_set))
+    card_of = {(c["sealed"]["run"], c["sealed"]["agent_tag"], c["sealed"]["tick"], c["sealed"]["memory_id"]): c["card_id"]
+               for c in load_cards(card_set)}
+    moments = []
+    for m in data["moments"]:
+        who, picks = m["agent_name"], m["picks"]
+        rows = []
+        for mem_id, mem in m["memories"].items():
+            # yes: came to mind. links: only because of links. out: a linked memory took its place.
+            by = {f: "yes" if mem_id in p["solo"] else "links" for f, p in picks.items() if mem_id in p["selected"]}
+            by.update({f: "out" for f, p in picks.items() if mem_id in p["solo"] and mem_id not in p["selected"]})
+            card = card_of.get((m["run"], m["agent_tag"], m["tick"], mem_id))
+            rows.append({"ago": mem["ticks_ago"], "lines": _turn(mem["text"], who), "by": by,
+                         "card": bool(card), "grade": majority.get(card)})
+        rows.sort(key=lambda r: (-len(r["by"]), r["ago"]))
+        moments.append({"run": m["run"], "who": who, "tick": m["tick"], "now": _now(m["scene"], who), "rows": rows})
+    return {"formulas": data["formulas"], "moments": moments}
 
 
 # ---------- judge runs ----------

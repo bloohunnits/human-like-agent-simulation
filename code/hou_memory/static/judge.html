@@ -9,12 +9,22 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
 .answers small{display:block;font-size:14px;font-weight:400;margin-top:3px;opacity:.8}.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.chips button{font-size:14px;padding:5px 9px;border-radius:14px}.chips button.on{background:#17383c;color:white}
 .guide h2{font-size:19px;margin:20px 0 6px}.guide li{margin:5px 0}.guide p{line-height:1.5;margin:6px 0}.example{background:#f7f6f0;border-radius:8px;padding:10px 12px;margin:10px 0;line-height:1.5}.example b{color:#007c80}[hidden]{display:none!important}
 .maps{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 14px}.maps figure{margin:0}.maps figcaption{font-weight:600;margin-bottom:4px}.maps svg{display:block;width:266px;max-width:100%;height:auto}.key{font-size:14px;margin:0 0 12px}.key span{margin-right:12px;white-space:nowrap}
+.story{line-height:1.5}.story .who{font-size:20px;margin:4px 0 2px}.story h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#526b71;margin:22px 0 6px}
+.turn{border-left:3px solid #e3e9e7;padding:6px 0 8px 14px;margin:10px 0}.when{font-size:13px;font-weight:700;color:#526b71;margin-bottom:4px}
+.turn.mem{border-color:#c98a1a;background:#fdf6e7}.tag{background:#c98a1a;color:white;border-radius:10px;padding:1px 8px;font-size:12px;margin-left:8px;font-weight:600}
+.turn.now{border-color:#007c80;background:#eef6f5}.scene{color:#5d7378;font-size:14px;margin:2px 0}.scene.note{color:#153237;background:#fbf3df;border-radius:6px;padding:4px 8px}
+.say{display:grid;grid-template-columns:5.5em 1fr;gap:10px;margin:4px 0}.say b{overflow-wrap:anywhere}.say .again{color:#7a8d91;font-style:italic}.act{font-weight:600;margin:4px 0}
+.recall{background:#fdf6e7;border:2px solid #e3b75c;border-radius:10px;padding:4px 16px 10px;margin:22px 0 6px}.recall h3{color:#8a5d0c;margin-top:12px}.recall .turn{border:none;padding-left:0;margin:4px 0}.recall summary{cursor:pointer;font-weight:600;color:#8a5d0c;margin:2px 0 4px}
+@media (max-width:540px){.say{grid-template-columns:1fr;gap:0}}
+.ev{display:inline-block;color:white;border-radius:10px;padding:0 8px;font-size:12px;font-weight:600;margin-right:6px;vertical-align:1px}.act.quiet{font-weight:400;color:#5d7378}
+.stat{display:inline-block;background:white;border:1px solid #bbc9c7;border-radius:14px;padding:2px 10px;margin:0 6px 4px 0;font-weight:600}.stat.low{background:#fbe9e6;border-color:#d99a8f;color:#a12d21}
+.cmp td,.cmp th{vertical-align:top;font-size:14px}.cmp th{white-space:nowrap}.cmp td.c{text-align:center;font-size:18px;color:#17383c}.cmp td.c.links{color:#c98a1a}.cmp summary{cursor:pointer}.cmp .when{display:inline;margin-right:6px}
 .pass{color:#0b7a3b;font-weight:700}.fail{color:#a12d21;font-weight:700}#error{color:#a12d21;min-height:1em}label{display:block;margin:8px 0 4px;font-weight:600}
 </style></head><body>
 <h1>Memory check</h1>
 <div class="top" id="admin-bar" hidden><select id="run"></select><button id="update">Update</button></div>
 <p id="error"></p>
-<div class="tabs" id="tabs" hidden><button data-tab="label" class="on">Label</button><button data-tab="judge">Judge</button><button data-tab="match">Match</button></div>
+<div class="tabs" id="tabs" hidden><button data-tab="label" class="on">Label</button><button data-tab="judge">Judge</button><button data-tab="match">Match</button><button data-tab="compare">Compare</button></div>
 
 <section id="tab-label">
   <div id="guide" class="box guide">
@@ -26,15 +36,15 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
     <h2>What each card shows</h2>
     <ul>
       <li><b>Two maps:</b> what this person could see when the memory happened, and right now. They are always in the middle.</li>
-      <li><b>What happened:</b> this person's last few turns, oldest first, written like a script. Lines in brackets set the scene. A name and a colon is someone talking.</li>
+      <li><b>What happened:</b> this person's last few turns, oldest first, written like a script. Gray lines set the scene. A colored name is someone talking. Each person has the same color in the text and on the maps. Small tags mark the things that change a life: <b>gave</b>, <b>took</b>, <b>note</b>, <b>child</b>, <b>death</b>.</li>
       <li><b>Right now:</b> what they can see and hear at this moment.</li>
-      <li><b>This came to their mind:</b> the memory that popped into their head. This is the part you grade.</li>
+      <li><b>This came to their mind:</b> the memory that popped into their head, in the yellow box. This is the part you grade. If it is one of the last few turns, that turn is yellow too.</li>
     </ul>
     <p>Each turn, the person first hears what others said, then moves and talks.</p>
 
     <h2>Words you will see</h2>
     <ul>
-      <li><b>Turn:</b> one tick of the clock. Everyone acts once per turn.</li>
+      <li><b>Turn:</b> one tick of the clock. Everyone acts once per turn. No card comes from a world's first 30 turns, when nothing has happened yet.</li>
       <li><b>Energy:</b> how much fuel they have left. A big number means they are safe.</li>
       <li><b>Steps away:</b> how far something is. 1 step is right next to them.</li>
       <li><b>Turns of life left:</b> when they will die of old age.</li>
@@ -75,7 +85,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
 
   <div id="work" hidden>
     <p class="top"><span id="left" class="muted"></span> <button id="helpBtn">Help</button></p>
-    <div id="card" class="box" hidden><div id="maps" class="maps"></div><pre id="text"></pre>
+    <div id="card" class="box" hidden><div id="maps" class="maps"></div><div id="text" class="story"></div>
       <p><b id="question"></b></p>
       <div class="answers" id="answers"></div>
       <div class="chips" id="chips"></div>
@@ -102,6 +112,12 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
   <p id="rule" class="muted"></p>
 </section>
 
+<section id="tab-compare" hidden>
+  <p>What each formula brought to mind at the same moment. <b>●</b> came to mind. <b style="color:#c98a1a">●</b> came to mind only because of links: without them, that formula would have left it out. <b>○</b> would have come to mind without links, but a linked memory took its place. Graders never see this page.</p>
+  <table><thead><tr><th>Formula</th><th>Memories only because of links</th><th>Graded</th><th>Matters</th><th>Doesn't matter</th><th>No</th></tr></thead><tbody id="tally"></tbody></table>
+  <div id="moments"></div>
+</section>
+
 <script>
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),f2=x=>x==null?'-':Number(x).toFixed(2);
 const L=['belongs','doesnt_matter','noise'],CHIPS=['too old','wrong person','nothing to do with here','would help right now'];let meta={},cards=[],pos=0,pick=null,tab='label',extra=false;
@@ -114,24 +130,61 @@ const name=l=>meta.labels[l]||l;
 
 async function loadMeta(){meta=await api('/api/judge/meta');$('run').innerHTML=meta.runs.map(r=>`<option value="${esc(r.path)}">${esc(r.name)}</option>`).join('');
   const saved=keep.get('rescued.run');if(saved&&meta.runs.some(r=>r.path===saved))$('run').value=saved;
-  $('question').textContent=meta.question;$('how-many').textContent=`Each of us grades all ${meta.goal} cards, about ${Math.round(meta.goal*70/60/60)} hours in all. Stop whenever you like and pick up later with the same name.`;
+  $('question').textContent=meta.question;const hours=Math.max(1,Math.round(meta.goal*70/3600));$('how-many').textContent=`Each of us grades all ${meta.goal} cards, about ${hours} hour${hours===1?'':'s'} in all. Stop whenever you like and pick up later with the same name.`;
   const ps=Object.keys(meta.prompts);$('prompt').innerHTML=ps.map(n=>`<option>${esc(n)}</option>`).join('');$('prompt').value=ps[ps.length-1];showPrompt();
   $('model').innerHTML=meta.models.map(m=>`<option>${esc(m)}</option>`).join('');}
 function showPrompt(){const p=meta.prompts[$('prompt').value];if(!p)return;$('d1').value=p.definitions.belongs;$('d2').value=p.definitions.doesnt_matter;$('d3').value=p.definitions.noise;$('world').value=p.world;$('task').value=p.task;$('note').value='';}
 async function ensure(force){const r=run();if(!r)return;if(force||!r.ready){$('left').textContent='Finding rescued memories...';await api('/api/judge/make_cards',{path:r.path});r.ready=true;}}
-async function load(force){err();try{await ensure(force);const d=await api(`/api/judge/cards?set=${encodeURIComponent(set())}&rater=${encodeURIComponent(who())}`);cards=d.cards;pos=cards.filter(c=>c.mine).length;show();if(tab!=='label')await report();}catch(e){err(e);}}
+async function load(force){err();try{await ensure(force);const d=await api(`/api/judge/cards?set=${encodeURIComponent(set())}&rater=${encodeURIComponent(who())}`);cards=d.cards;pos=cards.filter(c=>c.mine).length;show();if(tab==='compare')await compare();else if(tab!=='label')await report();}catch(e){err(e);}}
+// Colors go out in order of first speaker on each card, so no two people share one. Green is food.
+const COLORS=['#2f6db5','#b5452f','#7a4fb5','#a8660f','#b53f7a','#3d6f86','#8a5a44','#5b5fc7','#c2541c','#6b6b6b'];let palette={};
+function color(n){if(!(n in palette))palette[n]=COLORS[Object.keys(palette).length%COLORS.length];return palette[n];}
+// Every name on the card, longest first. A name keeps its color wherever it shows up,
+// so someone in the memory is easy to find in the scene.
+let people=[];
+function cast(c){palette={};people=[];const add=n=>{n=n.trim();if(n&&n!==c.who&&!people.includes(n)){people.push(n);color(n);}};
+  for(const m of c.text.matchAll(/^ {2}([\w.-]+): /gm))add(m[1]);
+  for(const m of c.text.matchAll(/\(([^()]+?) (?:is|are) nearby\./g))m[1].split(/, | and /).forEach(add);
+  for(const v of Object.values(c.views||{}))for(const cell of (v&&v.cells)||[])for(const it of cell[2])if(!/^[\d.]*$/.test(it)&&it!=='X'&&!it.startsWith('A('))add(it.replace(/\(.*\)$/,''));
+  people.push(c.who);people.sort((a,b)=>b.length-a.length);}
+function paint(t,who){const h=esc(t);if(!people.length)return h;
+  return h.replace(new RegExp('(?<![\\w.-])('+people.map(n=>esc(n).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')(?![\\w-])','g'),n=>`<b style="color:${n===esc(who)?'#17383c':color(n)}">${n}</b>`);}
+// The things that change a life get a tag, so they stand out from steps and small talk.
+const EVENTS=[[/ tries to take | took energy from /,'took','#b5452f'],[/ tries to give | gave energy to /,'gave','#1f7f63'],[/ to have a child|\bchild\b.* born|was born\b/i,'child','#7a4fb5'],[/ died\b/,'death','#444'],
+  [/ (writes a|rewrites the|picks up the|drops the|gives the|destroys the) note /,'note','#a8660f']];
+const tag=t=>{const e=EVENTS.find(e=>e[0].test(t));return e?`<span class="ev" style="background:${e[2]}">${e[1]}</span>`:'';};
+// The card text as a script: scene lines gray, a name and colon is speech, the rest is what someone did.
+function line(t,who){const say=t.match(/^([\w.-]+): (.*)$/s);
+  if(say){const again=say[2].startsWith('(');return `<div class="say"><b style="color:${say[1]===who?'#17383c':color(say[1])}">${esc(say[1])}</b><span class="${again?'again':''}">${again?esc(say[2].slice(1,-1)):paint(say[2],who)}</span></div>`;}
+  if(t.startsWith('(')&&t.endsWith(')')){const note=t.includes(' says: "');return `<div class="scene${note?' note':''}">${note?'':tag(t)}${paint(t.slice(1,-1),who)}</div>`;}
+  const st=t.match(/^.+ has ([\d.]+) energy(?: and (\d+) turns of life left)?\.$/);
+  if(st)return `<div><span class="stat${+st[1]<=10?' low':''}">${esc(st[1])} energy${+st[1]<=10?', running low':''}</span>${st[2]?`<span class="stat${+st[2]<=10?' low':''}">${st[2]} turns of life left</span>`:''}</div>`;
+  return `<div class="act${/ (moves \w+|stays put)\.$/.test(t)?' quiet':''}">${tag(t)}${paint(t,who)}</div>`;}
+function story(text,who,tick){let html='',open='',inRecall=false,memSeen=false;const close=()=>{html+=open?'</div>':'';open='';};
+  for(const raw of text.split('\n')){const t=raw.trim();if(!t)continue;
+    if(/^This is .+\.$/.test(t)&&!html){html+=`<p class="who">This is <b>${esc(who)}</b>.${tick==null?'':` <span class="stat">turn ${esc(tick)} of this world</span>`}</p>`;continue;}
+    if(t==='What happened:'||t==='Right now:'||/^This came to .+'s mind:$/.test(t)){close();
+      if(inRecall)html+='</div>';inRecall=t.startsWith('This came');
+      html+=(inRecall?'<div class="recall">':'')+`<h3>${esc(t.slice(0,-1))}</h3>`;
+      // A recent memory is already on screen as the yellow turn, so its copy folds away.
+      if(inRecall&&memSeen)html+='<details><summary>The yellow turn above. Show it again</summary>';if(t==='Right now:'){html+='<div class="turn now">';open='now';}continue;}
+    if(!raw.startsWith('  ')&&open!=='now'){close();const mem=t.includes('[this is the memory below]');memSeen=memSeen||mem;
+      html+=`<div class="turn${mem?' mem':''}"><div class="when">${esc(t.replace(' [this is the memory below]',''))}${mem?'<span class="tag">the memory</span>':''}</div>`;open='turn';continue;}
+    html+=line(t,who);}
+  close();if(inRecall)html+=(memSeen?'</details>':'')+'</div>';return html;}
 // What the person could see, centered on them. Rows grow downward, so "up" is up.
 function mapSvg(view,who,title){if(!view)return '';const r=view.radius||6,n=2*r+1,s=18,W=n*s;let food='',others='',notes='';
   for(const [row,col,items] of view.cells){if(Math.abs(row)>r||Math.abs(col)>r)continue;const x=(col+r)*s+s/2,y=(row+r)*s+s/2;
     for(const it of items){if(/^[\d.]+$/.test(it))food+=`<circle cx="${x}" cy="${y}" r="${2+Math.min(+it,10)*0.5}" fill="#3f8f5a" opacity=".75"/>`;
       else if(it.startsWith('A('))notes+=`<rect x="${x-5}" y="${y-5}" width="10" height="10" fill="#c98a1a"><title>${esc(it.replace(/^A\(\w+\): /,''))}</title></rect>`;
-      else others+=`<g><title>${esc(it)}</title><circle cx="${x}" cy="${y}" r="8.5" fill="#2f6db5"/><text x="${x}" y="${y+4}" font-size="11" text-anchor="middle" fill="white" font-weight="700">${esc(it[0])}</text></g><text x="${x}" y="${y-11}" font-size="10" text-anchor="middle" fill="#2f6db5">${esc(it)}</text>`;}}
+      else{const col=color(it.replace(/\(.*\)$/,''));others+=`<g><title>${esc(it)}</title><circle cx="${x}" cy="${y}" r="8.5" fill="${col}"/><text x="${x}" y="${y+4}" font-size="11" text-anchor="middle" fill="white" font-weight="700">${esc(it[0])}</text></g><text x="${x}" y="${y-11}" font-size="10" text-anchor="middle" fill="${col}">${esc(it)}</text>`;}}}
   const c=r*s+s/2;
   return `<figure><figcaption>${esc(title)}</figcaption><svg viewBox="-16 -12 ${W+32} ${W+12}" role="img" aria-label="${esc(title)}: map around ${esc(who)}"><rect y="0" width="${W}" height="${W}" fill="#f7f6f0" stroke="#ccd8d4"/>${food}${notes}${others}<circle cx="${c}" cy="${c}" r="9.5" fill="#17383c"/><text x="${c}" y="${c+4}" font-size="11" text-anchor="middle" fill="white" font-weight="700">${esc(who[0]||'?')}</text><text x="${c}" y="${c-12}" font-size="10" text-anchor="middle" fill="#17383c" font-weight="700">${esc(who)}</text></svg></figure>`;}
 function show(){const n=cards.filter(c=>c.mine).length,goal=cards.length,c=cards[pos],stop=!c||(!c.mine&&n>=goal&&!extra);
   $('left').textContent=cards.length?`${n} of ${extra?cards.length:goal} done`:'No cards here.';$('card').hidden=stop;$('done').hidden=!stop||!cards.length;$('more').hidden=n>=cards.length;if(stop)return;
-  $('maps').innerHTML=c.views?mapSvg(c.views.then,c.who,`The memory (${c.ago===1?'1 turn':c.ago+' turns'} ago)`)+mapSvg(c.views.now,c.who,'Right now')+`<p class="key"><span style="color:#17383c">● ${esc(c.who)}</span><span style="color:#2f6db5">● someone else</span><span style="color:#3f8f5a">● food, bigger is more</span><span style="color:#c98a1a">■ note</span></p>`:'';
-  $('text').textContent=c.text;pick=c.mine?c.mine.label:null;$('why').value=c.mine?c.mine.reason:'';
+  cast(c);
+  $('maps').innerHTML=c.views?mapSvg(c.views.then,c.who,`The memory (${c.ago===1?'1 turn':c.ago+' turns'} ago)`)+mapSvg(c.views.now,c.who,'Right now')+`<p class="key"><span style="color:#17383c">● ${esc(c.who)}</span><span class="muted">● others, each in their own color</span><span style="color:#3f8f5a">● food, bigger is more</span><span style="color:#c98a1a">■ note</span></p>`:'';
+  $('text').innerHTML=story(c.text,c.who,c.tick);pick=c.mine?c.mine.label:null;$('why').value=c.mine?c.mine.reason:'';
   $('answers').innerHTML=L.map((l,i)=>`<button data-l="${l}">${i+1}. ${esc(name(l))}<small>${esc(meta.help[l])}</small></button>`).join('');
   $('answers').querySelectorAll('button').forEach(b=>{b.onclick=()=>{b.blur();choose(b.dataset.l);};b.classList.toggle('on',b.dataset.l===pick);});
   $('chips').innerHTML=CHIPS.map(t=>`<button>${esc(t)}</button>`).join('');$('chips').querySelectorAll('button').forEach(b=>{b.classList.toggle('on',$('why').value===b.textContent);b.onclick=()=>{b.blur();$('why').value=b.textContent;$('chips').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));};});
@@ -146,12 +199,21 @@ async function report(){if(!set())return;const r=await api('/api/judge/report?se
   $('rule').textContent=r.gate_rule;
   const runName=`${$('prompt').value} / ${$('model').value}`;const w=r.runs.some(x=>x.run===runName)?(await api(`/api/judge/disagreements?set=${encodeURIComponent(set())}&run=${encodeURIComponent(runName)}`)).items:[];
   $('wrong').innerHTML=w.length?w.map(x=>`<div class="box"><b>Came to mind:</b> ${esc(x.memory)}<br><b>People:</b> ${esc(name(x.majority))}<br><b>Judge:</b> ${esc(name(x.judge))}. <span class="muted">${esc(x.judge_reason)}</span><details><summary class="muted">Whole card</summary><pre>${esc(x.text)}</pre></details></div>`).join(''):'<p class="muted">Nothing yet. Label some cards, then run the judge.</p>';}
+const FORMULAS={hou:'No links',learned:'Learned',chained:'Chained',actr:'ACT-R'};
+async function compare(){if(!set())return;const d=await api('/api/judge/compare?set='+encodeURIComponent(set())),fs=d.formulas;
+  if(!d.moments.length){$('tally').innerHTML='';$('moments').innerHTML='<p class="muted">This set was built from one formula, so there is nothing to compare.</p>';return;}
+  const rows=d.moments.flatMap(m=>m.rows),n=(f,l)=>rows.filter(r=>r.by[f]==='links'&&(l?r.grade===l:true)).length;
+  $('tally').innerHTML=fs.map(f=>`<tr><td>${esc(FORMULAS[f]||f)}</td><td>${n(f)}</td><td>${rows.filter(r=>r.by[f]==='links'&&r.grade).length}</td>${L.map(l=>`<td>${n(f,l)}</td>`).join('')}</tr>`).join('');
+  $('moments').innerHTML=d.moments.map(m=>{people=[];palette={};
+    const short=r=>{const t=r.lines.filter(x=>!x.startsWith('(')).slice(-2).join(' ')||r.lines[0]||'';return t.length>150?t.slice(0,150)+'...':t;};
+    return `<div class="box"><p class="who"><b>${esc(m.who)}</b> <span class="stat">turn ${esc(m.tick)}</span> <span class="muted">${esc(m.run)}</span></p><div class="turn now">${m.now.map(x=>line(x,m.who)).join('')}</div>
+      <table class="cmp"><thead><tr><th>Memory</th>${fs.map(f=>`<th>${esc(FORMULAS[f]||f)}</th>`).join('')}<th>People said</th></tr></thead><tbody>${m.rows.map(r=>`<tr><td><details><summary><span class="when">${r.ago===1?'1 turn':esc(r.ago)+' turns'} ago</span>${esc(short(r))}</summary>${r.lines.map(x=>line(x,m.who)).join('')}</details></td>${fs.map(f=>`<td class="c${r.by[f]==='links'?' links':''}">${r.by[f]==='out'?'○':r.by[f]?'●':''}</td>`).join('')}<td>${r.grade?esc(name(r.grade)):r.card?'<span class="muted">not graded yet</span>':''}</td></tr>`).join('')}</tbody></table></div>`;}).join('');}
 async function save(){try{const s=await api('/api/judge/prompt',{parent:$('prompt').value,world:$('world').value,task:$('task').value,note:$('note').value,definitions:{belongs:$('d1').value,doesnt_matter:$('d2').value,noise:$('d3').value}});meta=await api('/api/judge/meta').then(m=>({...meta,prompts:m.prompts}));
   $('prompt').innerHTML=Object.keys(meta.prompts).map(n=>`<option>${esc(n)}</option>`).join('');$('prompt').value=s.name;showPrompt();$('status').textContent=`Saved as ${s.name}.`;err();}catch(e){err(e);}}
 async function runJudge(){try{$('runJudge').disabled=true;const {job}=await api('/api/judge/run',{set:set(),prompt:$('prompt').value,model:$('model').value,scope:'labeled'});err();
   const poll=async()=>{const j=await api('/api/judge/job/'+job);$('status').textContent=j.status==='running'?`Judging ${j.done} of ${j.total??'?'}...`:j.status==='failed'?`Failed: ${j.error}`:'Done.';if(j.status==='running')setTimeout(poll,1000);else{$('runJudge').disabled=false;await report();}};poll();}catch(e){$('runJudge').disabled=false;err(e);}}
 
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));for(const t of ['label','judge','match'])$('tab-'+t).hidden=t!==tab;if(tab!=='label')report().catch(err);});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));for(const t of ['label','judge','match','compare'])$('tab-'+t).hidden=t!==tab;if(tab==='compare')compare().catch(err);else if(tab!=='label')report().catch(err);});
 $('run').onchange=()=>{keep.set('rescued.run',$('run').value);load();};$('update').onclick=()=>load(true);$('start').onclick=start;$('rater').onkeydown=e=>{if(e.key==='Enter')start();};
 $('helpBtn').onclick=()=>{$('guide').hidden=false;$('work').hidden=true;scrollTo(0,0);};$('more').onclick=()=>{extra=true;show();};
 $('next').onclick=next;$('back').onclick=()=>{if(pos>0){pos--;show();}};$('prompt').onchange=()=>{showPrompt();report().catch(err);};$('model').onchange=()=>report().catch(err);$('save').onclick=save;$('runJudge').onclick=runJudge;

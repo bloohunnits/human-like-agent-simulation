@@ -15,7 +15,16 @@ would have brought to mind on the same turns. A moment where it pushed
 nothing out gives one card. The agents still acted on the recorded picks.
 This needs the engine's Python: code/terralingua/.venv/bin/python.
 
-Usage: rescued_cards.py <run_dir> [--out DIR] [--history 8] [--min-age 0] [--anchor 60] [--variant actr]
+Several names pool the formulas. A moment counts when any of them rescued a
+memory, each formula's strongest rescue becomes a card, and moments.json
+records what every formula brought to mind there, for the Compare tab.
+
+Moments in a world's first turns are skipped (--warmup): too little has
+happened by then for a memory to matter. --keep SET samples that set's moments
+first, with the same cards, and copies its grades over.
+
+Usage: rescued_cards.py <run_dir> [--out DIR] [--history 8] [--min-age 0] [--anchor 60]
+                        [--variant hou learned chained actr] [--warmup 30] [--keep SET]
 where run_dir is a TerraLingua logs/<exp>/ folder.
 """
 import argparse
@@ -32,7 +41,8 @@ from itertools import repeat
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "code/hou_memory"))  # for --variant
+sys.path.insert(0, str(ROOT / "code/hou_memory"))  # for --variant and the warm-up
+from judging import WARMUP_TURNS, carry_ratings  # noqa: E402
 # How the agents' own memory lines were written. Graders read them through
 # judging.plain(), so a change to this format must be recorded with the set.
 MEMORY_TEXT_FORMAT = "raw_json_v1"
@@ -192,9 +202,20 @@ def build_card(run, turn, mem_id, kind, history, condition):
     }
 
 
+def cards_of(turn):
+    """The memories of one moment that become cards: the ones an earlier set
+    carded, every formula's strongest rescue, and one memory that was pushed out."""
+    cards = list(turn.get("kept", ())) + [(i, "rescued") for i in turn["top"]]
+    if not any(kind == "displaced" for _, kind in cards):
+        cards += [(i, "displaced") for i in turn["displaced"][:1]]
+    seen = set()
+    return [(i, kind) for i, kind in cards if not (i in seen or seen.add(i))]
+
+
 def stratum(turn):
-    """Age of the rescued memory, true rescue or slot swap, and whether a
-    person it names is still here. Rare kinds would vanish in a plain sample."""
+    """Age of the rescued memory, true rescue or slot swap, whether a person
+    it names is still here, and which formulas rescued something. Rare kinds
+    would vanish in a plain sample."""
     rec, mem_id = turn["rec"], turn["rescued"][0]
     row, mem = turn["rows"].get(mem_id, {}), turn["by_id"].get(mem_id) or {}
     age = rec["tick"] - mem.get("t_created", rec["tick"])
@@ -204,14 +225,14 @@ def stratum(turn):
     scene = " ".join(describe_scene((rec.get("agent_step") or {}).get("observation")))
     view = "nobody" if not people else "here" if all(p in scene for p in people) else "gone"
     cutoff = (rec.get("config") or {}).get("threshold", TRUE_RESCUE_SCORE)
-    return bucket, (row.get("solo_score") or 1) <= cutoff, view
+    return bucket, (row.get("solo_score") or 1) <= cutoff, view, tuple(turn["by"])
 
 
 def sample_moments(turns, count, seed, pairs=True):
     """Take moments from each kind in turn. Skip any that reuse a memory or sit
     close enough to a chosen moment to share its history, so no two sampled
     moments are near copies of each other. Without pairs, a moment where
-    nothing was pushed out counts too."""
+    nothing was pushed out counts too. Moments kept from an earlier set go first."""
     def usable(t):
         if not t["displaced"]:
             return not pairs
@@ -223,19 +244,25 @@ def sample_moments(turns, count, seed, pairs=True):
     for turn in pool:
         strata[stratum(turn)].append(turn)
     chosen, used, spots = [], set(), defaultdict(list)
+
+    def take(turn):
+        who = (turn["run"], turn["tag"])
+        ids = {(who, i) for i, _ in cards_of(turn)}
+        if ids & used or any(abs(turn["rec"]["tick"] - t) <= 4 for t in spots[who]):
+            return False
+        chosen.append(turn)
+        used.update(ids)
+        spots[who].append(turn["rec"]["tick"])
+        return True
+
+    for turn in pool:
+        if turn.get("kept"):
+            take(turn)
     while len(chosen) < count and any(strata.values()):
         for key in sorted(strata, key=str):
             while strata[key] and len(chosen) < count:
-                turn = strata[key].pop()
-                who = (turn["run"], turn["tag"])
-                pair = {(who, turn[kind][0]) for kind in ("rescued", "displaced") if turn[kind]}
-                near = any(abs(turn["rec"]["tick"] - t) <= 4 for t in spots[who])
-                if pair & used or near:
-                    continue
-                chosen.append(turn)
-                used |= pair
-                spots[who].append(turn["rec"]["tick"])
-                break
+                if take(strata[key].pop()):
+                    break
     return sorted(chosen, key=lambda t: (str(stratum(t)), t["run"], t["tag"], t["rec"]["tick"]))
 
 
@@ -287,8 +314,9 @@ def replayed(logs, tag, variant):
     return [{**row["event"], "agent_step": line.get("agent_step")} for row, line in zip(rows, lines)]
 
 
-def load_run(run_dir, min_age, include_repeats=False, variant=None):
-    """Every turn in one run where linked memory changed what came to mind."""
+def load_run(run_dir, min_age, include_repeats=False, variant=None, warmup=0):
+    """Every turn in one run, past the warm-up, where linked memory changed
+    what came to mind. Also what was picked on every turn, by (agent, tick)."""
     logs = run_dir / "agent_logs"
     if not logs.is_dir():
         sys.exit(f"error: {logs} is not a directory. Pass a TerraLingua logs/<exp>/ folder.")
@@ -308,7 +336,7 @@ def load_run(run_dir, min_age, include_repeats=False, variant=None):
         with ProcessPoolExecutor() as pool:
             replays = dict(zip(tags, pool.map(replayed, repeat(logs), tags, repeat(variant))))
 
-    turns, ticks_total, rescues_total, per_agent = [], 0, 0, {}
+    turns, picks, ticks_total, rescues_total, per_agent = [], {}, 0, 0, {}
     for tag in tags:
         records = replays[tag] if variant else load_jsonl(logs / f"{tag}_memory_audit.jsonl")
         dump = load_json(logs / f"{tag}_hou_memory.json", {})
@@ -330,12 +358,16 @@ def load_run(run_dir, min_age, include_repeats=False, variant=None):
                        not (i in by_id and rec["tick"] - by_id[i]["t_created"] < min_age)
                        and (include_repeats or i not in previous)]
             previous = set(selected)
+            picks[(tag, as_tick(rec["tick"]))] = {"selected": selected, "solo": list(rec.get("solo_selected", []))}
+            if rec["tick"] < warmup:
+                continue
             rescues_total += len(rescued)
             per_agent[tag] += len(rescued)
             if rescued:
                 rescued.sort(key=lambda i: rows.get(i, {}).get("solo_score") or 0)
                 turns.append({"run": run, "condition": condition, "tag": tag, "name": name, "rec": rec,
                               "memories": memories, "by_id": by_id, "rows": rows, "steps": steps, "rescued": rescued,
+                              "top": rescued[:1], "by": [variant],
                               "displaced": [i for i in rec.get("solo_selected", []) if i not in set(selected)]})
 
     rate = 100.0 * rescues_total / ticks_total if ticks_total else 0.0
@@ -345,7 +377,37 @@ def load_run(run_dir, min_age, include_repeats=False, variant=None):
             "actor_model": mem_cfg.get("actor_model") or (params.get("agent") or {}).get("model"),
             "actor_effort": mem_cfg.get("effort", "low"), "plan_notes": mem_cfg.get("plan_notes", not mem_cfg.get("paper_prompt", False)),
             "memory_window": (mem_cfg.get("memory") or {}).get("working_history")}
-    return turns, info
+    return turns, info, picks
+
+
+def pool_formulas(run_dir, args):
+    """One turn per moment. Each formula that changed it adds its strongest rescue."""
+    moments, picks, info = {}, {}, None
+    for variant in args.variant or [None]:
+        turns, info, found = load_run(run_dir, args.min_age, args.include_repeats, variant, args.warmup)
+        for t in turns:
+            base = moments.setdefault((t["tag"], as_tick(t["rec"]["tick"])), t)
+            if base is not t:
+                base["by"] += t["by"]
+                base["top"] += [i for i in t["top"] if i not in base["top"]]
+                base["displaced"] += [i for i in t["displaced"] if i not in base["displaced"]]
+                for mem_id, row in t["rows"].items():
+                    base["rows"].setdefault(mem_id, row)
+        for key, pick in found.items():
+            picks.setdefault(key, {})[variant] = pick
+    for key, turn in moments.items():
+        turn["picks"] = picks[key]
+    return list(moments.values()), info
+
+
+def moment_of(turn):
+    """What every formula brought to mind at one moment, for the Compare tab."""
+    rec, by_id = turn["rec"], turn["by_id"]
+    ids = dict.fromkeys(i for pick in turn["picks"].values() for i in pick["selected"] + pick["solo"])
+    return {"run": turn["run"], "agent_tag": turn["tag"], "agent_name": turn["name"], "tick": as_tick(rec["tick"]),
+            "scene": describe_scene((rec.get("agent_step") or {}).get("observation")), "picks": turn["picks"],
+            "memories": {i: {"ticks_ago": as_tick(rec["tick"] - by_id[i]["t_created"]), "text": by_id[i]["text"]}
+                         for i in ids if i in by_id}}
 
 
 def main():
@@ -357,7 +419,10 @@ def main():
     ap.add_argument("--include-repeats", action="store_true",
                     help="also count rescues the agent already had: selected last tick or inside its recent turns")
     ap.add_argument("--anchor", type=int, default=0, help="sample this many moments for human grading, two cards each")
-    ap.add_argument("--variant", help="replay the runs under this formula from variants.py and card its picks")
+    ap.add_argument("--variant", nargs="+",
+                    help="replay the runs under these formulas from variants.py and card their picks")
+    ap.add_argument("--warmup", type=int, default=WARMUP_TURNS, help="skip moments in a world's first turns")
+    ap.add_argument("--keep", type=Path, help="an earlier card set: sample its moments first and copy its grades")
     args = ap.parse_args()
 
     run_dirs = [Path(d).resolve() for d in args.run_dirs]
@@ -367,19 +432,30 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     turns, runs = [], []
     for run_dir in run_dirs:
-        run_turns, info = load_run(run_dir, args.min_age, args.include_repeats, args.variant)
+        run_turns, info = pool_formulas(run_dir, args)
         turns += run_turns
         runs.append(info)
+    if args.keep:
+        kept = defaultdict(list)
+        for c in load_jsonl(args.keep / "cards.jsonl"):
+            kept[(c["sealed"]["run"], c["sealed"]["agent_tag"], c["sealed"]["tick"])].append(
+                (c["sealed"]["memory_id"], c["sealed"]["kind"]))
+        for turn in turns:
+            turn["kept"] = kept.get((turn["run"], turn["tag"], as_tick(turn["rec"]["tick"])), [])
 
-    cards = []
+    cards, moments = [], []
     if args.anchor:
         seed = "|".join(r["run"] for r in runs)
         for i, turn in enumerate(sample_moments(turns, args.anchor, seed, pairs=not args.variant)):
-            pair = [build_card(turn["run"], turn, turn[kind][0], kind, args.history, turn["condition"] or "unknown")
-                    for kind in ("rescued", "displaced") if turn[kind]]
+            pair = [build_card(turn["run"], turn, mem_id, kind, args.history, turn["condition"] or "unknown")
+                    for mem_id, kind in cards_of(turn)]
             for card in pair:
                 card["sealed"]["split"] = "held_out" if i % 10 in HELD_OUT_SLOTS else "tuning"
+                if args.variant:  # the formulas that brought this memory to mind here
+                    card["sealed"]["picked_by"] = [f for f, pick in turn["picks"].items()
+                                                   if card["sealed"]["memory_id"] in pick["selected"]]
             cards += pair
+            moments.append(turn)
     else:  # the strongest rescue of each moment, the rest stay listed in sealed
         cards = [build_card(t["run"], t, t["rescued"][0], "rescued", args.history, t["condition"] or "unknown")
                  for t in turns]
@@ -396,7 +472,12 @@ def main():
         "splits": Counter(c["sealed"].get("split", "by hash") for c in cards),
     }, indent=2) + "\n")
 
+    if args.variant and moments:
+        (out_dir / "moments.json").write_text(json.dumps(
+            {"formulas": args.variant, "moments": [moment_of(t) for t in moments]}, ensure_ascii=False) + "\n")
     print(f"cards written: {len(cards)} -> {jsonl_path}")
+    if args.keep:
+        print(f"grades carried over from {args.keep.name}: {carry_ratings(args.keep.name, out_dir.name)}")
 
 
 if __name__ == "__main__":
