@@ -12,7 +12,7 @@ import math
 from dataclasses import asdict, dataclass, replace
 from typing import Callable
 
-from hou_memory import HouMemoryStore, _cosine, recall_probability
+from hou_memory.hou_memory import HouMemoryStore, _cosine, recall_probability
 
 SCHEMA_VERSION = 1
 
