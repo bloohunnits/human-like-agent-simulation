@@ -43,7 +43,7 @@ def deterministic_embedding(text):
     return v / np.linalg.norm(v)
 
 
-def run(output, sbert=False):
+def run(output, sbert=False, condition='learned'):
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     if sbert:
@@ -62,8 +62,9 @@ def run(output, sbert=False):
                            'max_parallel_workers':1, 'model':'gpt-5-nano', 'genome':'no_traits'})
     landmarks = output/'landmarks.json'
     landmarks.write_text(json.dumps({'well':[10,10], 'distant patch':[20,20]}))
-    launcher.configure_memory(params, SimpleNamespace(memory_condition='learned', memory_config=None,
-                                                       memory_landmarks=str(landmarks)), False)
+    launcher.configure_memory(params, SimpleNamespace(memory_condition=condition, memory_config=None,
+                                                       memory_landmarks=str(landmarks), recent_turns=None,
+                                                       plan_notes=False, effort='low'), False)
     runner_cls = launcher.runner_module.SimulationRunner
     with patch.object(launcher.runner_module, 'LLMRouter', ScriptedRouter), patch.object(launcher.runner_module,'create_video',lambda *a, **kw:None):
         first = runner_cls(params)
@@ -101,5 +102,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',required=True)
     parser.add_argument('--sbert',action='store_true')
+    parser.add_argument('--condition',default='learned',help='a condition or a formula from variants.py')
     args = parser.parse_args()
-    run(args.output,args.sbert)
+    run(args.output,args.sbert,args.condition)

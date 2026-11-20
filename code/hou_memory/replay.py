@@ -21,9 +21,9 @@ from dataclasses import fields
 from itertools import repeat
 from pathlib import Path
 
-from associative_memory import MEMORY_CONDITIONS, AssociativeMemory, MemoryConfig
+from associative_memory import AssociativeMemory, MemoryConfig
 from hou_memory import HouMemoryStore
-from variants import VARIANTS
+from variants import VARIANTS, variant_settings
 
 LOGS = Path(__file__).resolve().parent.parent / "terralingua" / "logs_dev" / "logs"
 
@@ -51,8 +51,10 @@ def load_agent(agent_logs: Path, tag: str):
     return lines, memories
 
 
-def replay_agent(lines, memories, config: MemoryConfig, token_counter=None, engine_class=AssociativeMemory):
-    """One row per recorded tick: what this condition would have selected."""
+def replay_agent(lines, memories, config: MemoryConfig, token_counter=None, engine_class=AssociativeMemory,
+                 events=False):
+    """One row per recorded tick: what this condition would have selected.
+    With events, each row also keeps the audit line the engine would have written."""
     store = HouMemoryStore(embed_fn=lambda text: None)
     engine = engine_class(store, config, token_counter)
     # The stale-preview guard hashes the whole store twice a tick. Replay
@@ -72,7 +74,7 @@ def replay_agent(lines, memories, config: MemoryConfig, token_counter=None, engi
         r_by_id = {row["id"]: row["relevance"] for row in line["rows"]}
         result = engine.preview(line["cue"], line["tick"], entities_of(line["sources"]),
                                 line["event_id"], r_by_id=r_by_id)
-        engine.commit(result)
+        event = engine.commit(result)
         rescued = [i for i in result.selected if i not in result.solo_selected]
         # Fresh: not already in the prompt, either selected last tick or among
         # the recent turns the prompt shows. The same rule as rescued_cards.py.
@@ -80,16 +82,30 @@ def replay_agent(lines, memories, config: MemoryConfig, token_counter=None, engi
                  and line["tick"] - created[i] > config.working_history]
         previous = set(result.selected)
         out.append({"tick": line["tick"], "selected": list(result.selected),
-                    "solo_selected": list(result.solo_selected), "rescued": rescued, "fresh": fresh})
+                    "solo_selected": list(result.solo_selected), "rescued": rescued, "fresh": fresh,
+                    **({"event": event} if events else {})})
     return out
 
 
+def recorded_engine(run_dir: Path):
+    """The engine class a run was made with. Runs saved before variants used the stock one."""
+    try:
+        name = json.loads((run_dir / "memory_config.json").read_text()).get("variant")
+    except OSError:
+        name = None
+    return VARIANTS[name].engine if name else AssociativeMemory
+
+
 def condition_config(recorded: dict, name: str) -> MemoryConfig:
-    """The run's own settings with the variant's condition and overrides on top."""
+    """The run's own settings under another variant. What the run's own
+    variant set goes back to the default first, so learned on a run made with
+    chained is one hop at .8 again. Then this variant's settings go on top."""
     names = {f.name for f in fields(MemoryConfig)}
-    variant = VARIANTS[name]
-    return MemoryConfig(**{**{k: v for k, v in recorded.items() if k in names},
-                           **MEMORY_CONDITIONS[variant.condition], **variant.settings})
+    # The run's own variant: the one with the most settings that all match.
+    own = max((variant_settings(v) for v in VARIANTS
+               if all(recorded.get(k) == x for k, x in variant_settings(v).items())), key=len, default={})
+    return MemoryConfig(**{**{k: v for k, v in recorded.items() if k in names and k not in own},
+                           **variant_settings(name)})
 
 
 def replay_tag(agent_logs: Path, tag: str, names):
@@ -98,7 +114,7 @@ def replay_tag(agent_logs: Path, tag: str, names):
     if not lines:
         return 0, 0, {}
     recorded = lines[-1]["config"]
-    rows = replay_agent(lines, memories, MemoryConfig(**recorded))
+    rows = replay_agent(lines, memories, MemoryConfig(**recorded), engine_class=recorded_engine(agent_logs.parent))
     matched = sum(r["selected"] == l["selected"] and r["solo_selected"] == l["solo_selected"]
                   for r, l in zip(rows, lines))
     return len(lines), matched, {name: replay_agent(lines, memories, condition_config(recorded, name),

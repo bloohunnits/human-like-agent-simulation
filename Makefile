@@ -4,8 +4,9 @@ NAME ?= hou_sim
 TICKS ?= 50
 
 # Proxy plus our memory runner on the newer engine: make run NAME=world7 TICKS=300
+# CONDITION=actr runs a formula from code/hou_memory/variants.py in place of chained
 run: code/__main__.py
-	$(PYTHON) $< $(NAME) $(TICKS)
+	MEMORY_CONDITION=$(CONDITION) $(PYTHON) $< $(NAME) $(TICKS)
 
 # Same, on the older engine with the settings of the graded anchor_v1 worlds
 run-anchor: code/__main__.py
@@ -25,3 +26,8 @@ RUNS ?= newengine_2
 VARIANTS ?= hou learned chained
 replay:
 	cd code/terralingua && .venv/bin/python ../hou_memory/replay.py $(RUNS) --variants $(VARIANTS)
+
+# The same variants scored on the human-graded memories:
+# make grades VARIANTS="hou chained actr"
+grades:
+	cd code/terralingua && .venv/bin/python ../hou_memory/grade_check.py --variants $(VARIANTS)

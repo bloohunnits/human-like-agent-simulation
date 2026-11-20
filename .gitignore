@@ -14,3 +14,6 @@ logs/
 output/analysis/rescued/*
 !output/analysis/rescued/anchor_v1/
 !output/analysis/rescued/anchor_v2/
+!output/analysis/rescued/actr_v1/
+!output/analysis/rescued/anchor_v3/
+!output/analysis/rescued/anchor_v4/

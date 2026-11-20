@@ -11,6 +11,7 @@ import numpy as np
 
 from associative_memory import MemoryConfig
 from memory_agent import HouMemoryAgent
+from variants import VARIANTS
 try:
     from core.utils.llm_client import Response
 except ImportError:  # these drive the older engine's agent; run them with code/terralingua/.venv
@@ -130,6 +131,19 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(restored.memory_engine.to_dict(),checkpoint['associative_memory']['associative'])
         self.run_step(restored,101)
         self.assertEqual(restored._memory_payload(),agent._memory_payload())
+
+    def test_variant_engine_runs_and_survives_checkpoint(self):
+        actr = VARIANTS['actr'].engine
+        with patch.object(HouMemoryAgent, 'memory_engine_class', actr):
+            agent = self.agent()
+            self.run_step(agent, 100)
+            restored = self.agent()
+            restored.set_state_ckpt(copy.deepcopy(agent.get_state_ckpt()))
+            self.assertIs(type(agent.memory_engine), actr)
+            self.assertIs(type(restored.memory_engine), actr)
+            self.run_step(agent, 101)
+            self.run_step(restored, 101)
+            self.assertEqual(restored._memory_payload(), agent._memory_payload())
 
     def test_missing_checkpoint_state_fails_instead_of_empty_overwrite(self):
         agent = self.agent()
