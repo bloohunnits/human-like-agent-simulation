@@ -33,12 +33,18 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
     <p>Each turn, a memory pops into a person's head, the way one pops into yours. We want to know if those memories make sense. You will read a moment from one person's life and the memory that came up, then tell us what you think.</p>
     <p>You don't need to know how any of this works. There are no right answers. Go with your gut.</p>
 
+    <h2>Two kinds of cards</h2>
+    <ul>
+      <li><b>Two memories:</b> one moment and two memories, A and B. Only one of them fits in the person's head. You pick the one that helps more. These come first.</li>
+      <li><b>One memory:</b> one moment and one memory. You say if it makes sense.</li>
+    </ul>
+
     <h2>What each card shows</h2>
     <ul>
       <li><b>Two maps:</b> what this person could see when the memory happened, and right now. They are always in the middle.</li>
       <li><b>What happened:</b> this person's last few turns, oldest first, written like a script. Gray lines set the scene. A colored name is someone talking. Each person has the same color in the text and on the maps. Small tags mark the things that change a life: <b>gave</b>, <b>took</b>, <b>note</b>, <b>child</b>, <b>death</b>.</li>
       <li><b>Right now:</b> what they can see and hear at this moment.</li>
-      <li><b>This came to their mind:</b> the memory that popped into their head, in the yellow box. This is the part you grade. If it is one of the last few turns, that turn is yellow too.</li>
+      <li><b>This came to their mind:</b> the memory that popped into their head, in the yellow box. This is the part you grade. If it is one of the last few turns, that turn is yellow too. A card with two memories has two yellow boxes, <b>Memory A</b> and <b>Memory B</b>, and one map.</li>
     </ul>
     <p>Each turn, the person first hears what others said, then moves and talks.</p>
 
@@ -63,7 +69,10 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
     <p>The memory is often something that just happened, so you will see it marked in the list above it. That alone doesn't make it a yes. Ask why this memory came up, and not some other one.</p>
     <p>You will sometimes see the same moment twice with a different memory. That is on purpose. Grade each one by itself.</p>
 
-    <h2>The three answers</h2>
+    <h2>A card with two memories</h2>
+    <p>Ask which memory you would rather have in your head right now. Pick <b>A</b> or <b>B</b>. If they help about the same, say so. If neither one helps, say that.</p>
+
+    <h2>A card with one memory: the three answers</h2>
     <div class="example"><b>1. Yes, and it matters.</b> A real person could think of this here, and it helps them pick what to do next.<br>
       <i>Right now:</i> Energy 8. No food in sight. Ben is 3 steps away.<br>
       <i>Came to mind:</i> 40 turns ago, Ben gave them 20 energy.<br>
@@ -78,7 +87,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
       <i>Why:</i> One plain step, and nothing here would bring it up.</div>
 
     <h2>How to answer</h2>
-    <p>Press <b>1</b>, <b>2</b> or <b>3</b>, then <b>Enter</b>. You can also click. Each card takes about a minute, since there is a lot to read. Your answers save as you go, and <b>Back</b> lets you change one.</p>
+    <p>Press the number of your answer, then <b>Enter</b>. You can also click. Each card takes about a minute, since there is a lot to read. Your answers save as you go, and <b>Back</b> lets you change one.</p>
     <p id="how-many"></p>
     <p><input id="rater" placeholder="Andre, Ben or Ryan" size="16"> <button id="start" class="go">Start</button></p>
   </div>
@@ -108,19 +117,25 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
 
 <section id="tab-match" hidden>
   <p id="people"></p>
+  <p id="engines" class="muted"></p>
   <table><thead><tr><th>Judge</th><th>Practice cards</th><th>Test cards</th><th>Result</th></tr></thead><tbody id="rows"></tbody></table>
   <p id="rule" class="muted"></p>
 </section>
 
 <section id="tab-compare" hidden>
   <p>What each formula brought to mind at the same moment. <b>●</b> came to mind. <b style="color:#c98a1a">●</b> came to mind only because of links: without them, that formula would have left it out. <b>○</b> would have come to mind without links, but a linked memory took its place. Graders never see this page.</p>
+  <p><select id="engine" hidden><option value="">All worlds</option><option value="newer">Newer engine only</option><option value="older">Older engine only</option></select></p>
+  <h3>Head to head</h3>
+  <p class="muted">One moment, two memories: the one links brought to mind and the one it pushed out. People picked without knowing which was which. Near copies count as about the same and nobody is asked. A pair graded one memory at a time, before pair cards, uses those two grades.</p>
+  <table><thead><tr><th>Formula</th><th>Pairs answered</th><th>Linked memory better</th><th>Pushed-out memory better</th><th>About the same</th><th>Neither helps</th><th>So far</th></tr></thead><tbody id="heads"></tbody></table>
+  <h3>Every memory</h3>
   <table><thead><tr><th>Formula</th><th>Memories only because of links</th><th>Graded</th><th>Matters</th><th>Doesn't matter</th><th>No</th></tr></thead><tbody id="tally"></tbody></table>
   <div id="moments"></div>
 </section>
 
 <script>
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),f2=x=>x==null?'-':Number(x).toFixed(2);
-const L=['belongs','doesnt_matter','noise'],CHIPS=['too old','wrong person','nothing to do with here','would help right now'];let meta={},cards=[],pos=0,pick=null,tab='label',extra=false;
+const L=['belongs','doesnt_matter','noise'],PL=['a','b','both','neither'],CHIPS=['too old','wrong person','nothing to do with here','would help right now'];let meta={},cards=[],pos=0,pick=null,tab='label',extra=false;
 const admin=new URLSearchParams(location.search).has('admin');
 const keep={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 const session={get:k=>{try{return sessionStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{sessionStorage.setItem(k,v)}catch(e){}}};
@@ -163,8 +178,8 @@ function line(t,who){const say=t.match(/^([\w.-]+): (.*)$/s);
 function story(text,who,tick){let html='',open='',inRecall=false,memSeen=false;const close=()=>{html+=open?'</div>':'';open='';};
   for(const raw of text.split('\n')){const t=raw.trim();if(!t)continue;
     if(/^This is .+\.$/.test(t)&&!html){html+=`<p class="who">This is <b>${esc(who)}</b>.${tick==null?'':` <span class="stat">turn ${esc(tick)} of this world</span>`}</p>`;continue;}
-    if(t==='What happened:'||t==='Right now:'||/^This came to .+'s mind:$/.test(t)){close();
-      if(inRecall)html+='</div>';inRecall=t.startsWith('This came');
+    if(t==='What happened:'||t==='Right now:'||/^This came to .+'s mind:$/.test(t)||/^Memory [AB]:$/.test(t)){close();
+      if(inRecall)html+='</div>';inRecall=t.startsWith('This came')||t.startsWith('Memory ');
       html+=(inRecall?'<div class="recall">':'')+`<h3>${esc(t.slice(0,-1))}</h3>`;
       // A recent memory is already on screen as the yellow turn, so its copy folds away.
       if(inRecall&&memSeen)html+='<details><summary>The yellow turn above. Show it again</summary>';if(t==='Right now:'){html+='<div class="turn now">';open='now';}continue;}
@@ -183,9 +198,10 @@ function mapSvg(view,who,title){if(!view)return '';const r=view.radius||6,n=2*r+
 function show(){const n=cards.filter(c=>c.mine).length,goal=cards.length,c=cards[pos],stop=!c||(!c.mine&&n>=goal&&!extra);
   $('left').textContent=cards.length?`${n} of ${extra?cards.length:goal} done`:'No cards here.';$('card').hidden=stop;$('done').hidden=!stop||!cards.length;$('more').hidden=n>=cards.length;if(stop)return;
   cast(c);
-  $('maps').innerHTML=c.views?mapSvg(c.views.then,c.who,`The memory (${c.ago===1?'1 turn':c.ago+' turns'} ago)`)+mapSvg(c.views.now,c.who,'Right now')+`<p class="key"><span style="color:#17383c">● ${esc(c.who)}</span><span class="muted">● others, each in their own color</span><span style="color:#3f8f5a">● food, bigger is more</span><span style="color:#c98a1a">■ note</span></p>`:'';
+  const opts=c.pair?PL:L;$('question').textContent=c.pair?meta.pair_question.replace('this person',c.who):meta.question;$('chips').hidden=!!c.pair;
+  $('maps').innerHTML=c.views&&(c.views.then||c.views.now)?mapSvg(c.views.then,c.who,`The memory (${c.ago===1?'1 turn':c.ago+' turns'} ago)`)+mapSvg(c.views.now,c.who,'Right now')+`<p class="key"><span style="color:#17383c">● ${esc(c.who)}</span><span class="muted">● others, each in their own color</span><span style="color:#3f8f5a">● food, bigger is more</span><span style="color:#c98a1a">■ note</span></p>`:'';
   $('text').innerHTML=story(c.text,c.who,c.tick);pick=c.mine?c.mine.label:null;$('why').value=c.mine?c.mine.reason:'';
-  $('answers').innerHTML=L.map((l,i)=>`<button data-l="${l}">${i+1}. ${esc(name(l))}<small>${esc(meta.help[l])}</small></button>`).join('');
+  $('answers').innerHTML=opts.map((l,i)=>`<button data-l="${l}">${i+1}. ${c.pair?esc(meta.pair_answers[l]):`${esc(name(l))}<small>${esc(meta.help[l])}</small>`}</button>`).join('');
   $('answers').querySelectorAll('button').forEach(b=>{b.onclick=()=>{b.blur();choose(b.dataset.l);};b.classList.toggle('on',b.dataset.l===pick);});
   $('chips').innerHTML=CHIPS.map(t=>`<button>${esc(t)}</button>`).join('');$('chips').querySelectorAll('button').forEach(b=>{b.classList.toggle('on',$('why').value===b.textContent);b.onclick=()=>{b.blur();$('why').value=b.textContent;$('chips').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));};});
   $('back').disabled=pos===0;scrollTo(0,0);}
@@ -194,19 +210,26 @@ let saving=false;async function next(){const c=cards[pos];if(!c||saving)return;i
 function start(){if(!meta.raters.includes(who().toLowerCase())){err('Type your first name: Andre, Ben or Ryan.');$('rater').focus();return;}session.set('rescued.rater',who());$('guide').hidden=true;$('work').hidden=false;load();}
 
 async function report(){if(!set())return;const r=await api('/api/judge/report?set='+encodeURIComponent(set()));
-  const raters=Object.entries(r.raters);$('people').textContent=!raters.length?'Nobody has labeled yet.':raters.map(([n,k])=>`${n} labeled ${k}.`).join(' ')+' '+r.human_pairs.map(p=>`${p.a} and ${p.b} agree on ${p.agree} of ${p.n}.`).join(' ')+(r.stale?` ${r.stale} old labels not counted because the card changed.`:'');
+  const raters=Object.entries(r.raters);$('people').textContent=!raters.length?'Nobody has labeled yet.':raters.map(([n,k])=>`${n} labeled ${k}.`).join(' ')+' '+Object.entries(r.pairs.raters).map(([n,k])=>`${n} compared ${k} of ${r.pairs.total} pairs.`).join(' ')+(r.carried?` ${r.carried} grades came over from an earlier wording of the same card.`:'')+' '+r.human_pairs.map(p=>`${p.a} and ${p.b} agree on ${p.agree} of ${p.n}.`).join(' ')+(r.stale?` ${r.stale} old labels not counted because the card changed.`:'');
+  $('engines').textContent=['newer','older'].filter(e=>r.engines[e]).map(e=>{const x=r.engines[e];return `${e==='newer'?'Newer':'Older'} engine: ${x.cards} cards, ${x.graded} graded${x.graded?' ('+L.filter(l=>x.mix[l]).map(l=>`${x.mix[l]} ${({belongs:'matters',doesnt_matter:"doesn't matter",noise:'no'})[l]}`).join(', ')+')':''}.`;}).join(' ');
   $('rows').innerHTML=r.runs.map(x=>`<tr><td>${esc(x.run)}</td><td>${x.tuning.agree} of ${x.tuning.n} <span class="muted">(${f2(x.tuning.kappa)})</span></td><td>${x.held_out.agree} of ${x.held_out.n} <span class="muted">(${f2(x.held_out.kappa)})</span></td><td class="${x.gate==='pass'?'pass':x.gate==='fail'?'fail':'muted'}">${esc(x.gate==='pass'?'Pass':x.gate==='fail'?'Fail':x.gate)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">No judge runs yet.</td></tr>';
   $('rule').textContent=r.gate_rule;
   const runName=`${$('prompt').value} / ${$('model').value}`;const w=r.runs.some(x=>x.run===runName)?(await api(`/api/judge/disagreements?set=${encodeURIComponent(set())}&run=${encodeURIComponent(runName)}`)).items:[];
   $('wrong').innerHTML=w.length?w.map(x=>`<div class="box"><b>Came to mind:</b> ${esc(x.memory)}<br><b>People:</b> ${esc(name(x.majority))}<br><b>Judge:</b> ${esc(name(x.judge))}. <span class="muted">${esc(x.judge_reason)}</span><details><summary class="muted">Whole card</summary><pre>${esc(x.text)}</pre></details></div>`).join(''):'<p class="muted">Nothing yet. Label some cards, then run the judge.</p>';}
 const FORMULAS={hou:'No links',learned:'Learned',chained:'Chained',actr:'ACT-R'};
-async function compare(){if(!set())return;const d=await api('/api/judge/compare?set='+encodeURIComponent(set())),fs=d.formulas;
+let cmp=null;
+async function compare(){if(!set())return;cmp=await api('/api/judge/compare?set='+encodeURIComponent(set()));$('engine').hidden=new Set(cmp.moments.map(m=>m.engine)).size<2;drawCompare();}
+function drawCompare(){const d=cmp,fs=d.formulas,e=$('engine').hidden?'':$('engine').value,ms=d.moments.filter(m=>!e||m.engine===e);
   if(!d.moments.length){$('tally').innerHTML='';$('moments').innerHTML='<p class="muted">This set was built from one formula, so there is nothing to compare.</p>';return;}
-  const rows=d.moments.flatMap(m=>m.rows),n=(f,l)=>rows.filter(r=>r.by[f]==='links'&&(l?r.grade===l:true)).length;
+  const ps=(d.pairs||[]).filter(p=>!e||p.engine===e),tail=(k,n)=>{let c=1,s=0;for(let i=0;i<=n;i++){if(i>=k)s+=c;c=c*(n-i)/(i+1);}return s/2**n;};
+  $('heads').innerHTML=[...fs.filter(f=>ps.some(p=>p.by.includes(f))),''].map(f=>{const mine=ps.filter(p=>!f||p.by.includes(f)),k=r=>mine.filter(p=>p.result===r).length,w=k('linked'),l=k('pushed');
+    const so=!(w+l)?'Nothing yet':tail(Math.max(w,l),w+l)<.05?(w>l?'Linked memory wins':'Pushed-out memory wins'):'Too close to call';
+    return `<tr><td>${f?esc(FORMULAS[f]||f):'Any formula'}</td><td>${mine.filter(p=>p.result).length} of ${mine.length}</td><td>${w}</td><td>${l}</td><td>${k('both')+k('same')}</td><td>${k('neither')}</td><td>${so}</td></tr>`;}).join('');
+  const rows=ms.flatMap(m=>m.rows),n=(f,l)=>rows.filter(r=>r.by[f]==='links'&&(l?r.grade===l:true)).length;
   $('tally').innerHTML=fs.map(f=>`<tr><td>${esc(FORMULAS[f]||f)}</td><td>${n(f)}</td><td>${rows.filter(r=>r.by[f]==='links'&&r.grade).length}</td>${L.map(l=>`<td>${n(f,l)}</td>`).join('')}</tr>`).join('');
-  $('moments').innerHTML=d.moments.map(m=>{people=[];palette={};
+  $('moments').innerHTML=ms.map(m=>{people=[];palette={};
     const short=r=>{const t=r.lines.filter(x=>!x.startsWith('(')).slice(-2).join(' ')||r.lines[0]||'';return t.length>150?t.slice(0,150)+'...':t;};
-    return `<div class="box"><p class="who"><b>${esc(m.who)}</b> <span class="stat">turn ${esc(m.tick)}</span> <span class="muted">${esc(m.run)}</span></p><div class="turn now">${m.now.map(x=>line(x,m.who)).join('')}</div>
+    return `<div class="box"><p class="who"><b>${esc(m.who)}</b> <span class="stat">turn ${esc(m.tick)}</span> <span class="muted">${esc(m.run)}${m.engine?', '+esc(m.engine)+' engine':''}</span></p><div class="turn now">${m.now.map(x=>line(x,m.who)).join('')}</div>
       <table class="cmp"><thead><tr><th>Memory</th>${fs.map(f=>`<th>${esc(FORMULAS[f]||f)}</th>`).join('')}<th>People said</th></tr></thead><tbody>${m.rows.map(r=>`<tr><td><details><summary><span class="when">${r.ago===1?'1 turn':esc(r.ago)+' turns'} ago</span>${esc(short(r))}</summary>${r.lines.map(x=>line(x,m.who)).join('')}</details></td>${fs.map(f=>`<td class="c${r.by[f]==='links'?' links':''}">${r.by[f]==='out'?'○':r.by[f]?'●':''}</td>`).join('')}<td>${r.grade?esc(name(r.grade)):r.card?'<span class="muted">not graded yet</span>':''}</td></tr>`).join('')}</tbody></table></div>`;}).join('');}
 async function save(){try{const s=await api('/api/judge/prompt',{parent:$('prompt').value,world:$('world').value,task:$('task').value,note:$('note').value,definitions:{belongs:$('d1').value,doesnt_matter:$('d2').value,noise:$('d3').value}});meta=await api('/api/judge/meta').then(m=>({...meta,prompts:m.prompts}));
   $('prompt').innerHTML=Object.keys(meta.prompts).map(n=>`<option>${esc(n)}</option>`).join('');$('prompt').value=s.name;showPrompt();$('status').textContent=`Saved as ${s.name}.`;err();}catch(e){err(e);}}
@@ -214,10 +237,10 @@ async function runJudge(){try{$('runJudge').disabled=true;const {job}=await api(
   const poll=async()=>{const j=await api('/api/judge/job/'+job);$('status').textContent=j.status==='running'?`Judging ${j.done} of ${j.total??'?'}...`:j.status==='failed'?`Failed: ${j.error}`:'Done.';if(j.status==='running')setTimeout(poll,1000);else{$('runJudge').disabled=false;await report();}};poll();}catch(e){$('runJudge').disabled=false;err(e);}}
 
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));for(const t of ['label','judge','match','compare'])$('tab-'+t).hidden=t!==tab;if(tab==='compare')compare().catch(err);else if(tab!=='label')report().catch(err);});
-$('run').onchange=()=>{keep.set('rescued.run',$('run').value);load();};$('update').onclick=()=>load(true);$('start').onclick=start;$('rater').onkeydown=e=>{if(e.key==='Enter')start();};
+$('engine').onchange=drawCompare;$('run').onchange=()=>{keep.set('rescued.run',$('run').value);load();};$('update').onclick=()=>load(true);$('start').onclick=start;$('rater').onkeydown=e=>{if(e.key==='Enter')start();};
 $('helpBtn').onclick=()=>{$('guide').hidden=false;$('work').hidden=true;scrollTo(0,0);};$('more').onclick=()=>{extra=true;show();};
 $('next').onclick=next;$('back').onclick=()=>{if(pos>0){pos--;show();}};$('prompt').onchange=()=>{showPrompt();report().catch(err);};$('model').onchange=()=>report().catch(err);$('save').onclick=save;$('runJudge').onclick=runJudge;
-document.addEventListener('keydown',e=>{if(tab!=='label'||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName))return;if(['1','2','3'].includes(e.key))choose(L[e.key-1]);else if(e.key==='Enter'){e.preventDefault();next();}});
+document.addEventListener('keydown',e=>{if(tab!=='label'||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName))return;const opts=cards[pos]&&cards[pos].pair?PL:L;if(opts[e.key-1]&&!$('card').hidden)choose(opts[e.key-1]);else if(e.key==='Enter'){e.preventDefault();next();}});
 if(admin){$('admin-bar').hidden=false;$('tabs').hidden=false;}
 $('rater').value=session.get('rescued.rater')||'';loadMeta().then(()=>{if(who())start();}).catch(err);
 </script></body></html>

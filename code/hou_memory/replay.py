@@ -97,9 +97,15 @@ def recorded_engine(run_dir: Path):
 
 
 def condition_config(recorded: dict, name: str) -> MemoryConfig:
-    """The run's own settings with the variant's condition and overrides on top."""
+    """The run's own settings under another variant. What the run's own
+    variant set goes back to the default first, so learned on a run made with
+    chained is one hop at .8 again. Then this variant's settings go on top."""
     names = {f.name for f in fields(MemoryConfig)}
-    return MemoryConfig(**{**{k: v for k, v in recorded.items() if k in names}, **variant_settings(name)})
+    # The run's own variant: the one with the most settings that all match.
+    own = max((variant_settings(v) for v in VARIANTS
+               if all(recorded.get(k) == x for k, x in variant_settings(v).items())), key=len, default={})
+    return MemoryConfig(**{**{k: v for k, v in recorded.items() if k in names and k not in own},
+                           **variant_settings(name)})
 
 
 def replay_tag(agent_logs: Path, tag: str, names):

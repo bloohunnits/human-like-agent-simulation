@@ -20,11 +20,14 @@ memory, each formula's strongest rescue becomes a card, and moments.json
 records what every formula brought to mind there, for the Compare tab.
 
 Moments in a world's first turns are skipped (--warmup): too little has
-happened by then for a memory to matter. --keep SET samples that set's moments
-first, with the same cards, and copies its grades over.
+happened by then for a memory to matter. --keep SET [SET ...] samples those
+sets' moments first, with the same cards, and copies their grades over.
+--swaps-first then takes the moments where a memory was pushed out, since
+those are the ones people compare side by side.
 
 Usage: rescued_cards.py <run_dir> [--out DIR] [--history 8] [--min-age 0] [--anchor 60]
-                        [--variant hou learned chained actr] [--warmup 30] [--keep SET]
+                        [--variant hou learned chained actr] [--warmup 30] [--keep SET ...]
+                        [--swaps-first]
 where run_dir is a TerraLingua logs/<exp>/ folder.
 """
 import argparse
@@ -228,11 +231,12 @@ def stratum(turn):
     return bucket, (row.get("solo_score") or 1) <= cutoff, view, tuple(turn["by"])
 
 
-def sample_moments(turns, count, seed, pairs=True):
+def sample_moments(turns, count, seed, pairs=True, swaps_first=False):
     """Take moments from each kind in turn. Skip any that reuse a memory or sit
     close enough to a chosen moment to share its history, so no two sampled
     moments are near copies of each other. Without pairs, a moment where
-    nothing was pushed out counts too. Moments kept from an earlier set go first."""
+    nothing was pushed out counts too. Moments kept from an earlier set go
+    first, then with swaps_first the ones where a memory was pushed out."""
     def usable(t):
         if not t["displaced"]:
             return not pairs
@@ -240,9 +244,6 @@ def sample_moments(turns, count, seed, pairs=True):
 
     pool = [t for t in turns if usable(t)]
     random.Random(seed).shuffle(pool)
-    strata = defaultdict(list)
-    for turn in pool:
-        strata[stratum(turn)].append(turn)
     chosen, used, spots = [], set(), defaultdict(list)
 
     def take(turn):
@@ -255,14 +256,22 @@ def sample_moments(turns, count, seed, pairs=True):
         spots[who].append(turn["rec"]["tick"])
         return True
 
+    def fill(group):
+        strata = defaultdict(list)
+        for turn in group:
+            strata[stratum(turn)].append(turn)
+        while len(chosen) < count and any(strata.values()):
+            for key in sorted(strata, key=str):
+                while strata[key] and len(chosen) < count:
+                    if take(strata[key].pop()):
+                        break
+
     for turn in pool:
         if turn.get("kept"):
             take(turn)
-    while len(chosen) < count and any(strata.values()):
-        for key in sorted(strata, key=str):
-            while strata[key] and len(chosen) < count:
-                if take(strata[key].pop()):
-                    break
+    if swaps_first:
+        fill([t for t in pool if t["displaced"]])
+    fill(pool)  # a moment already taken is refused
     return sorted(chosen, key=lambda t: (str(stratum(t)), t["run"], t["tag"], t["rec"]["tick"]))
 
 
@@ -373,7 +382,7 @@ def load_run(run_dir, min_age, include_repeats=False, variant=None, warmup=0):
     rate = 100.0 * rescues_total / ticks_total if ticks_total else 0.0
     print(f"run {run}: {ticks_total} ticks, {rescues_total} rescues ({rate:.1f} per 100) in {len(turns)} moments")
     print("  per agent: " + (", ".join(f"{t}={n}" for t, n in sorted(per_agent.items())) or "none"))
-    info = {"run": run, "run_dir": str(run_dir),
+    info = {"run": run, "run_dir": str(run_dir), "engine": mem_cfg.get("engine") or "terralingua",
             "actor_model": mem_cfg.get("actor_model") or (params.get("agent") or {}).get("model"),
             "actor_effort": mem_cfg.get("effort", "low"), "plan_notes": mem_cfg.get("plan_notes", not mem_cfg.get("paper_prompt", False)),
             "memory_window": (mem_cfg.get("memory") or {}).get("working_history")}
@@ -421,8 +430,10 @@ def main():
     ap.add_argument("--anchor", type=int, default=0, help="sample this many moments for human grading, two cards each")
     ap.add_argument("--variant", nargs="+",
                     help="replay the runs under these formulas from variants.py and card their picks")
+    ap.add_argument("--swaps-first", action="store_true",
+                    help="sample moments where a memory was pushed out before the rest, for pair cards")
     ap.add_argument("--warmup", type=int, default=WARMUP_TURNS, help="skip moments in a world's first turns")
-    ap.add_argument("--keep", type=Path, help="an earlier card set: sample its moments first and copy its grades")
+    ap.add_argument("--keep", type=Path, nargs="+", help="earlier card sets: sample their moments first and copy their grades")
     args = ap.parse_args()
 
     run_dirs = [Path(d).resolve() for d in args.run_dirs]
@@ -437,16 +448,17 @@ def main():
         runs.append(info)
     if args.keep:
         kept = defaultdict(list)
-        for c in load_jsonl(args.keep / "cards.jsonl"):
-            kept[(c["sealed"]["run"], c["sealed"]["agent_tag"], c["sealed"]["tick"])].append(
-                (c["sealed"]["memory_id"], c["sealed"]["kind"]))
+        for old in args.keep:
+            for c in load_jsonl(old / "cards.jsonl"):
+                kept[(c["sealed"]["run"], c["sealed"]["agent_tag"], c["sealed"]["tick"])].append(
+                    (c["sealed"]["memory_id"], c["sealed"]["kind"]))
         for turn in turns:
             turn["kept"] = kept.get((turn["run"], turn["tag"], as_tick(turn["rec"]["tick"])), [])
 
     cards, moments = [], []
     if args.anchor:
         seed = "|".join(r["run"] for r in runs)
-        for i, turn in enumerate(sample_moments(turns, args.anchor, seed, pairs=not args.variant)):
+        for i, turn in enumerate(sample_moments(turns, args.anchor, seed, not args.variant, args.swaps_first)):
             pair = [build_card(turn["run"], turn, mem_id, kind, args.history, turn["condition"] or "unknown")
                     for mem_id, kind in cards_of(turn)]
             for card in pair:
@@ -476,8 +488,8 @@ def main():
         (out_dir / "moments.json").write_text(json.dumps(
             {"formulas": args.variant, "moments": [moment_of(t) for t in moments]}, ensure_ascii=False) + "\n")
     print(f"cards written: {len(cards)} -> {jsonl_path}")
-    if args.keep:
-        print(f"grades carried over from {args.keep.name}: {carry_ratings(args.keep.name, out_dir.name)}")
+    for old in reversed(args.keep or []):  # the newest set's grade wins
+        print(f"grades carried over from {old.name}: {carry_ratings(old.name, out_dir.name)}")
 
 
 if __name__ == "__main__":

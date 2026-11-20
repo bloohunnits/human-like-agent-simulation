@@ -652,18 +652,15 @@ def api_judge_meta():
     return jsonify({"runs": runs, "prompts": judging.prompts(), "anchor": anchor,
                     "models": list(judging.JUDGE_MODELS), "labels": judging.LABEL_NAMES,
                     "question": judging.QUESTION, "help": judging.ANSWER_HELP, "raters": judging.RATERS,
-                    "goal": len(judging.load_cards(anchor)) if anchor else 0})
+                    "pair_question": judging.PAIR_QUESTION, "pair_answers": judging.PAIR_ANSWERS,
+                    "goal": len(judging.queue(anchor, "")) if anchor else 0})
 
 
 @app.route("/api/judge/cards")
 def api_judge_cards():
     try:
         card_set, rater = request.args.get("set", ""), request.args.get("rater", "")
-        out = [{"card_id": c["card_id"], "text": judging.visible_text(c), "mine": mine, "views": c.get("views"),
-                "who": c.get("sealed", {}).get("agent_name", ""), "ago": c.get("memory", {}).get("ticks_ago"),
-                "tick": c.get("sealed", {}).get("tick")}
-               for c, mine in judging.for_rater(card_set, rater)]
-        return jsonify({"cards": out})
+        return jsonify({"cards": judging.queue(card_set, rater)})
     except (ValueError, OSError) as e:
         return _json_error(e)
 
@@ -672,8 +669,8 @@ def api_judge_cards():
 def api_judge_label():
     data = request.get_json(force=True, silent=True) or {}
     try:
-        judging.save_rating(data.get("set", ""), data.get("rater", ""), data.get("card_id", ""),
-                            data.get("label"), data.get("reason", ""))
+        save = judging.save_pair if str(data.get("card_id", "")).startswith("pair-") else judging.save_rating
+        save(data.get("set", ""), data.get("rater", ""), data.get("card_id", ""), data.get("label"), data.get("reason", ""))
         return jsonify({"ok": True})
     except (ValueError, OSError) as e:
         return _json_error(e)

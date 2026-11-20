@@ -285,7 +285,7 @@ code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs
 
 ### One set for every formula, past the warm-up
 
-`output/analysis/rescued/anchor_v3` is the set classmates grade now (`judging.ANCHOR_SET`). It pools the formulas, so one grade on a memory counts for every formula that brought it to mind:
+`output/analysis/rescued/anchor_v3` was the first pooled set. `anchor_v4` below replaced it for grading. It pools the formulas, so one grade on a memory counts for every formula that brought it to mind:
 
 ```
 code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs_dev/logs/paper_mini_300 ... \
@@ -295,7 +295,8 @@ code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs
 
 - **Pooled formulas.** A moment counts when any formula rescued a memory there. Each formula's strongest rescue becomes a card, plus one memory that was pushed out. The set has 61 cards from 30 moments. A card's `sealed.picked_by` lists the formulas that brought that memory to mind.
 - **Warm-up.** No card comes from a world's first 30 turns (`judging.WARMUP_TURNS`). In the seven graded worlds, under 1 turn in 100 before turn 30 is anything but a step, and about 6 in 100 after. Yet 20 of learned's 46 rescue moments and 56 of chained's 133 fell in those turns, because a being with a dozen memories and nothing to remember has its top three reshuffled by any link. The grading page and its report also leave out early cards in older sets.
-- **Kept grades.** `--keep` samples the earlier set's moments first, with the same cards, and copies each grade whose card still reads exactly the same.
+- **Kept grades.** `--keep` samples the earlier set's moments first, with the same cards, and copies its grades over. The next section says what happens to a grade on a reworded card.
+- **Worlds marked by engine.** The manifest records each world's engine. The Compare tab can show all worlds, the newer engine only or the older engine only, and the report counts cards and grades for each. Only the newer engine's worlds have gifts, thefts and births as well as notes, so read its results on their own. Graders are handed the newer engine's cards only (`judging.gradable`). Grades already given on older worlds still show in the report.
 - **Compare tab.** The builder writes `moments.json`: what every formula brought to mind at each sampled moment. The Compare tab (http://127.0.0.1:5057/rescued?admin) shows it as one table per moment, with a dot for each formula that brought a memory to mind, a gold dot when only links brought it, a ring when links pushed it out, and what people said about it. Graders work without `?admin` and never see it, so grading stays blind.
 
 A grading card:
@@ -306,4 +307,29 @@ The Compare tab:
 
 ![The Compare tab](img/grader-compare.png)
 
-Known limits: replaying a stock condition on a run that was made with `actr` keeps actr's cutoff of 0.5. The God Mode console does its own what-if scoring with the Hou kernel and has not been tried on a run made with `actr`.
+### Newer engine only, with pair cards
+
+`output/analysis/rescued/anchor_v4` is the set classmates grade now (`judging.ANCHOR_SET`). It holds one world, `newengine_2`, the only one so far on the newer engine with gifts, thefts and births:
+
+```
+code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs_dev/logs/newengine_2 \
+    --variant hou learned chained actr --anchor 60 --history 4 --swaps-first \
+    --keep output/analysis/rescued/anchor_v2 output/analysis/rescued/anchor_v3 --out output/analysis/rescued/anchor_v4
+```
+
+- **Swaps first.** `--swaps-first` takes every moment where a linked memory pushed another out before any other moment. The world has 25 such moments past the warm-up that are not near copies of each other. The other 35 moments are ones where a linked memory filled an empty slot, nearly all under `actr`.
+- **Pair cards.** A swap is graded as one card: the moment, then the two memories as A and B, and the question "Which memory helps this person more right now?" with four answers (A, B, both about the same, neither). The grader is not told which memory links brought. The order is fixed per grader and pair, no age is shown, and nothing in the story is marked. Answers go to `pairs_<name>.csv` by memory (`linked`, `pushed`, `both`, `neither`), never by letter. The two memories of a pair are not also asked one at a time.
+- **Near copies.** Two memories that share 73 in 100 of their words (`judging.NEAR_COPY`) count as about the same and nobody is asked. The set has one.
+- **Single cards.** A linked memory that pushed nothing out keeps the old card and the old three answers. These come after the pair cards.
+- **No grading twice.** `--keep` takes several sets, and a grade follows its card (the same memory at the same moment) into the new set. A grade given on an earlier wording is copied too and marked in the `carried` column with the set it came from, and the report counts those apart. A pair whose two memories one person already graded one at a time is not asked of them: the better grade wins, equal grades are a tie.
+- **Head to head.** The Compare tab counts, for each formula, how often the linked memory won, how often the pushed-out one won, and the ties. "So far" stays at "Too close to call" until the wins are unlikely to be luck (a sign test on the pairs that were not ties, under 1 in 20). With 25 pairs, one side needs 18 wins if nobody ties.
+
+A pair card:
+
+![A pair card](img/grader-pair.png)
+
+The judge model still reads single cards only.
+
+Replay under another formula first puts back what the run's own formula set. So `learned` on a run made with `chained` is one step at 0.8 again, and a stock condition on a run made with `actr` gets the stock cutoff back.
+
+Known limits: the God Mode console does its own what-if scoring with the Hou kernel and has not been tried on a run made with `actr`.

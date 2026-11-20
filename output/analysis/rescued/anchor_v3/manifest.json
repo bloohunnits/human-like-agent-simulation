@@ -3,6 +3,7 @@
     {
       "run": "paper_mini_300",
       "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300",
+      "engine": "terralingua",
       "actor_model": "gpt-5-mini",
       "actor_effort": "low",
       "plan_notes": false,
@@ -11,6 +12,7 @@
     {
       "run": "paper_mini_300_2",
       "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_2",
+      "engine": "terralingua",
       "actor_model": "gpt-5-mini",
       "actor_effort": "low",
       "plan_notes": false,
@@ -19,6 +21,7 @@
     {
       "run": "paper_mini_300_3",
       "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_3",
+      "engine": "terralingua",
       "actor_model": "gpt-5-mini",
       "actor_effort": "low",
       "plan_notes": false,
@@ -27,6 +30,7 @@
     {
       "run": "paper_mini_300_4",
       "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_4",
+      "engine": "terralingua",
       "actor_model": "gpt-5-mini",
       "actor_effort": "low",
       "plan_notes": false,
@@ -35,6 +39,7 @@
     {
       "run": "paper_mini_300_5",
       "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_5",
+      "engine": "terralingua",
       "actor_model": "gpt-5-mini",
       "actor_effort": "low",
       "plan_notes": false,
@@ -43,6 +48,7 @@
     {
       "run": "paper_mini_300_6",
       "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/paper_mini_300_6",
+      "engine": "terralingua",
       "actor_model": "gpt-5-mini",
       "actor_effort": "low",
       "plan_notes": false,
@@ -51,6 +57,7 @@
     {
       "run": "newengine_2",
       "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/newengine_2",
+      "engine": "terralingua-relational-memory",
       "actor_model": "gpt-5-mini",
       "actor_effort": "low",
       "plan_notes": false,
@@ -64,7 +71,7 @@
     "actr"
   ],
   "repo": {
-    "commit": "04e3f43d4fdc31d869a281129df88727d71061bc",
+    "commit": "3f7f6e5e248648f109c5f6ec005f66e04c4dcffd",
     "dirty": true
   },
   "engine": {

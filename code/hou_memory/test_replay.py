@@ -2,6 +2,7 @@
 import json
 import tempfile
 import unittest
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -90,6 +91,15 @@ class ReplayTest(unittest.TestCase):
             self.assertIs(recorded_engine(Path(tmp)), AssociativeMemory)  # an older run
             (Path(tmp) / "memory_config.json").write_text(json.dumps({"variant": "actr"}))
             self.assertIs(recorded_engine(Path(tmp)), actr)
+
+    def test_another_variant_drops_what_the_runs_own_variant_set(self):
+        made_chained = asdict(condition_config({"working_history": 1}, "chained"))
+        learned = condition_config(made_chained, "learned")
+        self.assertEqual((learned.entity_hops, learned.edge_weight, learned.working_history), (1, .8, 1))
+        made_actr = asdict(condition_config({}, "actr"))
+        self.assertEqual(condition_config(made_actr, "chained").threshold, MemoryConfig().threshold)
+        tuned = {**MEMORY_CONDITIONS["learned"], "edge_weight": .9}  # a tuning file's value stays
+        self.assertEqual(condition_config(tuned, "hou").edge_weight, .9)
 
 
 if __name__ == "__main__":
