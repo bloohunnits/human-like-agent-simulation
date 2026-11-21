@@ -653,14 +653,14 @@ def api_judge_meta():
                     "models": list(judging.JUDGE_MODELS), "labels": judging.LABEL_NAMES,
                     "question": judging.QUESTION, "help": judging.ANSWER_HELP, "raters": judging.RATERS,
                     "pair_question": judging.PAIR_QUESTION, "pair_answers": judging.PAIR_ANSWERS,
-                    "goal": len(judging.queue(anchor, "")) if anchor else 0})
+                    "goal": len(judging.tasks(anchor)) if anchor else 0})
 
 
 @app.route("/api/judge/cards")
 def api_judge_cards():
     try:
         card_set, rater = request.args.get("set", ""), request.args.get("rater", "")
-        return jsonify({"cards": judging.queue(card_set, rater)})
+        return jsonify({"cards": judging.queue(card_set, rater), "before": judging.graded_before(rater)[1]})
     except (ValueError, OSError) as e:
         return _json_error(e)
 

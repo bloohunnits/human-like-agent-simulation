@@ -67,7 +67,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
     </ol>
     <p>Don't grade how well they talk or write. Grade the memory.</p>
     <p>The memory is often something that just happened, so you will see it marked in the list above it. That alone doesn't make it a yes. Ask why this memory came up, and not some other one.</p>
-    <p>You will sometimes see the same moment twice with a different memory. That is on purpose. Grade each one by itself.</p>
+    <p>Every card is a different scene. No card comes back once you have answered it.</p>
 
     <h2>A card with two memories</h2>
     <p>Ask which memory you would rather have in your head right now. Pick <b>A</b> or <b>B</b>. If they help about the same, say so. If neither one helps, say that.</p>
@@ -94,6 +94,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
 
   <div id="work" hidden>
     <p class="top"><span id="left" class="muted"></span> <button id="helpBtn">Help</button></p>
+    <p id="saved" class="muted" hidden></p>
     <div id="card" class="box" hidden><div id="maps" class="maps"></div><div id="text" class="story"></div>
       <p><b id="question"></b></p>
       <div class="answers" id="answers"></div>
@@ -101,7 +102,7 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
       <input id="why" placeholder="Why? (optional)" style="width:100%;box-sizing:border-box">
       <p><button id="back">Back</button> <button id="next" class="go">Next</button></p>
     </div>
-    <div id="done" class="box" hidden><p>All done. Thank you!</p><p><button id="more">Keep going</button></p></div>
+    <div id="done" class="box" hidden><p><b>All done.</b> Nothing is left for you to grade. Thank you!</p><p><button id="redo">Change an answer</button></p></div>
   </div>
 </section>
 
@@ -126,8 +127,8 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
   <p>What each formula brought to mind at the same moment. <b>●</b> came to mind. <b style="color:#c98a1a">●</b> came to mind only because of links: without them, that formula would have left it out. <b>○</b> would have come to mind without links, but a linked memory took its place. Graders never see this page.</p>
   <p><select id="engine" hidden><option value="">All worlds</option><option value="newer">Newer engine only</option><option value="older">Older engine only</option></select></p>
   <h3>Head to head</h3>
-  <p class="muted">One moment, two memories: the one links brought to mind and the one it pushed out. People picked without knowing which was which. Near copies count as about the same and nobody is asked. A pair graded one memory at a time, before pair cards, uses those two grades.</p>
-  <table><thead><tr><th>Formula</th><th>Pairs answered</th><th>Linked memory better</th><th>Pushed-out memory better</th><th>About the same</th><th>Neither helps</th><th>So far</th></tr></thead><tbody id="heads"></tbody></table>
+  <p class="muted">One scene, two memories: the one links brought to mind and the one it pushed out. People picked without knowing which was which. People standing together share a scene, and a scene counts once. Near copies count as about the same and nobody is asked. A pair graded one memory at a time, before pair cards, uses those two grades.</p>
+  <table><thead><tr><th>Formula</th><th>Scenes answered</th><th>Linked memory better</th><th>Pushed-out memory better</th><th>About the same</th><th>Neither helps</th><th>So far</th></tr></thead><tbody id="heads"></tbody></table>
   <h3>Every memory</h3>
   <table><thead><tr><th>Formula</th><th>Memories only because of links</th><th>Graded</th><th>Matters</th><th>Doesn't matter</th><th>No</th></tr></thead><tbody id="tally"></tbody></table>
   <div id="moments"></div>
@@ -135,22 +136,21 @@ select,button,input,textarea{font:inherit;padding:8px 10px;background:white;bord
 
 <script>
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),f2=x=>x==null?'-':Number(x).toFixed(2);
-const L=['belongs','doesnt_matter','noise'],PL=['a','b','both','neither'],CHIPS=['too old','wrong person','nothing to do with here','would help right now'];let meta={},cards=[],pos=0,pick=null,tab='label',extra=false;
+const L=['belongs','doesnt_matter','noise'],PL=['a','b','both','neither'],CHIPS=['too old','wrong person','nothing to do with here','would help right now'];let meta={},cards=[],pos=0,pick=null,tab='label',before=0;
 const admin=new URLSearchParams(location.search).has('admin');
 const keep={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
-const session={get:k=>{try{return sessionStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{sessionStorage.setItem(k,v)}catch(e){}}};
 async function api(p,d){const r=await fetch(p,d?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}:{});const j=await r.json();if(!r.ok)throw Error(j.error||r.statusText);return j;}
 const err=e=>$('error').textContent=e?(e.message||e):'',run=()=>meta.runs.find(r=>r.path===(admin?$('run').value:(meta.anchor||meta.runs[0].path))),set=()=>run()&&run().name,who=()=>$('rater').value.trim();
 const name=l=>meta.labels[l]||l;
 
 async function loadMeta(){meta=await api('/api/judge/meta');$('run').innerHTML=meta.runs.map(r=>`<option value="${esc(r.path)}">${esc(r.name)}</option>`).join('');
   const saved=keep.get('rescued.run');if(saved&&meta.runs.some(r=>r.path===saved))$('run').value=saved;
-  $('question').textContent=meta.question;const hours=Math.max(1,Math.round(meta.goal*70/3600));$('how-many').textContent=`Each of us grades all ${meta.goal} cards, about ${hours} hour${hours===1?'':'s'} in all. Stop whenever you like and pick up later with the same name.`;
+  $('question').textContent=meta.question;$('how-many').textContent=`There are ${meta.goal} cards. Each one is asked once, and when they are answered you are done. Stop whenever you like: your place is saved under your name.`;
   const ps=Object.keys(meta.prompts);$('prompt').innerHTML=ps.map(n=>`<option>${esc(n)}</option>`).join('');$('prompt').value=ps[ps.length-1];showPrompt();
   $('model').innerHTML=meta.models.map(m=>`<option>${esc(m)}</option>`).join('');}
 function showPrompt(){const p=meta.prompts[$('prompt').value];if(!p)return;$('d1').value=p.definitions.belongs;$('d2').value=p.definitions.doesnt_matter;$('d3').value=p.definitions.noise;$('world').value=p.world;$('task').value=p.task;$('note').value='';}
 async function ensure(force){const r=run();if(!r)return;if(force||!r.ready){$('left').textContent='Finding rescued memories...';await api('/api/judge/make_cards',{path:r.path});r.ready=true;}}
-async function load(force){err();try{await ensure(force);const d=await api(`/api/judge/cards?set=${encodeURIComponent(set())}&rater=${encodeURIComponent(who())}`);cards=d.cards;pos=cards.filter(c=>c.mine).length;show();if(tab==='compare')await compare();else if(tab!=='label')await report();}catch(e){err(e);}}
+async function load(force){err();try{await ensure(force);const d=await api(`/api/judge/cards?set=${encodeURIComponent(set())}&rater=${encodeURIComponent(who())}`);cards=d.cards;before=d.before||0;pos=cards.filter(c=>c.mine).length;show();if(tab==='compare')await compare();else if(tab!=='label')await report();}catch(e){err(e);}}
 // Colors go out in order of first speaker on each card, so no two people share one. Green is food.
 const COLORS=['#2f6db5','#b5452f','#7a4fb5','#a8660f','#b53f7a','#3d6f86','#8a5a44','#5b5fc7','#c2541c','#6b6b6b'];let palette={};
 function color(n){if(!(n in palette))palette[n]=COLORS[Object.keys(palette).length%COLORS.length];return palette[n];}
@@ -195,8 +195,10 @@ function mapSvg(view,who,title){if(!view)return '';const r=view.radius||6,n=2*r+
       else{const col=color(it.replace(/\(.*\)$/,''));others+=`<g><title>${esc(it)}</title><circle cx="${x}" cy="${y}" r="8.5" fill="${col}"/><text x="${x}" y="${y+4}" font-size="11" text-anchor="middle" fill="white" font-weight="700">${esc(it[0])}</text></g><text x="${x}" y="${y-11}" font-size="10" text-anchor="middle" fill="${col}">${esc(it)}</text>`;}}}
   const c=r*s+s/2;
   return `<figure><figcaption>${esc(title)}</figcaption><svg viewBox="-16 -12 ${W+32} ${W+12}" role="img" aria-label="${esc(title)}: map around ${esc(who)}"><rect y="0" width="${W}" height="${W}" fill="#f7f6f0" stroke="#ccd8d4"/>${food}${notes}${others}<circle cx="${c}" cy="${c}" r="9.5" fill="#17383c"/><text x="${c}" y="${c+4}" font-size="11" text-anchor="middle" fill="white" font-weight="700">${esc(who[0]||'?')}</text><text x="${c}" y="${c-12}" font-size="10" text-anchor="middle" fill="#17383c" font-weight="700">${esc(who)}</text></svg></figure>`;}
-function show(){const n=cards.filter(c=>c.mine).length,goal=cards.length,c=cards[pos],stop=!c||(!c.mine&&n>=goal&&!extra);
-  $('left').textContent=cards.length?`${n} of ${extra?cards.length:goal} done`:'No cards here.';$('card').hidden=stop;$('done').hidden=!stop||!cards.length;$('more').hidden=n>=cards.length;if(stop)return;
+function show(){const todo=cards.filter(c=>!c.mine),n=cards.length-todo.length,c=cards[pos],mins=Math.max(1,Math.round(todo.reduce((t,c)=>t+(c.pair?90:60),0)/60));
+  $('left').textContent=`${n} of ${cards.length} done`+(todo.length?`. ${todo.length} left, about ${mins} minute${mins===1?'':'s'}.`:'.');$('card').hidden=!c;$('done').hidden=!!c;$('redo').hidden=!pos;
+  // Grades from earlier sets are never asked again, so the list above starts from what is new.
+  $('saved').hidden=!before;$('saved').textContent=`Saved under your name: ${before} memories graded so far. None of them is asked again.`;if(!c)return;
   cast(c);
   const opts=c.pair?PL:L;$('question').textContent=c.pair?meta.pair_question.replace('this person',c.who):meta.question;$('chips').hidden=!!c.pair;
   $('maps').innerHTML=c.views&&(c.views.then||c.views.now)?mapSvg(c.views.then,c.who,`The memory (${c.ago===1?'1 turn':c.ago+' turns'} ago)`)+mapSvg(c.views.now,c.who,'Right now')+`<p class="key"><span style="color:#17383c">● ${esc(c.who)}</span><span class="muted">● others, each in their own color</span><span style="color:#3f8f5a">● food, bigger is more</span><span style="color:#c98a1a">■ note</span></p>`:'';
@@ -207,10 +209,10 @@ function show(){const n=cards.filter(c=>c.mine).length,goal=cards.length,c=cards
   $('back').disabled=pos===0;scrollTo(0,0);}
 function choose(l){pick=l;$('answers').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));err();}
 let saving=false;async function next(){const c=cards[pos];if(!c||saving)return;if(!pick){err('Pick an answer.');return;}saving=true;if(document.activeElement)document.activeElement.blur();try{await api('/api/judge/label',{set:set(),rater:who(),card_id:c.card_id,label:pick,reason:$('why').value});err();c.mine={label:pick,reason:$('why').value};pos++;show();}catch(e){err(e);}finally{saving=false;}}
-function start(){if(!meta.raters.includes(who().toLowerCase())){err('Type your first name: Andre, Ben or Ryan.');$('rater').focus();return;}session.set('rescued.rater',who());$('guide').hidden=true;$('work').hidden=false;load();}
+function start(){if(!meta.raters.includes(who().toLowerCase())){err('Type your first name: Andre, Ben or Ryan.');$('rater').focus();return;}keep.set('rescued.rater',who());$('guide').hidden=true;$('work').hidden=false;load();}
 
 async function report(){if(!set())return;const r=await api('/api/judge/report?set='+encodeURIComponent(set()));
-  const raters=Object.entries(r.raters);$('people').textContent=!raters.length?'Nobody has labeled yet.':raters.map(([n,k])=>`${n} labeled ${k}.`).join(' ')+' '+Object.entries(r.pairs.raters).map(([n,k])=>`${n} compared ${k} of ${r.pairs.total} pairs.`).join(' ')+(r.carried?` ${r.carried} grades came over from an earlier wording of the same card.`:'')+' '+r.human_pairs.map(p=>`${p.a} and ${p.b} agree on ${p.agree} of ${p.n}.`).join(' ')+(r.stale?` ${r.stale} old labels not counted because the card changed.`:'');
+  const raters=Object.entries(r.raters);$('people').textContent=!raters.length?'Nobody has labeled yet.':raters.map(([n,k])=>`${n} labeled ${k}.`).join(' ')+' '+Object.entries(r.list.raters).map(([n,k])=>`${n} compared ${k} of ${r.list.pairs} pairs.`).join(' ')+` The list has ${r.list.pairs} pair cards and ${r.list.singles} single cards.`+(r.reworded?` ${r.reworded} grades were given on an earlier wording of the same card. They still count.`:'')+' '+r.human_pairs.map(p=>`${p.a} and ${p.b} agree on ${p.agree} of ${p.n}.`).join(' ')+'';
   $('engines').textContent=['newer','older'].filter(e=>r.engines[e]).map(e=>{const x=r.engines[e];return `${e==='newer'?'Newer':'Older'} engine: ${x.cards} cards, ${x.graded} graded${x.graded?' ('+L.filter(l=>x.mix[l]).map(l=>`${x.mix[l]} ${({belongs:'matters',doesnt_matter:"doesn't matter",noise:'no'})[l]}`).join(', ')+')':''}.`;}).join(' ');
   $('rows').innerHTML=r.runs.map(x=>`<tr><td>${esc(x.run)}</td><td>${x.tuning.agree} of ${x.tuning.n} <span class="muted">(${f2(x.tuning.kappa)})</span></td><td>${x.held_out.agree} of ${x.held_out.n} <span class="muted">(${f2(x.held_out.kappa)})</span></td><td class="${x.gate==='pass'?'pass':x.gate==='fail'?'fail':'muted'}">${esc(x.gate==='pass'?'Pass':x.gate==='fail'?'Fail':x.gate)}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">No judge runs yet.</td></tr>';
   $('rule').textContent=r.gate_rule;
@@ -238,9 +240,9 @@ async function runJudge(){try{$('runJudge').disabled=true;const {job}=await api(
 
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));for(const t of ['label','judge','match','compare'])$('tab-'+t).hidden=t!==tab;if(tab==='compare')compare().catch(err);else if(tab!=='label')report().catch(err);});
 $('engine').onchange=drawCompare;$('run').onchange=()=>{keep.set('rescued.run',$('run').value);load();};$('update').onclick=()=>load(true);$('start').onclick=start;$('rater').onkeydown=e=>{if(e.key==='Enter')start();};
-$('helpBtn').onclick=()=>{$('guide').hidden=false;$('work').hidden=true;scrollTo(0,0);};$('more').onclick=()=>{extra=true;show();};
-$('next').onclick=next;$('back').onclick=()=>{if(pos>0){pos--;show();}};$('prompt').onchange=()=>{showPrompt();report().catch(err);};$('model').onchange=()=>report().catch(err);$('save').onclick=save;$('runJudge').onclick=runJudge;
-document.addEventListener('keydown',e=>{if(tab!=='label'||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName))return;const opts=cards[pos]&&cards[pos].pair?PL:L;if(opts[e.key-1]&&!$('card').hidden)choose(opts[e.key-1]);else if(e.key==='Enter'){e.preventDefault();next();}});
+$('helpBtn').onclick=()=>{$('guide').hidden=false;$('work').hidden=true;scrollTo(0,0);};$('why').onkeydown=e=>{if(e.key==='Enter')next();};
+$('next').onclick=next;$('back').onclick=$('redo').onclick=()=>{if(pos>0){pos--;show();}};$('prompt').onchange=()=>{showPrompt();report().catch(err);};$('model').onchange=()=>report().catch(err);$('save').onclick=save;$('runJudge').onclick=runJudge;
+document.addEventListener('keydown',e=>{if(tab!=='label'||$('work').hidden||['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName))return;const opts=cards[pos]&&cards[pos].pair?PL:L;if(opts[e.key-1]&&!$('card').hidden)choose(opts[e.key-1]);else if(e.key==='Enter'){e.preventDefault();next();}});
 if(admin){$('admin-bar').hidden=false;$('tabs').hidden=false;}
-$('rater').value=session.get('rescued.rater')||'';loadMeta().then(()=>{if(who())start();}).catch(err);
+$('rater').value=keep.get('rescued.rater')||'';loadMeta().then(()=>{if(who())start();}).catch(err);
 </script></body></html>

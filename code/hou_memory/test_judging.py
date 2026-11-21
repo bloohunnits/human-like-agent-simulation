@@ -121,32 +121,22 @@ class Grades(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def test_grade_on_old_wording_stops_counting(self):
+    def test_a_grade_stays_with_its_card_when_the_wording_changes(self):
         judging.save_rating("s", "Andre", "card-0", "belongs")
-        self.assertEqual(judging.ratings("s")["andre"]["card-0"]["label"], "belongs")
+        self.assertFalse(judging.ratings("s")["andre"]["card-0"]["reworded"])
         changed = card("card-0")
         changed["scene"] = ["Energy 13.0."]
         lines = [json.dumps(changed)] + self.path.read_text().splitlines()[1:]
         self.path.write_text("\n".join(lines) + "\n")
-        stale = []
-        self.assertEqual(judging.ratings("s", stale)["andre"], {})
-        self.assertEqual(stale, ["card-0"])
+        reworded = []
+        grade = judging.ratings("s", reworded)["andre"]["card-0"]
+        self.assertEqual((grade["label"], grade["reworded"], reworded), ("belongs", True, ["card-0"]))
+        self.assertEqual(judging.report("s")["reworded"], 1)
 
     def test_name_case_does_not_split_one_person(self):
         judging.save_rating("s", "Andre", "card-0", "belongs")
         judging.save_rating("s", "ANDRE", "card-1", "noise")
         self.assertEqual(len(judging.ratings("s")["andre"]), 2)
-
-    def test_cards_with_fewest_grades_come_first(self):
-        judging.save_rating("s", "andre", "card-0", "belongs")
-        judging.save_rating("s", "ben", "card-1", "noise")
-        order = [c["card_id"] for c, _ in judging.for_rater("s", "ryan")]
-        self.assertEqual(order[0], "card-2")
-
-    def test_own_finished_cards_lead(self):
-        judging.save_rating("s", "andre", "card-2", "belongs")
-        first, mine = judging.for_rater("s", "andre")[0]
-        self.assertEqual((first["card_id"], mine["label"]), ("card-2", "belongs"))
 
     def test_warm_up_cards_are_left_out(self):
         early = card("card-early", tick=judging.WARMUP_TURNS - 1)
@@ -163,8 +153,7 @@ class Grades(unittest.TestCase):
         (new / "cards.jsonl").write_text(json.dumps(card("card-0")) + "\n" + json.dumps(changed) + "\n")
         self.assertEqual(judging.carry_ratings("s", "t"), 2)
         grades = judging.ratings("t")["andre"]
-        self.assertEqual((grades["card-0"]["carried"], grades["card-1"]["carried"]), ("", "s"))  # reworded cards are marked
-        self.assertEqual(judging.report("t")["carried"], 1)
+        self.assertEqual((grades["card-0"]["reworded"], grades["card-1"]["reworded"]), (False, True))
         judging.save_rating("t", "andre", "card-1", "belongs")
         self.assertEqual(judging.carry_ratings("s", "t"), 0)  # a grade already in the new set stays
         self.assertEqual(judging.ratings("t")["andre"]["card-1"]["label"], "belongs")
@@ -196,19 +185,58 @@ class Grades(unittest.TestCase):
                          {"newer": {"cards": 2, "graded": 1, "mix": {"belongs": 1}},
                           "older": {"cards": 1, "graded": 0, "mix": {}}})
 
+    def old(self, card_id, **sealed):
+        """A linked memory that pushed nothing out and is not one of the turns on the card."""
+        c = card(card_id, **sealed)
+        c["memory"] = {"ticks_ago": 20, "text": 'Chose action give: {"amount": 9, "target": "Ben"}.'}
+        return c
+
     def test_only_the_newer_engine_is_handed_out(self):
-        cards = [card("card-0", run="new"), card("card-1", run="old")]
+        cards = [self.old("card-0", run="new"), self.old("card-1", run="old")]
         self.path.write_text("".join(json.dumps(c) + "\n" for c in cards))
         (self.path.parent / "manifest.json").write_text(json.dumps({"runs": [
             {"run": "new", "engine": judging.NEWER_ENGINE}, {"run": "old", "engine": "terralingua"}]}))
         self.assertEqual([i["card_id"] for i in judging.queue("s", "andre")], ["card-0"])
+
+    def test_a_memory_the_card_already_shows_is_not_asked(self):
+        self.assertEqual(judging.tasks("s"), [])  # each card's memory is one of its last turns
+        self.path.write_text(json.dumps(self.old("card-9")) + "\n")
+        self.assertEqual([t["id"] for t in judging.tasks("s")], ["card-9"])
+
+    def test_people_in_one_scene_share_one_card(self):
+        at = dict(run="w", agent_name="Ada", kind="rescued")
+        cards = [self.old("card-0", agent_tag="a", tick=40, **at), self.old("card-1", agent_tag="b", tick=42, **at),
+                 self.old("card-2", agent_tag="a", tick=90, **at)]
+        self.path.write_text("".join(json.dumps(c) + "\n" for c in cards))
+        self.assertEqual([i["card_id"] for i in judging.queue("s", "ben")], ["card-0", "card-2"])
+        judging.save_rating("s", "andre", "card-1", "belongs")  # Andre graded the scene on its other card
+        self.assertEqual([i["card_id"] for i in judging.queue("s", "andre")], ["card-2"])
+
+    def test_a_moment_graded_in_an_earlier_set_is_not_asked_again(self):
+        at = dict(run="w", agent_tag="a", agent_name="Ada", tick=40)
+        self.path.write_text(json.dumps(card("card-old", **at)) + "\n")
+        judging.save_rating("s", "andre", "card-old", "noise")
+        new = self.path.parent.parent / "t"
+        new.mkdir()
+        (new / "cards.jsonl").write_text(json.dumps(self.old("card-new", **at)) + "\n" +
+                                         json.dumps(self.old("card-far", **{**at, "tick": 90})) + "\n")
+        self.assertEqual([i["card_id"] for i in judging.queue("t", "andre")], ["card-far"])
+        self.assertEqual(judging.graded_before("andre")[1], 1)
+        self.assertEqual(len(judging.queue("t", "ben")), 2)
+
+    def test_finished_cards_stay_finished_and_lead(self):
+        cards = [self.old(f"card-{i}", run="w", agent_tag="a", tick=40 + 10 * i) for i in range(3)]
+        self.path.write_text("".join(json.dumps(c) + "\n" for c in cards))
+        judging.save_rating("s", "andre", "card-2", "belongs")
+        first = judging.queue("s", "andre")[0]
+        self.assertEqual((first["card_id"], first["mine"]["label"], len(judging.queue("s", "andre"))), ("card-2", "belongs", 3))
 
     def swap(self):
         """One moment where chained brought m1 to mind and pushed m3 out, and
         ACT-R brought m4 to mind and pushed nothing out."""
         at = dict(run="w", agent_tag="a", agent_name="Ada", tick=40)
         cards = [card("card-0", memory_id="m1", kind="rescued", **at), card("card-1", memory_id="m3", kind="displaced", **at),
-                 card("card-2", memory_id="m4", kind="rescued", **at)]
+                 self.old("card-2", memory_id="m4", kind="rescued", **at)]
         cards[1]["memory"] = {"ticks_ago": 12, "text": 'Chose action give: {"amount": 5, "target": "Ben"}.'}
         self.path.write_text("".join(json.dumps(c) + "\n" for c in cards))
         (self.path.parent / "moments.json").write_text(json.dumps({"formulas": ["hou", "chained", "actr"], "moments": [{
@@ -217,14 +245,14 @@ class Grades(unittest.TestCase):
                       "actr": {"selected": ["m3", "m4"], "solo": ["m3"]}}}]}))
         return judging.pairs("s")[0]
 
-    def test_a_pair_card_replaces_its_two_single_cards(self):
+    def test_a_swap_is_one_pair_card_for_its_scene(self):
         pair = self.swap()
         self.assertEqual((pair["linked"]["card_id"], pair["pushed"]["card_id"], pair["by"]), ("card-0", "card-1", ["chained"]))
-        first, second = judging.queue("s", "andre")
-        self.assertEqual((first["card_id"], first["pair"], second["card_id"]), (pair["pair_id"], True, "card-2"))
-        self.assertIn("Memory A:", first["text"])
-        self.assertNotIn("turns ago [", first["text"])  # nothing marks which memory is which
-        self.assertNotIn("12 turns ago", first["text"])
+        (only,) = judging.queue("s", "andre")  # the scene's other linked memory is not asked on its own
+        self.assertEqual((only["card_id"], only["pair"]), (pair["pair_id"], True))
+        self.assertIn("Memory A:", only["text"])
+        self.assertNotIn("turns ago [", only["text"])  # nothing marks which memory is which
+        self.assertNotIn("12 turns ago", only["text"])
 
     def test_a_pair_answer_is_stored_by_memory_not_by_letter(self):
         pair = self.swap()
@@ -242,18 +270,19 @@ class Grades(unittest.TestCase):
         pair = self.swap()
         judging.save_rating("s", "andre", "card-0", "doesnt_matter")
         judging.save_rating("s", "andre", "card-1", "belongs")
-        self.assertNotIn(pair["pair_id"], [i["card_id"] for i in judging.queue("s", "andre")])
-        result = judging.pair_results("s")[0]
+        self.assertEqual(judging.queue("s", "andre"), [])
+        result = judging.head_to_head("s")[0]
         self.assertEqual((result["result"], result["how"]), ("pushed", "grades"))
-        self.assertIn(pair["pair_id"], [i["card_id"] for i in judging.queue("s", "ben")])  # Ben graded neither
+        self.assertEqual([i["card_id"] for i in judging.queue("s", "ben")], [pair["pair_id"]])  # Ben graded neither
 
     def test_near_copies_tie_without_asking(self):
         self.swap()
         cards = [json.loads(line) for line in self.path.read_text().splitlines()]
         cards[1]["memory"] = cards[0]["memory"]
         self.path.write_text("".join(json.dumps(c) + "\n" for c in cards))
-        self.assertEqual([i["card_id"] for i in judging.queue("s", "andre")], ["card-2"])
-        self.assertEqual(judging.pair_results("s")[0]["result"], "same")
+        self.assertEqual(judging.queue("s", "andre"), [])
+        result = judging.head_to_head("s")[0]
+        self.assertEqual((result["result"], result["how"]), ("same", "copy"))
 
     def test_only_our_three_names_are_taken(self):
         with self.assertRaises(ValueError):

@@ -295,7 +295,7 @@ code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs
 
 - **Pooled formulas.** A moment counts when any formula rescued a memory there. Each formula's strongest rescue becomes a card, plus one memory that was pushed out. The set has 61 cards from 30 moments. A card's `sealed.picked_by` lists the formulas that brought that memory to mind.
 - **Warm-up.** No card comes from a world's first 30 turns (`judging.WARMUP_TURNS`). In the seven graded worlds, under 1 turn in 100 before turn 30 is anything but a step, and about 6 in 100 after. Yet 20 of learned's 46 rescue moments and 56 of chained's 133 fell in those turns, because a being with a dozen memories and nothing to remember has its top three reshuffled by any link. The grading page and its report also leave out early cards in older sets.
-- **Kept grades.** `--keep` samples the earlier set's moments first, with the same cards, and copies its grades over. The next section says what happens to a grade on a reworded card.
+- **Kept grades.** `--keep` samples the earlier set's moments first, with the same cards, and copies its grades over.
 - **Worlds marked by engine.** The manifest records each world's engine. The Compare tab can show all worlds, the newer engine only or the older engine only, and the report counts cards and grades for each. Only the newer engine's worlds have gifts, thefts and births as well as notes, so read its results on their own. Graders are handed the newer engine's cards only (`judging.gradable`). Grades already given on older worlds still show in the report.
 - **Compare tab.** The builder writes `moments.json`: what every formula brought to mind at each sampled moment. The Compare tab (http://127.0.0.1:5057/rescued?admin) shows it as one table per moment, with a dot for each formula that brought a memory to mind, a gold dot when only links brought it, a ring when links pushed it out, and what people said about it. Graders work without `?admin` and never see it, so grading stays blind.
 
@@ -307,22 +307,27 @@ The Compare tab:
 
 ![The Compare tab](img/grader-compare.png)
 
-### Newer engine only, with pair cards
+### The grading list: newer engine only, one card per scene, asked once
 
-`output/analysis/rescued/anchor_v4` is the set classmates grade now (`judging.ANCHOR_SET`). It holds one world, `newengine_2`, the only one so far on the newer engine with gifts, thefts and births:
+`output/analysis/rescued/anchor_v4` is the set classmates grade (`judging.ANCHOR_SET`). It holds the two worlds run on the newer engine, `newengine_2` and `newengine_1`:
 
 ```
 code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs_dev/logs/newengine_2 \
-    --variant hou learned chained actr --anchor 60 --history 4 --swaps-first \
-    --keep output/analysis/rescued/anchor_v2 output/analysis/rescued/anchor_v3 --out output/analysis/rescued/anchor_v4
+    code/terralingua/logs_dev/logs/newengine_1 --variant hou learned chained actr --anchor 69 --history 4 \
+    --swaps-first --keep output/analysis/rescued/anchor_v4 --out output/analysis/rescued/anchor_v4
 ```
 
-- **Swaps first.** `--swaps-first` takes every moment where a linked memory pushed another out before any other moment. The world has 25 such moments past the warm-up that are not near copies of each other. The other 35 moments are ones where a linked memory filled an empty slot, nearly all under `actr`.
-- **Pair cards.** A swap is graded as one card: the moment, then the two memories as A and B, and the question "Which memory helps this person more right now?" with four answers (A, B, both about the same, neither). The grader is not told which memory links brought. The order is fixed per grader and pair, no age is shown, and nothing in the story is marked. Answers go to `pairs_<name>.csv` by memory (`linked`, `pushed`, `both`, `neither`), never by letter. The two memories of a pair are not also asked one at a time.
-- **Near copies.** Two memories that share 73 in 100 of their words (`judging.NEAR_COPY`) count as about the same and nobody is asked. The set has one.
-- **Single cards.** A linked memory that pushed nothing out keeps the old card and the old three answers. These come after the pair cards.
-- **No grading twice.** `--keep` takes several sets, and a grade follows its card (the same memory at the same moment) into the new set. A grade given on an earlier wording is copied too and marked in the `carried` column with the set it came from, and the report counts those apart. A pair whose two memories one person already graded one at a time is not asked of them: the better grade wins, equal grades are a tie.
-- **Head to head.** The Compare tab counts, for each formula, how often the linked memory won, how often the pushed-out one won, and the ties. "So far" stays at "Too close to call" until the wins are unlikely to be luck (a sign test on the pairs that were not ties, under 1 in 20). With 25 pairs, one side needs 18 wins if nobody ties.
+People grade one list (`judging.tasks`). It is built to be finished:
+
+- **Newer engine only.** The manifest records each world's engine and only the newer engine's cards are handed out (`judging.gradable`).
+- **One card per scene.** People standing together live the same turns, so their cards read almost alike. Moments in one world, at most 4 turns apart, that share 6 in 10 of their words are one scene (`judging.scenes`). The 69 moments in the set are 41 scenes. A scene is graded once.
+- **A swap is a pair card.** When a linked memory pushed another out, the card shows the moment and the two memories as A and B, with the question "Which memory helps this person more right now?" and four answers (A, B, both about the same, neither). The grader is not told which memory links brought. The order is fixed per grader and pair, no age is shown, and nothing in the story is marked. Answers go to `pairs_<name>.csv` by memory (`linked`, `pushed`, `both`, `neither`), never by letter. A scene with several swaps asks the one the most formulas made. Two memories that share 73 in 100 of their words (`judging.NEAR_COPY`) tie and nobody is asked.
+- **A scene with no swap is a single card,** with the old three answers, for a linked memory that pushed nothing out. If the card already shows that memory as one of its last four turns, it is not asked. That leaves out 27 cards that all ask the same thing.
+- **The list is 26 cards:** 21 pair cards and 5 single cards.
+- **Asked once.** A grade stays with its card, the same memory at the same moment, for good. Rewording a card no longer drops its grades: they count and the report says how many were given on an earlier wording. Before handing anything out, the page reads every set's grade files (`judging.graded_before`). A scene the person graded before, on any card of any set, is not asked again. A swap whose two memories they graded one at a time uses those two grades: the better grade wins.
+- **It grows, it does not restart.** To add a world, run the command above with the new world added, `--keep` on the set itself and `--anchor` raised by the number of new moments. Every card keeps its id and text, finished cards stay finished, and the new scenes are added to the end of what is left.
+- **The page remembers.** The grader's name is kept in the browser, so the page opens on their next card. The top line counts what is done and what is left, with the minutes left. When the list is done it says so.
+- **Head to head.** The Compare tab counts, for each formula, the scenes where the linked memory won, where the pushed-out one won, and the ties. "So far" stays at "Too close to call" until the wins are unlikely to be luck (a sign test on the scenes that were not ties, under 1 in 20). With 21 scenes, one side needs 15 wins if nobody ties.
 
 A pair card:
 

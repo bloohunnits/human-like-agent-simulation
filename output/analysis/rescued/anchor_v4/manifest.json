@@ -8,6 +8,15 @@
       "actor_effort": "low",
       "plan_notes": false,
       "memory_window": 1
+    },
+    {
+      "run": "newengine_1",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/newengine_1",
+      "engine": "terralingua-relational-memory",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
     }
   ],
   "variant": [
@@ -17,7 +26,7 @@
     "actr"
   ],
   "repo": {
-    "commit": "3f7f6e5e248648f109c5f6ec005f66e04c4dcffd",
+    "commit": "047e80ed2a0c1310ab5809aaf3d29ec5842f4af6",
     "dirty": true
   },
   "engine": {
@@ -26,14 +35,14 @@
   },
   "memory_text_format": "raw_json_v1",
   "history_lines": 4,
-  "anchor_moments": 60,
-  "cards": 87,
+  "anchor_moments": 69,
+  "cards": 106,
   "kinds": {
-    "rescued": 62,
-    "displaced": 25
+    "rescued": 72,
+    "displaced": 34
   },
   "splits": {
-    "held_out": 34,
-    "tuning": 53
+    "held_out": 43,
+    "tuning": 63
   }
 }

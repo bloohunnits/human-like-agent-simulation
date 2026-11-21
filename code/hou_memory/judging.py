@@ -59,6 +59,9 @@ ANSWER_HELP = {
 PAIR_QUESTION = "Which memory helps this person more right now?"
 PAIR_ANSWERS = {"a": "Memory A", "b": "Memory B", "both": "Both help about the same", "neither": "Neither helps"}
 NEAR_COPY = 0.73  # share of words two memories have in common. This alike, the pair is a tie and nobody is asked
+# People standing together get cards that read almost alike. Moments in one
+# world this few turns apart that share this many of their words are one scene.
+SCENE_TURNS, SCENE_ALIKE = 4, 0.6
 REPLY_FORMAT = ('First give one or two sentences of reasoning, then the label. Reply as json: '
                 '{"reason": "...", "label": "belongs" or "doesnt_matter" or "noise"}')
 
@@ -490,21 +493,21 @@ def _read_ratings(path: Path, key: str = "card_id") -> dict[str, dict]:
 
 
 def ratings(card_set: str, stale: list | None = None) -> dict[str, dict[str, dict]]:
-    """rater -> card_id -> {label, reason}. A grade counts only for the exact
-    text the person read. Grades on older wording go into stale."""
+    """rater -> card_id -> {label, reason}. A grade stays with its card, the
+    same memory at the same moment, for good. One given on an earlier wording
+    still counts. It is marked reworded and listed in stale."""
     current = {c["card_id"]: text_hash(c) for c in load_cards(card_set)}
     out = {}
     for path in sorted(set_dir(card_set).glob("ratings_*.csv")):
         rows = {}
         for card_id, row in _read_ratings(path).items():
-            if not normalize(row.get("label")):
+            if not normalize(row.get("label")) or card_id not in current:
                 continue
-            if current.get(card_id) != row.get("text_hash"):
-                if stale is not None:
-                    stale.append(card_id)
-                continue
+            reworded = current[card_id] != row.get("text_hash")
+            if reworded and stale is not None:
+                stale.append(card_id)
             rows[card_id] = {"label": normalize(row["label"]), "reason": row.get("reason", ""),
-                             "saved_at": float(row.get("saved_at") or 0), "carried": row.get("carried") or ""}
+                             "saved_at": float(row.get("saved_at") or 0), "reworded": reworded}
         out[path.stem.removeprefix("ratings_")] = rows
     return out
 
@@ -528,7 +531,7 @@ def save_rating(card_set: str, rater: str, card_id: str, label: str | None, reas
 
 
 def _write_ratings(path: Path, rows: dict[str, dict]) -> None:
-    _write_rows(path, ["card_id", "label", "reason", "text_hash", "saved_at", "carried"], rows)
+    _write_rows(path, ["card_id", "label", "reason", "text_hash", "saved_at"], rows)
 
 
 def _write_rows(path: Path, fields: list[str], rows: dict[str, dict]) -> None:
@@ -542,10 +545,9 @@ def _write_rows(path: Path, fields: list[str], rows: dict[str, dict]) -> None:
 
 def carry_ratings(old_set: str, new_set: str) -> int:
     """Copy each person's grades for cards that are in both sets, which means
-    the same memory at the same moment, so nobody grades one twice. A grade
-    given on an earlier wording of the card is marked with the set it came
-    from. Grades already in the new set stay."""
-    current = {c["card_id"]: text_hash(c) for c in load_cards(new_set)}
+    the same memory at the same moment, so the new set's report has them.
+    Grades already in the new set stay."""
+    current = {c["card_id"] for c in load_cards(new_set)}
     moved = 0
     for path in sorted(set_dir(old_set).glob("ratings_*.csv")):
         target = set_dir(new_set) / path.name
@@ -553,8 +555,7 @@ def carry_ratings(old_set: str, new_set: str) -> int:
         before = len(rows)
         for card_id, row in _read_ratings(path).items():
             if card_id in current and card_id not in rows and normalize(row.get("label")):
-                reworded = row.get("carried") or ("" if row.get("text_hash") == current[card_id] else old_set)
-                rows[card_id] = {**row, "text_hash": current[card_id], "carried": reworded}
+                rows[card_id] = row
         if len(rows) > before:
             _write_ratings(target, rows)
             moved += len(rows) - before
@@ -567,24 +568,46 @@ def gradable(card_set: str) -> list[dict]:
     return [c for c in load_cards(card_set) if mark.get(c.get("sealed", {}).get("run"), "newer") == "newer"]
 
 
-def for_rater(card_set: str, rater: str) -> list[tuple[dict, dict | None]]:
-    """(card, this person's grade), their finished cards first. Then the cards
-    with the fewest grades, in an order of their own, so grades spread evenly."""
-    rater = safe_name(rater).lower() if rater else ""
-    rated = ratings(card_set)
-    counts = Counter(card_id for rows in rated.values() for card_id in rows)
-    mine = rated.get(rater, {})
+# ---------- the grading list ----------
+# People grade one fixed list. It has one item per scene, an item is asked of a
+# person once, and nothing they graded before comes back in other words.
 
-    def rank(card):
-        cid = card["card_id"]
-        if cid in mine:
-            return (0, mine[cid]["saved_at"], "")
-        return (1, counts[cid], hashlib.sha1(f"{rater}|{cid}".encode()).hexdigest())
-
-    return [(c, mine.get(c["card_id"])) for c in sorted(gradable(card_set), key=rank)]
+def _moment(card: dict) -> tuple:
+    """One person's one turn. Cards of the same moment differ only in the memory."""
+    s = card.get("sealed", {})
+    return (s.get("run"), s.get("agent_tag"), s.get("tick")) if s.get("tick") is not None else (card["card_id"],)
 
 
-# ---------- pair cards ----------
+def scenes(cards: list[dict]) -> dict[tuple, str]:
+    """moment -> scene. People standing together live the same turns, so their
+    cards read almost alike. Moments in one world, a few turns apart, that
+    share most of their words are one scene, and a scene is graded once."""
+    words = {}
+    for c in cards:
+        if _moment(c) not in words:
+            who = c.get("sealed", {}).get("agent_name") or "This person"
+            text = "\n".join(_story(c.get("history", []), who) + _now(c.get("scene", []), who))
+            words[_moment(c)] = set(re.findall(r"\w+", text.lower())) - {who.lower()}
+    parent = {m: m for m in words}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    timed = sorted(m for m in words if len(m) == 3)
+    for i, a in enumerate(timed):
+        for b in timed[i + 1:]:
+            if a[0] == b[0] and abs(a[2] - b[2]) <= SCENE_TURNS and \
+                    len(words[a] & words[b]) >= SCENE_ALIKE * len(words[a] | words[b]):
+                parent[find(b)] = find(a)
+    first = defaultdict(list)
+    for m in words:
+        first[find(m)].append(m)
+    return {m: "scene-" + hashlib.sha1(repr(min(group, key=repr)).encode()).hexdigest()[:12]
+            for group in first.values() for m in group}
+
 
 def pairs(card_set: str) -> list[dict]:
     """Each graded memory that links brought to mind, next to the memory it
@@ -592,10 +615,11 @@ def pairs(card_set: str) -> list[dict]:
     path = set_dir(card_set) / "moments.json"
     picks = {(m["run"], m["agent_tag"], m["tick"]): m["picks"]
              for m in (json.loads(path.read_text())["moments"] if path.exists() else [])}
+    cards = gradable(card_set)
+    scene = scenes(cards)
     moments = defaultdict(list)
-    for c in gradable(card_set):
-        s = c.get("sealed", {})
-        moments[(s.get("run"), s.get("agent_tag"), s.get("tick"))].append(c)
+    for c in cards:
+        moments[_moment(c)].append(c)
     out = []
     for key, group in moments.items():
         for linked in (c for c in group if c["sealed"].get("kind") == "rescued"):
@@ -608,12 +632,99 @@ def pairs(card_set: str) -> list[dict]:
                     best = {"linked": linked, "pushed": pushed, "by": by}
             if best:
                 a, b = (set(re.findall(r"\w+", plain(best[side]["memory"]["text"]).lower())) for side in ("linked", "pushed"))
-                alike = len(a & b) / max(1, len(a | b))
                 ids = f"{best['linked']['card_id']}|{best['pushed']['card_id']}"
                 out.append({**best, "pair_id": "pair-" + hashlib.sha1(ids.encode()).hexdigest()[:12],
-                            "copy": alike >= NEAR_COPY})
+                            "copy": len(a & b) >= NEAR_COPY * max(1, len(a | b)), "scene": scene[key]})
     return out
 
+
+def _on_card(card: dict) -> bool:
+    """The memory is one of the last turns the card already shows."""
+    memory = card.get("memory", {})
+    return any(h["ticks_ago"] == memory.get("ticks_ago") and h["text"] == memory.get("text") for h in card.get("history", []))
+
+
+def tasks(card_set: str) -> list[dict]:
+    """The list everyone grades, one item per scene. A scene with a swap gives
+    a pair card: the swap the most formulas made, near copies left out. A
+    scene without one gives a single card for a linked memory that pushed
+    nothing out, unless the card already shows that memory as a recent turn.
+    Adding worlds to a set adds items. It never changes or removes one."""
+    cards = gradable(card_set)
+    scene = scenes(cards)
+    swaps = defaultdict(list)
+    for p in pairs(card_set):
+        swaps[p["scene"]].append(p)
+    out = []
+    for sid, found in swaps.items():
+        real = [p for p in found if not p["copy"]]
+        if real:
+            p = min(real, key=lambda p: (-len(p["by"]), p["pair_id"]))
+            out.append({"id": p["pair_id"], "scene": sid, "pair": p})
+    alone = defaultdict(list)
+    for c in cards:
+        if scene[_moment(c)] not in swaps and c.get("sealed", {}).get("kind", "rescued") == "rescued" and not _on_card(c):
+            alone[scene[_moment(c)]].append(c)
+    for sid, found in alone.items():
+        c = min(found, key=lambda c: (-(c.get("memory", {}).get("ticks_ago") or 0), c["card_id"]))
+        out.append({"id": c["card_id"], "scene": sid, "card": c})
+    return sorted(out, key=lambda t: t["id"])
+
+
+def graded_before(rater: str) -> tuple[set, int]:
+    """Every moment this person has graded in any set, and how many memories
+    that is. Read from the grade files each time, so nothing has to be carried
+    over for a grade to count."""
+    rater = safe_name(rater).lower() if rater else ""
+    moments, cards = set(), set()
+    for card_set in card_sets() if rater else []:
+        folder = set_dir(card_set)
+        where = {c["card_id"]: _moment(c) for c in map(json.loads, (folder / "cards.jsonl").read_text().splitlines())}
+        if (folder / f"ratings_{rater}.csv").exists():
+            for card_id, row in _read_ratings(folder / f"ratings_{rater}.csv").items():
+                if card_id in where and normalize(row.get("label")):
+                    moments.add(where[card_id])
+                    cards.add(card_id)
+        if (folder / f"pairs_{rater}.csv").exists():
+            answered = _read_ratings(folder / f"pairs_{rater}.csv", "pair_id")
+            for p in pairs(card_set):
+                if p["pair_id"] in answered:
+                    moments.add(_moment(p["linked"]))
+                    cards.update((p["linked"]["card_id"], p["pushed"]["card_id"]))
+    return moments, len(cards)
+
+
+def queue(card_set: str, rater: str) -> list[dict]:
+    """What one person works through, as the page reads it: the items they
+    finished, oldest first, then the ones left, pair cards first. A scene they
+    graded before, on any card of any set, is not asked again."""
+    rater = safe_name(rater).lower() if rater else ""
+    scene = scenes(gradable(card_set))
+    seen = {scene[m] for m in graded_before(rater)[0] if m in scene}
+    single, double = ratings(card_set).get(rater, {}), pair_ratings(card_set).get(rater, {})
+    done, todo = [], []
+    for task in tasks(card_set):
+        card = task["pair"]["linked"] if "pair" in task else task["card"]
+        sealed = card.get("sealed", {})
+        item = {"card_id": task["id"], "who": sealed.get("agent_name", ""), "tick": sealed.get("tick"), "mine": None}
+        if "pair" in task:
+            sides = _sides(rater, task["id"])
+            answer = double.get(task["id"])
+            item.update(pair=True, text=pair_text(task["pair"], sides), views={"now": (card.get("views") or {}).get("now")})
+            if answer:
+                letter = {sides[0]: "a", sides[1]: "b"}.get(answer["answer"], answer["answer"])
+                item["mine"] = {"label": letter, "reason": answer["reason"]}
+        else:
+            answer = single.get(task["id"])
+            item.update(text=visible_text(card), views=card.get("views"), ago=card.get("memory", {}).get("ticks_ago"), mine=answer)
+        if answer:
+            done.append((answer["saved_at"], item))
+        elif task["scene"] not in seen:
+            todo.append(("pair" not in task, hashlib.sha1(f"{rater}|{task['id']}".encode()).hexdigest(), item))
+    return [i for _, i in sorted(done, key=lambda d: d[0])] + [i for *_, i in sorted(todo, key=lambda t: t[:2])]
+
+
+# ---------- pair cards ----------
 
 def pair_text(pair: dict, order=("linked", "pushed")) -> str:
     """One moment and its two memories. No ages and no marks in the story, so
@@ -642,13 +753,14 @@ def _sides(rater: str, pair_id: str) -> tuple[str, str]:
 
 
 def pair_ratings(card_set: str) -> dict[str, dict[str, dict]]:
-    """rater -> pair_id -> {answer, reason}. answer is linked, pushed, both or neither."""
-    current = {p["pair_id"]: pair_hash(p) for p in pairs(card_set)}
+    """rater -> pair_id -> {answer, reason}. answer is linked, pushed, both or
+    neither. Like a grade, an answer stays with its pair for good."""
+    known = {p["pair_id"] for p in pairs(card_set)}
     out = {}
     for path in sorted(set_dir(card_set).glob("pairs_*.csv")):
         out[path.stem.removeprefix("pairs_")] = {
             k: {"answer": r["answer"], "reason": r.get("reason", ""), "saved_at": float(r.get("saved_at") or 0)}
-            for k, r in _read_ratings(path, "pair_id").items() if current.get(k) == r.get("text_hash")}
+            for k, r in _read_ratings(path, "pair_id").items() if k in known}
     return out
 
 
@@ -679,64 +791,35 @@ def _implied(linked: str, pushed: str) -> str:
     return "linked" if a < b else "pushed" if b < a else "neither" if linked == "noise" else "both"
 
 
-def pair_results(card_set: str) -> list[dict]:
-    """Every pair with what people said. A person who graded both memories one
-    at a time before pair cards is not asked again: their two grades decide.
-    how says where the result came from: asked, grades, or copy for a near copy."""
+def head_to_head(card_set: str) -> list[dict]:
+    """One row per scene with a swap: what people said about it. A person's
+    answer to the scene's pair card counts first. Failing that, a swap in the
+    scene whose two memories they graded one at a time before pair cards: the
+    better grade wins. how says where the result came from: asked, grades, or
+    copy when every swap in the scene is a near copy."""
     rated, asked = ratings(card_set), pair_ratings(card_set)
     mark = engines(card_set)
-    out = []
+    task = {t["scene"]: t["id"] for t in tasks(card_set) if "pair" in t}
+    swaps = defaultdict(list)
     for p in pairs(card_set):
-        a, b = p["linked"]["card_id"], p["pushed"]["card_id"]
+        swaps[p["scene"]].append(p)
+    out = []
+    for sid, found in swaps.items():
+        found.sort(key=lambda p: (p["pair_id"] != task.get(sid), p["pair_id"]))
         votes, direct = Counter(), False
         for rater in set(rated) | set(asked):
-            if p["pair_id"] in asked.get(rater, {}):
-                votes[asked[rater][p["pair_id"]]["answer"]] += 1
+            mine, grades = asked.get(rater, {}), rated.get(rater, {})
+            if answer := next((mine[p["pair_id"]]["answer"] for p in found if p["pair_id"] in mine), None):
+                votes[answer] += 1
                 direct = True
-            elif a in rated.get(rater, {}) and b in rated[rater]:
-                votes[_implied(rated[rater][a]["label"], rated[rater][b]["label"])] += 1
+            elif both := next((p for p in found if not p["copy"] and p["linked"]["card_id"] in grades
+                               and p["pushed"]["card_id"] in grades), None):
+                votes[_implied(grades[both["linked"]["card_id"]]["label"], grades[both["pushed"]["card_id"]]["label"])] += 1
         top = votes.most_common(1)
-        result = "same" if p["copy"] else top[0][0] if top and top[0][1] > sum(votes.values()) / 2 else None
-        out.append({"pair_id": p["pair_id"], "by": p["by"], "engine": mark.get(p["linked"]["sealed"].get("run")),
-                    "result": result, "how": "copy" if p["copy"] else "asked" if direct else "grades" if result else None})
+        result = top[0][0] if top and top[0][1] > sum(votes.values()) / 2 else None if sid in task else "same"
+        out.append({"scene": sid, "by": found[0]["by"], "engine": mark.get(found[0]["linked"]["sealed"].get("run")),
+                    "result": result, "how": "asked" if direct else "grades" if top else "copy" if result else None})
     return out
-
-
-def queue(card_set: str, rater: str) -> list[dict]:
-    """What one person works through, as the page reads it. Their finished
-    cards lead. Then pair cards, one for each memory that pushed another out.
-    Then single cards for linked memories that pushed nothing out. The two
-    memories of a pair are not also asked one at a time."""
-    rater = safe_name(rater).lower() if rater else ""
-    found = pairs(card_set)
-    paired = {p[side]["card_id"] for p in found for side in ("linked", "pushed")}
-    mine = pair_ratings(card_set).get(rater, {})
-    done, todo = [], []
-    for card, grade in for_rater(card_set, rater):
-        sealed = card.get("sealed", {})
-        item = {"card_id": card["card_id"], "text": visible_text(card), "mine": grade, "views": card.get("views"),
-                "who": sealed.get("agent_name", ""), "ago": card.get("memory", {}).get("ticks_ago"), "tick": sealed.get("tick")}
-        if grade:
-            done.append((grade["saved_at"], item))
-        elif card["card_id"] not in paired and sealed.get("kind", "rescued") == "rescued":
-            todo.append(item)
-    graded = {item["card_id"] for _, item in done}
-    ask = []
-    for p in found:
-        answer = mine.get(p["pair_id"])
-        if p["copy"] or (not answer and p["linked"]["card_id"] in graded and p["pushed"]["card_id"] in graded):
-            continue
-        sides = _sides(rater, p["pair_id"])
-        sealed = p["linked"].get("sealed", {})
-        item = {"card_id": p["pair_id"], "pair": True, "text": pair_text(p, sides), "who": sealed.get("agent_name", ""),
-                "tick": sealed.get("tick"), "views": {"now": (p["linked"].get("views") or {}).get("now")}, "mine": None}
-        if answer:
-            letter = {sides[0]: "a", sides[1]: "b"}.get(answer["answer"], answer["answer"])
-            item["mine"] = {"label": letter, "reason": answer["reason"]}
-            done.append((answer["saved_at"], item))
-        else:
-            ask.append((hashlib.sha1(f"{rater}|{p['pair_id']}".encode()).hexdigest(), item))
-    return [i for _, i in sorted(done, key=lambda d: d[0])] + [i for _, i in sorted(ask, key=lambda d: d[0])] + todo
 
 
 def human_majority(rated: dict[str, dict[str, dict]]) -> dict[str, str]:
@@ -778,7 +861,7 @@ def compare(card_set: str) -> dict:
         rows.sort(key=lambda r: (-len(r["by"]), r["ago"]))
         moments.append({"run": m["run"], "engine": mark.get(m["run"]), "who": who, "tick": m["tick"],
                         "now": _now(m["scene"], who), "rows": rows})
-    return {"formulas": data["formulas"], "moments": moments, "pairs": pair_results(card_set)}
+    return {"formulas": data["formulas"], "moments": moments, "pairs": head_to_head(card_set)}
 
 
 # ---------- judge runs ----------
@@ -907,6 +990,7 @@ def krippendorff_alpha(raters: dict[str, dict[str, str]]):
 
 def report(card_set: str) -> dict:
     cards = load_cards(card_set)
+    todo = tasks(card_set)
     split = {c["card_id"]: split_of(c) for c in cards}
     stale = []
     rated = ratings(card_set, stale)
@@ -951,10 +1035,9 @@ def report(card_set: str) -> dict:
         "engines": by_engine,
         "split": dict(Counter(split.values())),
         "raters": {r: len(rows) for r, rows in rated.items()},
-        "carried": sum(bool(row["carried"]) for rows in rated.values() for row in rows.values()),
-        "pairs": {"total": sum(not p["copy"] for p in pairs(card_set)),
-                  "raters": {r: len(rows) for r, rows in pair_ratings(card_set).items()}},
-        "stale": len(stale),
+        "reworded": len(stale),
+        "list": {"pairs": sum("pair" in t for t in todo), "singles": sum("card" in t for t in todo),
+                 "raters": {r: len(rows) for r, rows in pair_ratings(card_set).items()}},
         "majority": {"n": len(majority), **{g: sum(1 for k in majority if split.get(k) == g) for g in ("tuning", "held_out")}},
         "human_pairs": human_pairs,
         "human_alpha": krippendorff_alpha(humans) if len(humans) >= 2 else None,
