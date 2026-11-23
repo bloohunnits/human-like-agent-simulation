@@ -30,7 +30,8 @@ sys.path.insert(0, str(_TERRALINGUA_ROOT))
 from dotenv import load_dotenv  # noqa: E402
 
 from memory_agent import NAME_POOL, HouMemoryAgent  # noqa: E402
-from associative_memory import MEMORY_CONDITIONS, MemoryConfig  # noqa: E402
+from associative_memory import MemoryConfig  # noqa: E402
+from variants import VARIANTS, variant_settings  # noqa: E402
 
 import core.experiment.runner as runner_module  # noqa: E402
 from core.environment.env import OpenGridWorld  # noqa: E402
@@ -105,7 +106,8 @@ OpenGridWorld._build_obs = _build_obs_with_landmarks
 def memory_arguments():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--memory-help", action="help", help="Show memory configuration options")
-    parser.add_argument("--memory-condition", choices=MEMORY_CONDITIONS, default=None)
+    parser.add_argument("--memory-condition", choices=VARIANTS, default=None,
+                        help="A condition, or a formula from variants.py such as actr")
     parser.add_argument("--memory-config", help="JSON file of MemoryConfig overrides")
     parser.add_argument("--memory-landmarks", help='JSON map of visible place labels to [x,y] tiles')
     parser.add_argument("--recent-turns", type=int, default=None,
@@ -128,6 +130,8 @@ def configure_memory(params, options, resume):
         with open(path) as f:
             saved = json.load(f)
         cfg = MemoryConfig(**saved["memory"])
+        # Runs saved before variants used the stock engine, as learned does.
+        variant = saved.get("variant", "learned")
         _landmarks = saved["landmarks"]
         # Runs saved before free notes became the default used the plan.
         HouMemoryAgent.plan_notes = saved.get("plan_notes", not saved.get("paper_prompt", False))
@@ -139,7 +143,8 @@ def configure_memory(params, options, resume):
         if options.memory_config:
             with open(options.memory_config) as f:
                 settings.update(json.load(f))
-        settings.update(MEMORY_CONDITIONS[options.memory_condition or "learned"])
+        variant = options.memory_condition or "learned"
+        settings.update(variant_settings(variant))
         if options.recent_turns is not None:
             settings["working_history"] = options.recent_turns
         if settings.get("working_history", 0) > params.agent.max_history:
@@ -167,11 +172,12 @@ def configure_memory(params, options, resume):
         with open(path, "x") as f:
             HouMemoryAgent.plan_notes = options.plan_notes
             _effort = options.effort
-            json.dump({"schema_version": 1, "memory": asdict(cfg), "landmarks": _landmarks,
+            json.dump({"schema_version": 1, "variant": variant, "memory": asdict(cfg), "landmarks": _landmarks,
                        "plan_notes": options.plan_notes,
                        "actor_model": os.environ.get("MODEL_NAME") if proxied else params.agent.model,
                        "effort": os.environ.get("REASONING_EFFORT") if proxied else _effort}, f, indent=2)
     HouMemoryAgent.memory_config = cfg
+    HouMemoryAgent.memory_engine_class = VARIANTS[variant].engine
 
 # The proposal specifies GPT-5 Nano, but TerraLingua's router doesn't list
 # it. Register it here, mirroring the gpt-5-mini branch, without touching

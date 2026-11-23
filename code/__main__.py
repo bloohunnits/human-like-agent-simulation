@@ -85,9 +85,12 @@ def run_terralingua(**kwargs) -> None:
 
 def run_hou_sim(name: str, ticks: str) -> None:
     """Starts our memory runner on the newer engine"""
+    # The last flag wins, so make run CONDITION=actr replaces chained.
+    condition = os.environ.get("MEMORY_CONDITION")
     subprocess.run(
         [str(FORK_DIR / ".venv/bin/python"), "../hou_memory/run_hou_new_engine.py",
-         *HOU_SIM_ARGS, "--exp_name", name, "--max_ts", ticks],
+         *HOU_SIM_ARGS, *(["--memory-condition", condition] if condition else []),
+         "--exp_name", name, "--max_ts", ticks],
         cwd=FORK_DIR,
         check=True,
     )
