@@ -309,25 +309,26 @@ The Compare tab:
 
 ### The grading list: newer engine only, one card per scene, asked once
 
-`output/analysis/rescued/anchor_v4` is the set classmates grade (`judging.ANCHOR_SET`). It holds the two worlds run on the newer engine, `newengine_2` and `newengine_1`:
+`output/analysis/rescued/anchor_v4` is the set classmates grade (`judging.ANCHOR_SET`). It holds the three worlds run on the newer engine: `newengine_2`, `newengine_1` and `newengine_3`. The third was run on 2026-11-23 with `make run NAME=newengine_3 TICKS=300`, which now places two food areas out of sight of each other:
 
 ```
-code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs_dev/logs/newengine_2 \
-    code/terralingua/logs_dev/logs/newengine_1 --variant hou learned chained actr --anchor 69 --history 4 \
+L=code/terralingua/logs_dev/logs
+code/terralingua/.venv/bin/python scripts/rescued_cards.py $L/newengine_2 $L/newengine_1 $L/newengine_3 \
+    --variant hou learned chained actr --anchor 89 --history 4 \
     --swaps-first --keep output/analysis/rescued/anchor_v4 --out output/analysis/rescued/anchor_v4
 ```
 
 People grade one list (`judging.tasks`). It is built to be finished:
 
 - **Newer engine only.** The manifest records each world's engine and only the newer engine's cards are handed out (`judging.gradable`).
-- **One card per scene.** People standing together live the same turns, so their cards read almost alike. Moments in one world, at most 4 turns apart, that share 6 in 10 of their words are one scene (`judging.scenes`). The 69 moments in the set are 41 scenes. A scene is graded once.
+- **One card per scene.** People standing together live the same turns, so their cards read almost alike. Moments in one world, at most 4 turns apart, that share 6 in 10 of their words are one scene (`judging.scenes`). The 89 moments in the set are 61 scenes. A scene is graded once.
 - **A swap is a pair card.** When a linked memory pushed another out, the card shows the moment and the two memories as A and B, with the question "Which memory helps this person more right now?" and four answers (A, B, both about the same, neither). The grader is not told which memory links brought. The order is fixed per grader and pair, no age is shown, and nothing in the story is marked. Answers go to `pairs_<name>.csv` by memory (`linked`, `pushed`, `both`, `neither`), never by letter. A scene with several swaps asks the one the most formulas made. Two memories that share 73 in 100 of their words (`judging.NEAR_COPY`) tie and nobody is asked.
 - **A scene with no swap is a single card,** with the old three answers, for a linked memory that pushed nothing out. If the card already shows that memory as one of its last four turns, it is not asked. That leaves out 27 cards that all ask the same thing.
-- **The list is 26 cards:** 21 pair cards and 5 single cards.
+- **The list is 45 cards:** 40 pair cards and 5 single cards. By world, the pair cards are 13 from `newengine_2`, 8 from `newengine_1` and 19 from `newengine_3`.
 - **Asked once.** A grade stays with its card, the same memory at the same moment, for good. Rewording a card no longer drops its grades: they count and the report says how many were given on an earlier wording. Before handing anything out, the page reads every set's grade files (`judging.graded_before`). A scene the person graded before, on any card of any set, is not asked again. A swap whose two memories they graded one at a time uses those two grades: the better grade wins.
 - **It grows, it does not restart.** To add a world, run the command above with the new world added, `--keep` on the set itself and `--anchor` raised by the number of new moments. Every card keeps its id and text, finished cards stay finished, and the new scenes are added to the end of what is left.
 - **The page remembers.** The grader's name is kept in the browser, so the page opens on their next card. The top line counts what is done and what is left, with the minutes left. When the list is done it says so.
-- **Head to head.** The Compare tab counts, for each formula, the scenes where the linked memory won, where the pushed-out one won, and the ties. "So far" stays at "Too close to call" until the wins are unlikely to be luck (a sign test on the scenes that were not ties, under 1 in 20). With 21 scenes, one side needs 15 wins if nobody ties.
+- **Head to head.** The Compare tab counts, for each formula, the scenes where the linked memory won, where the pushed-out one won, and the ties. "So far" stays at "Too close to call" until the wins are unlikely to be luck (a sign test on the scenes that were not ties, under 1 in 20). With 40 scenes, one side needs 26 wins if nobody ties.
 
 A pair card:
 
