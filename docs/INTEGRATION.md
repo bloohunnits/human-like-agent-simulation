@@ -309,31 +309,52 @@ The Compare tab:
 
 ### The grading list: newer engine only, one card per scene, asked once
 
-`output/analysis/rescued/anchor_v4` is the set classmates grade (`judging.ANCHOR_SET`). It holds the two worlds run on the newer engine, `newengine_2` and `newengine_1`:
+`output/analysis/rescued/anchor_v4` is the set classmates grade (`judging.ANCHOR_SET`). It holds the three worlds run on the newer engine: `newengine_2`, `newengine_1` and `newengine_3`. The third was run on 2026-11-23 with `make run NAME=newengine_3 TICKS=300`, which now places two food areas out of sight of each other:
 
 ```
-code/terralingua/.venv/bin/python scripts/rescued_cards.py code/terralingua/logs_dev/logs/newengine_2 \
-    code/terralingua/logs_dev/logs/newengine_1 --variant hou learned chained actr --anchor 69 --history 4 \
+L=code/terralingua/logs_dev/logs
+code/terralingua/.venv/bin/python scripts/rescued_cards.py $L/newengine_2 $L/newengine_1 $L/newengine_3 \
+    --variant hou learned chained actr --anchor 89 --history 4 \
     --swaps-first --keep output/analysis/rescued/anchor_v4 --out output/analysis/rescued/anchor_v4
 ```
 
 People grade one list (`judging.tasks`). It is built to be finished:
 
 - **Newer engine only.** The manifest records each world's engine and only the newer engine's cards are handed out (`judging.gradable`).
-- **One card per scene.** People standing together live the same turns, so their cards read almost alike. Moments in one world, at most 4 turns apart, that share 6 in 10 of their words are one scene (`judging.scenes`). The 69 moments in the set are 41 scenes. A scene is graded once.
+- **One card per scene.** People standing together live the same turns, so their cards read almost alike. Moments in one world, at most 4 turns apart, that share 6 in 10 of their words are one scene (`judging.scenes`). The 89 moments in the set are 61 scenes. A scene is graded once.
 - **A swap is a pair card.** When a linked memory pushed another out, the card shows the moment and the two memories as A and B, with the question "Which memory helps this person more right now?" and four answers (A, B, both about the same, neither). The grader is not told which memory links brought. The order is fixed per grader and pair, no age is shown, and nothing in the story is marked. Answers go to `pairs_<name>.csv` by memory (`linked`, `pushed`, `both`, `neither`), never by letter. A scene with several swaps asks the one the most formulas made. Two memories that share 73 in 100 of their words (`judging.NEAR_COPY`) tie and nobody is asked.
 - **A scene with no swap is a single card,** with the old three answers, for a linked memory that pushed nothing out. If the card already shows that memory as one of its last four turns, it is not asked. That leaves out 27 cards that all ask the same thing.
-- **The list is 26 cards:** 21 pair cards and 5 single cards.
+- **The list is 45 cards:** 40 pair cards and 5 single cards. By world, the pair cards are 13 from `newengine_2`, 8 from `newengine_1` and 19 from `newengine_3`.
 - **Asked once.** A grade stays with its card, the same memory at the same moment, for good. Rewording a card no longer drops its grades: they count and the report says how many were given on an earlier wording. Before handing anything out, the page reads every set's grade files (`judging.graded_before`). A scene the person graded before, on any card of any set, is not asked again. A swap whose two memories they graded one at a time uses those two grades: the better grade wins.
 - **It grows, it does not restart.** To add a world, run the command above with the new world added, `--keep` on the set itself and `--anchor` raised by the number of new moments. Every card keeps its id and text, finished cards stay finished, and the new scenes are added to the end of what is left.
 - **The page remembers.** The grader's name is kept in the browser, so the page opens on their next card. The top line counts what is done and what is left, with the minutes left. When the list is done it says so.
-- **Head to head.** The Compare tab counts, for each formula, the scenes where the linked memory won, where the pushed-out one won, and the ties. "So far" stays at "Too close to call" until the wins are unlikely to be luck (a sign test on the scenes that were not ties, under 1 in 20). With 21 scenes, one side needs 15 wins if nobody ties.
+- **Head to head.** The Compare tab counts, for each formula, the scenes where the linked memory won, where the pushed-out one won, and the ties. "So far" stays at "Too close to call" until the wins are unlikely to be luck (a sign test on the scenes that were not ties, under 1 in 20). With 40 scenes, one side needs 26 wins if nobody ties.
 
 A pair card:
 
 ![A pair card](img/grader-pair.png)
 
 The judge model still reads single cards only.
+
+### What stands between us and the claim (2026-11-24)
+
+The claim is that links bring back an old memory that matters when plain decay would not. These are the reasons the data so far does not show it. Most are ours to fix.
+
+**1. A memory is a whole turn, not an event.** Each stored memory holds who was nearby, the notes in sight, what everyone said and the being's own move. The median memory on a pair card is 58 words and only a third of them are the being's own move and words. Two turns from one conversation therefore share most of their text. On the 40 pair cards the two memories share a median 42 in 100 words, 11 pairs share half or more and only 3 share under a quarter. In 29 pairs the same person is nearby in both. A grader asked which of two near copies helps more can only say "about the same".
+
+**2. Beings repeat themselves.** In `newengine_2`, 303 of 1,314 spoken turns open with one of four "holding ..." phrases. A stretch of such turns is one event written down many times.
+
+**3. Everyone in sight is tagged on every turn.** A memory carries about 3 people tags in `newengine_2`. "Memories of Ben" then means every turn Ben stood nearby, not the things Ben did. A person the being knows well has around 27 of them, and the crowd penalty cuts each link to about a third.
+
+**4. The stock formulas favor the newest memory.** A link's clock starts when the memory is written, so among one person's memories the newest has the strongest link: true in 99 of 100 turns. The cue is full strength for anyone in view, and 97 to 99 in 100 of those are someone who was also there the turn before. Nothing tells the formula that someone came back. A link is worth at most 0.5, so at a reunion the old memory scores 0.12 to 0.39 against a bar of 0.28 to 0.73 for the third slot. It was above the cutoff at all 114 reunions in four worlds and took a slot at 29, the same as with no links.
+
+**5. The worlds rarely set up the situation.** A reunion, someone back in view after more than 20 turns, is 0.2 in 100 of the people-in-view turns in `newengine_2`. The three newer-engine worlds have 20 reunions between them. `newengine_3` was launched with two food areas to cause more and had 4.
+
+**6. What we measure is one step removed.** Replay shows what a formula would have brought to mind. The beings acted on the recorded picks, so no being ever used another formula's memory. The grader reads four turns of history where the being's prompt holds one, so a 2-turn-old memory looks redundant to the grader and is not to the being. There are 40 scenes and one grader so far.
+
+**7. Tuning and testing on the same worlds.** A prototype that makes a cue as strong as the time the thing was away brought an old memory back at 48 to 89 of the same 114 reunions, depending on how much of the crowd penalty it keeps. Those numbers were tuned and scored on the same four worlds. A formula should be picked on one world and scored once on worlds it never saw.
+
+Much of the work so far went into making worlds eventful enough for an old memory to matter: model choice, prompts, food, lineage rules. That is tuning the simulation to produce the situation, and it still produces it rarely. The cleaner design is to stage the situation: a scripted world where someone gives or takes, leaves, and returns later, repeated many times, with each formula scored on whether the old memory comes back and then on what the being does. That is a controlled experiment, and the free-running worlds become the check that the effect also shows up unstaged.
 
 Replay under another formula first puts back what the run's own formula set. So `learned` on a run made with `chained` is one step at 0.8 again, and a stock condition on a run made with `actr` gets the stock cutoff back.
 
