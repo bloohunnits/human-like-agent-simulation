@@ -77,6 +77,22 @@ class TestAssociativeMemoryStore(unittest.TestCase):
             second = again.recall_memories("a0", cue, 60, reinforce=False, entities=view)
             self.assertEqual(first.to_dict(orient="records"), second.to_dict(orient="records"))
 
+    def test_memories_of_one_tick_reload_in_the_order_written(self):
+        class TiesReversed(InMemoryMemoryDatabase):
+            """ Lists same-tick rows last written first, as a database is free to """
+            def list_memories(self, agent_id):
+                rows = super().list_memories(agent_id)
+                return rows.iloc[::-1].sort_values("t_created", kind="stable")
+
+        self.memories = TiesReversed()
+        store = self.new_store()
+        for tick, text in ((1, "ben gift food"), (1, "walk north"), (2, "note north")):
+            store.add_memory("a0", text, tick, {"entities": BEN})
+        again = self.new_store()
+        self.assertEqual([m.text for m in again._memories("a0").memories], ["ben gift food", "walk north", "note north"])
+        saved = set(self.memories.list_edges("a0")["edge_id"])
+        self.assertEqual(set(again._engine("a0", again._memories("a0")).edges), saved)  # every link finds its saved row
+
     def test_agents_keep_separate_links(self):
         self.store.add_memory("a0", "gift food", 1, {"entities": BEN})
         self.store.add_memory("a1", "walk north", 1, {"entities": BEN})

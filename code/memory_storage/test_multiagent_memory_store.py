@@ -14,7 +14,7 @@ from memory_storage.in_memory_database import (
     InMemoryEmbeddingDatabase,
     InMemoryMemoryDatabase,
 )
-from memory_storage.multiagent_memory_store import RECALL_COLUMNS, MultiAgentMemoryStore
+from memory_storage.multiagent_memory_store import RECALL_COLUMNS, MultiAgentMemoryStore, ordered_id
 
 VOCAB = ["food", "ben", "gift", "north", "note", "hungry", "walk"]
 
@@ -96,6 +96,11 @@ class TestMultiAgentMemoryStore(unittest.TestCase):
             first = self.store.recall_memories("a0", cue, 9, reinforce=False)
             second = again.recall_memories("a0", cue, 9, reinforce=False)
             self.assertEqual(first.to_dict(orient="records"), second.to_dict(orient="records"))
+
+    def test_default_ids_rise_in_the_order_made(self):
+        ids = [ordered_id() for _ in range(500)]
+        self.assertEqual(ids, sorted(ids))
+        self.assertEqual(len({str(UUID(i)) for i in ids}), 500)
 
     def test_time_comes_from_the_call_or_the_clock(self):
         with self.assertRaises(ValueError):

@@ -10,6 +10,7 @@ from unittest.mock import patch
 import numpy as np
 
 from associative_memory import MemoryConfig
+from entity_tags import extract_entities
 from memory_agent import HouMemoryAgent
 from variants import VARIANTS
 try:
@@ -53,6 +54,14 @@ class AgentTests(unittest.TestCase):
         action = agent.select_action(copy.deepcopy(observation()), {'move': {'params': {'direction':'stay'}}},
                                      0, {}, tick, {}, client)
         return action, client
+
+    def test_wrapper_reads_tags_with_the_shared_reader(self):
+        agent = self.agent()
+        give = {'action': 'give', 'params': {'target': 'Cleo', 'amount': 5}}
+        self.assertEqual(agent._extract_entities(observation(), {}),
+                         {'people': ['Ben'], 'artifacts': ['marker'], 'places': ['well']})
+        self.assertEqual(agent._extract_entities(observation(), give), extract_entities(observation(), give))
+        self.assertEqual(agent._extract_entities(observation(), give)['people'], ['Ben', 'Cleo'])
 
     def test_energy_rise_is_recorded_and_survives_checkpoint(self):
         agent = self.agent()

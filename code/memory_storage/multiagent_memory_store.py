@@ -4,8 +4,10 @@ The drivers, the embedder, the id source and the clock are injected, so the
 store runs and is tested with no database, no model and no @patch.
 """
 
+import time
+from random import getrandbits
 from typing import Callable, Optional
-from uuid import uuid4
+from uuid import UUID
 
 import pandas as pd
 
@@ -13,6 +15,20 @@ from hou_memory.hou_memory import HouMemoryStore, Memory, recall_probability
 
 
 RECALL_COLUMNS = ["memory_id", "content", "t_created", "relevance", "score", "meta"]
+_last_id = 0
+
+
+def ordered_id(
+    )-> str:
+    """
+    A new UUID string that sorts after every id this process made before
+
+    Memories written at one tick are read back in id order, so they reload in
+    the order they were written and their links keep their strength
+    """
+    global _last_id
+    _last_id = max(_last_id + 1, time.time_ns())
+    return str(UUID(int=(_last_id << 64) | getrandbits(64)))
 
 
 class AgentMemories(HouMemoryStore):
@@ -43,7 +59,7 @@ class MultiAgentMemoryStore:
         memory_database,
         embedding_database,
         embed: Callable,
-        new_id: Callable = lambda: str(uuid4()),
+        new_id: Callable = ordered_id,
         clock: Optional[Callable] = None,
         top_k: int = 5,
         recall_threshold: float = 0.0,
@@ -55,7 +71,8 @@ class MultiAgentMemoryStore:
             memory_database: driver for memory rows and connection rows
             embedding_database: driver for vectors and similarity search
             embed: turns a text into a vector
-            new_id: gives a new UUID string for each memory
+            new_id: gives a new UUID string for each memory. Ids must rise in
+                the order they are made
             clock: gives the current time when a call passes no tick
             time_scale: time units per unit of Hou decay
         """
@@ -156,9 +173,11 @@ class MultiAgentMemoryStore:
         self,
         agent_id: str,
         )-> AgentMemories:
-        """ The agent's memories, read from the driver on first use """
+        """ The agent's memories, read from the driver on first use. A driver
+        orders by creation time only, so ties are put in id order here """
         if agent_id not in self._agents:
             rows = self.memory_database.list_memories(agent_id).to_dict(orient="records")
+            rows.sort(key=lambda row: (float(row["t_created"]), str(row["memory_id"])))
             store = AgentMemories.from_dicts(
                 [{
                     "text": row["content"],

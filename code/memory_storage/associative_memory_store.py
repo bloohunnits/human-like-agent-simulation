@@ -2,13 +2,12 @@
 
 from dataclasses import replace
 from typing import Callable, Optional
-from uuid import uuid4
 
 import pandas as pd
 
 from hou_memory.associative_memory import AssociativeMemory, MemoryConfig
 from hou_memory.hou_memory import Memory
-from memory_storage.multiagent_memory_store import AgentMemories, MultiAgentMemoryStore
+from memory_storage.multiagent_memory_store import AgentMemories, MultiAgentMemoryStore, ordered_id
 
 
 class AssociativeMemoryStore(MultiAgentMemoryStore):
@@ -25,7 +24,7 @@ class AssociativeMemoryStore(MultiAgentMemoryStore):
         config: Optional[MemoryConfig] = None,
         engine_class: type = AssociativeMemory,
         token_counter: Optional[Callable] = None,
-        new_id: Callable = lambda: str(uuid4()),
+        new_id: Callable = ordered_id,
         clock: Optional[Callable] = None,
         ):
         """
