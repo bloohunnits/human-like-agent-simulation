@@ -1,12 +1,15 @@
 """Replay must reproduce a live session from its audit lines alone."""
 import json
+import tempfile
 import unittest
+from dataclasses import asdict
+from pathlib import Path
 
 import numpy as np
 
 from associative_memory import MEMORY_CONDITIONS, AssociativeMemory, MemoryConfig
 from hou_memory import HouMemoryStore
-from replay import compare, condition_config, replay_agent
+from replay import compare, condition_config, recorded_engine, replay_agent
 from variants import VARIANTS
 
 WORDS = ["food", "ben", "river", "cave", "trade"]
@@ -18,9 +21,9 @@ def embed(text):
     return v / np.linalg.norm(v)
 
 
-def live_session(config, ticks=30):
+def live_session(config, ticks=30, engine_class=AssociativeMemory):
     """Run the engine the way the agent does: preview, commit, then write the episode."""
-    engine = AssociativeMemory(HouMemoryStore(embed), config, token_counter=len)
+    engine = engine_class(HouMemoryStore(embed), config, token_counter=len)
     rng = np.random.default_rng(0)
     lines = []
     for tick in range(ticks):
@@ -66,13 +69,37 @@ class ReplayTest(unittest.TestCase):
         recorded = {**MEMORY_CONDITIONS["learned"], "threshold": .05}
         self.assertEqual(condition_config(recorded, "chained"), config)
         results = {"chained": {"a": stock}}
-        for name in ("noisy_or", "all_routes"):
+        for name in ("noisy_or", "all_routes", "actr", "actr_solo"):
             results[name] = {"a": replay_agent(lines, memories, condition_config(recorded, name),
                                                token_counter=len, engine_class=VARIANTS[name].engine)}
         table = compare(results, "chained")
         self.assertEqual(table["chained"]["only_here"], 0)
         for row in table.values():
             self.assertEqual(row["shared"] + row["only_here"], row["fresh"])
+        self.assertEqual(table["actr_solo"]["rescued"], 0)  # links off, so nothing to rescue
+
+    def test_run_made_with_a_variant_replays_under_its_engine(self):
+        actr = VARIANTS["actr"].engine
+        config = condition_config(MEMORY_CONDITIONS["learned"], "actr")
+        lines, memories = live_session(config, engine_class=actr)
+        rows = replay_agent(lines, memories, config, token_counter=len, engine_class=actr, events=True)
+        self.assertTrue(any(r["rescued"] for r in rows))
+        for row, line in zip(rows, lines):  # the kept audit line is the one the live run wrote
+            self.assertEqual(json.loads(json.dumps(row["event"]["rows"])), line["rows"])
+            self.assertEqual(row["selected"], line["selected"])
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIs(recorded_engine(Path(tmp)), AssociativeMemory)  # an older run
+            (Path(tmp) / "memory_config.json").write_text(json.dumps({"variant": "actr"}))
+            self.assertIs(recorded_engine(Path(tmp)), actr)
+
+    def test_another_variant_drops_what_the_runs_own_variant_set(self):
+        made_chained = asdict(condition_config({"working_history": 1}, "chained"))
+        learned = condition_config(made_chained, "learned")
+        self.assertEqual((learned.entity_hops, learned.edge_weight, learned.working_history), (1, .8, 1))
+        made_actr = asdict(condition_config({}, "actr"))
+        self.assertEqual(condition_config(made_actr, "chained").threshold, MemoryConfig().threshold)
+        tuned = {**MEMORY_CONDITIONS["learned"], "edge_weight": .9}  # a tuning file's value stays
+        self.assertEqual(condition_config(tuned, "hou").edge_weight, .9)
 
 
 if __name__ == "__main__":

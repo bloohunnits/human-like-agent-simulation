@@ -261,9 +261,7 @@ class AssociativeMemory:
                 return
             tax = 1.0
             for hub in hubs:  # crowd penalty once per traversed hub
-                fan = len(members.get(hub, []))
-                if fan > 3:
-                    tax *= 1 / (1 + math.log(fan / 3))
+                tax *= self.crowd_tax(len(members.get(hub, [])))
             transmissions = tuple(e.transmission(tick) for e in path)
             value = self.route_value(cue, transmissions, tax)
             if value > 0:
@@ -320,8 +318,24 @@ class AssociativeMemory:
         return {i: tuple(sorted(rs, key=lambda r: (-r.contribution, r.source, r.edges)))
                 for i, rs in routes.items()}
 
-    # The three formulas below are the ones a variant overrides (variants.py).
+    # The formulas below are the ones a variant overrides (variants.py).
     # Replay can then score recorded runs under the new math.
+
+    def prepare(self, raw, sources):
+        """Called once per retrieval with every memory's similarity and the
+        entities in view, for a variant whose formulas need them."""
+
+    def decay_value(self, m, tick):
+        """What a memory's history says: how much of it is left at this tick."""
+        return math.exp(-(tick - m.t_last_recalled) / (self.config.time_scale * m.g))
+
+    def direct_value(self, raw, decay):
+        """The memory's relevance with no links: similarity and history."""
+        return raw * decay
+
+    def crowd_tax(self, fan):
+        """The penalty for a route through an entity tagged on fan memories."""
+        return 1 / (1 + math.log(fan / 3)) if fan > 3 else 1.0
 
     def route_value(self, cue, transmissions, tax):
         """What one route from a cue to a memory contributes."""
@@ -336,6 +350,14 @@ class AssociativeMemory:
         if self.config.mode == "gated":
             return max(raw, graph) * decay
         return max(direct, graph)
+
+    def probability(self, x):
+        """Recall probability from a final or a no-links relevance."""
+        return recall_probability(x, 0, 1)
+
+    def graph_won(self, score):
+        """Whether the links, not similarity, carried this memory."""
+        return score.graph > (score.relevance if self.config.mode == "gated" else score.direct)
 
     def _select(self, rows, solo=False):
         ranked = sorted(rows, key=lambda s: (-(s.solo_score if solo else s.score), s.id))
@@ -370,8 +392,10 @@ class AssociativeMemory:
                 raise ValueError("Embedding similarity must be finite")
             # Floating-point cosine roundoff can exceed 1 by an epsilon.
             raw[m.memory_id] = min(1.0, max(0.0, r))
-            decay[m.memory_id] = math.exp(-(tick - m.t_last_recalled) / (self.config.time_scale * m.g))
-            direct[m.memory_id] = raw[m.memory_id] * decay[m.memory_id]
+        self.prepare(raw, sources)
+        for m in self.store.memories:
+            decay[m.memory_id] = self.decay_value(m, tick)
+            direct[m.memory_id] = self.direct_value(raw[m.memory_id], decay[m.memory_id])
         paths = self._routes(direct, sources, tick) if self.config.mode != "hou" else {i: () for i in direct}
         rows = []
         for m in self.store.memories:
@@ -379,7 +403,7 @@ class AssociativeMemory:
             graph = self.graph_value(paths[i])
             x = self.combine(raw[i], decay[i], direct[i], graph)
             rows.append(Score(i, m.text, raw[i], decay[i], direct[i], graph, x,
-                              recall_probability(x, 0, 1), recall_probability(direct[i], 0, 1),
+                              self.probability(x), self.probability(direct[i]),
                               m.g, m.t_last_recalled, paths[i]))
         selected, reasons, tokens = self._select(rows)
         solo, _, _ = self._select(rows, solo=True)
@@ -401,8 +425,7 @@ class AssociativeMemory:
         qualifying = set()
         rows = []
         for s in result.scores:
-            comparator = s.relevance if self.config.mode == "gated" else s.direct
-            graph_won = s.graph > comparator
+            graph_won = self.graph_won(s)
             if s.id in selected and graph_won and self.config.edge_learning and self.config.mode != "hou":
                 qualifying.update(s.routes[0].edges)
             row = json.loads(json.dumps(asdict(s), allow_nan=False))

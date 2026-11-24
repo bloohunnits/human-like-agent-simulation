@@ -46,6 +46,8 @@ class HouMemoryAgent(LLMAgent):
     # per-agent would multiply startup cost by agent count for no reason.
     _shared_embedder: SBERTEmbedder | None = None
     memory_config = MemoryConfig()
+    # The stock engine, or a formula from variants.py that the launcher sets.
+    memory_engine_class = AssociativeMemory
 
     # By default the agent keeps TerraLingua's own free notes and prompt text,
     # so only the memory system differs from the paper. plan_notes instead
@@ -67,7 +69,7 @@ class HouMemoryAgent(LLMAgent):
             embed_fn=self._embedder(), top_k=cfg.top_k, g0=cfg.g0,
             recall_threshold=cfg.threshold, time_scale=cfg.time_scale,
         )
-        self.memory_engine = AssociativeMemory(self.hou_store, cfg, self._count_tokens)
+        self.memory_engine = self.memory_engine_class(self.hou_store, cfg, self._count_tokens)
         self._completed_tick = None
         self._completed_action = None
         self._last_energy = None
@@ -213,7 +215,7 @@ class HouMemoryAgent(LLMAgent):
         if payload is None:
             raise ValueError("This legacy checkpoint has no synchronized memory state. Start a new experiment; the old dump remains viewable.")
         self.hou_store = HouMemoryStore.from_dicts(payload["memories"], self._embedder())
-        self.memory_engine = AssociativeMemory.from_dict(self.hou_store, payload["associative"], self._count_tokens)
+        self.memory_engine = self.memory_engine_class.from_dict(self.hou_store, payload["associative"], self._count_tokens)
         self.current_plan = payload["plan"]
         self._completed_tick = payload.get("completed_tick")
         self._completed_action = payload.get("completed_action")
