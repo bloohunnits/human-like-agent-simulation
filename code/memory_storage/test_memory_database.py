@@ -139,6 +139,7 @@ class TestMemoryDatabase(unittest.TestCase):
         self._insert_initial()
         self._expect_rows([
             memory_row(MEMORY_ID_01, "a0", "first memory", 10),
+            memory_row(MEMORY_ID_02, "a1", "second memory", 15, g=1.4),
             memory_row(MEMORY_ID_03, "a0", "third memory", 24),
         ])
         result = self.db.recall_by_id([MEMORY_ID_01, MEMORY_ID_02, MEMORY_ID_03])
@@ -147,6 +148,23 @@ class TestMemoryDatabase(unittest.TestCase):
                          [MEMORY_ID_01, MEMORY_ID_02, MEMORY_ID_03])
         if self.use_mock:
             self.assertEqual(self.conn.execute.call_args[0][1], ([MEMORY_ID_01, MEMORY_ID_02, MEMORY_ID_03],))
+
+    def test_recall_by_id_for_one_agent(self):
+        self._insert_initial()
+        self._expect_rows([memory_row(MEMORY_ID_01, "a0", "first memory", 10)])
+        result = self.db.recall_by_id([MEMORY_ID_01, MEMORY_ID_02], agent_id="a0")
+        self.assertEqual([str(m) for m in result["memory_id"]], [MEMORY_ID_01])
+        if self.use_mock:
+            self.assertEqual(self.conn.execute.call_args[0][1], ([MEMORY_ID_01, MEMORY_ID_02], "a0"))
+
+    def test_batch_with_missing_strength_gets_the_defaults(self):
+        mixed = pd.DataFrame([
+            {"memory_id": MEMORY_ID_04, "agent_id": "a1", "content": "fourth", "t_created": 30, "g": 2.0, "recall_count": 3},
+            {"memory_id": MEMORY_ID_05, "agent_id": "a1", "content": "fifth", "t_created": 31},
+        ])
+        self.assertEqual(self.db.upsert_memories(mixed), 2)
+        if self.use_mock:
+            self.assertEqual([(r[5], r[6]) for r in self._upserted_rows()], [(2.0, 3), (1.0, 0)])
 
     def test_recall_id_03_and_id_04(self):
         self._insert_initial()  # id-04 does not exist, so only id-03 comes back

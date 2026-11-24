@@ -150,14 +150,18 @@ class MemoryDatabase:
             if t_last_recalled is not None and pd.isna(t_last_recalled):
                 t_last_recalled = None
             meta = _normalize_meta(row.get("meta"))
+            # A batch that mixes rows with and without these columns holds NaN
+            g, recall_count = row.get("g", 1.0), row.get("recall_count", 0)
+            g = 1.0 if pd.isna(g) else float(g)
+            recall_count = 0 if pd.isna(recall_count) else int(recall_count)
             prepared.append((
                 str(row["memory_id"]),
                 str(row["agent_id"]),
                 row["content"],
                 float(row["t_created"]),
                 t_last_recalled,
-                row.get("g", 1.0),
-                row.get("recall_count", 0),
+                g,
+                recall_count,
                 Jsonb(meta),
             ))
 
@@ -171,8 +175,8 @@ class MemoryDatabase:
             conn.commit()
         return len(prepared)
 
-    def recall_by_id(self, memory_ids) -> pd.DataFrame:
-        """ Fetch memories from memory ids """
+    def recall_by_id(self, memory_ids, agent_id: Optional[str] = None) -> pd.DataFrame:
+        """ Fetch memories from memory ids, optionally restricted to one agent """
         # Return an empty DataFrame immediately when no IDs are given
         columns = _col_names(MEMORY_COLUMNS)
         normalized_ids = [str(memory_id) for memory_id in memory_ids]
@@ -181,15 +185,16 @@ class MemoryDatabase:
 
         # Fetch matching memories in chronological order
         select_cols = (lambda cols: ", ".join(_col_names(cols)))(MEMORY_COLUMNS)
+        scope = "" if agent_id is None else " AND agent_id = %s"
         with self.connection(self.pg_dsn) as conn:
             rows = conn.execute(
                 f"""
                 SELECT {select_cols}
                 FROM memories
-                WHERE memory_id = ANY(%s::uuid[])
+                WHERE memory_id = ANY(%s::uuid[]){scope}
                 ORDER BY t_created ASC
                 """,
-                (normalized_ids,),
+                (normalized_ids,) if agent_id is None else (normalized_ids, str(agent_id)),
             ).fetchall()
         return pd.DataFrame(rows, columns=columns)
 
