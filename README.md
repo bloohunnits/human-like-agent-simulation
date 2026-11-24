@@ -12,6 +12,30 @@ CMSC473/673 project: Andre Atkins, Ben Sadorra and Ryan Shechtman. The [course p
 
 The deck has 14 main slides and 7 backups. Its TerraLingua GIF plays in PowerPoint Slide Show; the PDF is static. Main slides describe the proposed experiment. The team catch-up distinguishes implemented mechanisms from untested behavioral predictions.
 
+## Grade the cards
+
+Grading needs no API key, no TerraLingua install and no recorded worlds. Tested on a fresh clone with Python 3.12 on 2026-11-24.
+
+```bash
+git clone https://github.com/bloohunnits/human-like-agent-simulation.git
+cd human-like-agent-simulation
+python3 -m venv .venv
+.venv/bin/python -m pip install -r code/hou_memory/requirements.txt
+.venv/bin/python code/hou_memory/webapp.py
+```
+
+Then open http://127.0.0.1:5057/rescued and type your first name (Andre, Ben or Ryan). On Windows the Python is `.venv\Scripts\python`.
+
+- The first start downloads a small language model and takes a minute or two. Wait for the line "Rescued set and judge".
+- The page shows how many cards are left and saves each answer as you go. Stop any time and start the server again later: it opens on your next card.
+- Your answers are saved on your own machine in `output/analysis/rescued/anchor_v4/` as `pairs_<name>.csv` and `ratings_<name>.csv`. They are not in git. When you finish, send those two files to Andre.
+- To pick up new cards later, run `git pull` and start the server again. Finished cards stay finished.
+- Do not open the page with `?admin` until you are done. That view shows which memory is which.
+
+If everyone is on the same wifi, one person can run `.venv/bin/python code/hou_memory/webapp.py --host 0.0.0.0` and the others open `http://<that computer's address>:5057/rescued`. Then all answers land on one machine and nobody sends files.
+
+How the list is built is in [docs/INTEGRATION.md](docs/INTEGRATION.md), under "The grading list".
+
 ## Current system
 
 An observed entity can cue a linked episode even when semantic similarity plus ordinary decay leaves that episode below the retrieval cutoff. The connection has its own clock and also fades. Only memories included in the prompt rehearse; only their winning graph routes can learn.

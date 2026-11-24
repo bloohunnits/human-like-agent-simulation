@@ -336,6 +336,26 @@ A pair card:
 
 The judge model still reads single cards only.
 
+### What stands between us and the claim (2026-11-24)
+
+The claim is that links bring back an old memory that matters when plain decay would not. These are the reasons the data so far does not show it. Most are ours to fix.
+
+**1. A memory is a whole turn, not an event.** Each stored memory holds who was nearby, the notes in sight, what everyone said and the being's own move. The median memory on a pair card is 58 words and only a third of them are the being's own move and words. Two turns from one conversation therefore share most of their text. On the 40 pair cards the two memories share a median 42 in 100 words, 11 pairs share half or more and only 3 share under a quarter. In 29 pairs the same person is nearby in both. A grader asked which of two near copies helps more can only say "about the same".
+
+**2. Beings repeat themselves.** In `newengine_2`, 303 of 1,314 spoken turns open with one of four "holding ..." phrases. A stretch of such turns is one event written down many times.
+
+**3. Everyone in sight is tagged on every turn.** A memory carries about 3 people tags in `newengine_2`. "Memories of Ben" then means every turn Ben stood nearby, not the things Ben did. A person the being knows well has around 27 of them, and the crowd penalty cuts each link to about a third.
+
+**4. The stock formulas favor the newest memory.** A link's clock starts when the memory is written, so among one person's memories the newest has the strongest link: true in 99 of 100 turns. The cue is full strength for anyone in view, and 97 to 99 in 100 of those are someone who was also there the turn before. Nothing tells the formula that someone came back. A link is worth at most 0.5, so at a reunion the old memory scores 0.12 to 0.39 against a bar of 0.28 to 0.73 for the third slot. It was above the cutoff at all 114 reunions in four worlds and took a slot at 29, the same as with no links.
+
+**5. The worlds rarely set up the situation.** A reunion, someone back in view after more than 20 turns, is 0.2 in 100 of the people-in-view turns in `newengine_2`. The three newer-engine worlds have 20 reunions between them. `newengine_3` was launched with two food areas to cause more and had 4.
+
+**6. What we measure is one step removed.** Replay shows what a formula would have brought to mind. The beings acted on the recorded picks, so no being ever used another formula's memory. The grader reads four turns of history where the being's prompt holds one, so a 2-turn-old memory looks redundant to the grader and is not to the being. There are 40 scenes and one grader so far.
+
+**7. Tuning and testing on the same worlds.** A prototype that makes a cue as strong as the time the thing was away brought an old memory back at 48 to 89 of the same 114 reunions, depending on how much of the crowd penalty it keeps. Those numbers were tuned and scored on the same four worlds. A formula should be picked on one world and scored once on worlds it never saw.
+
+Much of the work so far went into making worlds eventful enough for an old memory to matter: model choice, prompts, food, lineage rules. That is tuning the simulation to produce the situation, and it still produces it rarely. The cleaner design is to stage the situation: a scripted world where someone gives or takes, leaves, and returns later, repeated many times, with each formula scored on whether the old memory comes back and then on what the being does. That is a controlled experiment, and the free-running worlds become the check that the effect also shows up unstaged.
+
 Replay under another formula first puts back what the run's own formula set. So `learned` on a run made with `chained` is one step at 0.8 again, and a stock condition on a run made with `actr` gets the stock cutoff back.
 
 Known limits: the God Mode console does its own what-if scoring with the Hou kernel and has not been tried on a run made with `actr`.
