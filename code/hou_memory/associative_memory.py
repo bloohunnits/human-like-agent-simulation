@@ -12,7 +12,10 @@ import math
 from dataclasses import asdict, dataclass, replace
 from typing import Callable
 
-from hou_memory.hou_memory import HouMemoryStore, _cosine, recall_probability
+try:  # as hou_memory.associative_memory, with code/ on the path (code/memory_storage does this)
+    from .hou_memory import HouMemoryStore, _cosine, recall_probability
+except ImportError:  # on its own, with code/hou_memory on the path (the runners, tests and scripts do this)
+    from hou_memory import HouMemoryStore, _cosine, recall_probability
 
 SCHEMA_VERSION = 1
 

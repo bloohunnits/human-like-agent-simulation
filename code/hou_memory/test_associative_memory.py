@@ -1,8 +1,11 @@
 """Mechanism and transaction tests using controlled vectors; no API calls."""
 import copy
 import math
+import subprocess
+import sys
 import unittest
 from dataclasses import asdict, replace
+from pathlib import Path
 
 import numpy as np
 
@@ -248,6 +251,15 @@ class MechanismTests(unittest.TestCase):
         for kwargs in ({'beta': 2}, {'retention': 0}, {'threshold': 0}, {'top_k': 1.5}, {'g0': -1}, {'learning_rate': float('nan')}, {'retention':201}):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 MemoryConfig(**kwargs)
+
+
+class LoadingTests(unittest.TestCase):
+    def test_loads_as_a_package_from_the_code_folder_too(self):
+        # code/memory_storage imports it this way. The tests in this folder import it the other way.
+        code = Path(__file__).resolve().parents[1]
+        done = subprocess.run([sys.executable, '-c', 'from hou_memory.associative_memory import entity_keys'],
+                              cwd=code, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
 
 
 if __name__ == '__main__':
