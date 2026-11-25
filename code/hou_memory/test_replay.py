@@ -1,5 +1,6 @@
 """Replay must reproduce a live session from its audit lines alone."""
 import json
+import math
 import tempfile
 import unittest
 from dataclasses import asdict
@@ -100,6 +101,28 @@ class ReplayTest(unittest.TestCase):
         self.assertEqual(condition_config(made_actr, "chained").threshold, MemoryConfig().threshold)
         tuned = {**MEMORY_CONDITIONS["learned"], "edge_weight": .9}  # a tuning file's value stays
         self.assertEqual(condition_config(tuned, "hou").edge_weight, .9)
+
+    def test_returning_reminds_when_someone_comes_back_not_while_they_stay(self):
+        def run(name):
+            """Ben is in view for ten turns, gone for thirty, then back."""
+            engine = VARIANTS[name].engine(HouMemoryStore(lambda _: np.array([.2, math.sqrt(.96)])),
+                                           condition_config({}, name), token_counter=len)
+            turns = {}
+            for tick in range(42):
+                here = ["Ben"] if tick < 10 or tick >= 40 else []
+                result = engine.preview("cue", tick, {"people": here}, f"a:{tick}")
+                engine.commit(result)
+                turns[tick] = result
+                engine.add(f"turn {tick}", tick, {"entities": {"people": here}}).embedding = np.array([1., 0.])
+            return turns
+
+        last_time = "memory:00000009"  # the last turn Ben was seen before he left
+        returning, chained = run("returning"), run("chained")
+        self.assertIn(last_time, returning[40].selected)
+        self.assertNotIn(last_time, chained[40].selected)
+        # The turn after, Ben is simply still here and pulls almost nothing.
+        self.assertLess(max(s.graph for s in returning[41].scores), .1)
+        self.assertGreater(max(s.graph for s in chained[41].scores), .1)
 
 
 if __name__ == "__main__":
