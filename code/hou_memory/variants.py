@@ -14,8 +14,12 @@ any variant name, so the same formula can then run in the sim.
 import math
 from dataclasses import dataclass, field, replace
 
-from associative_memory import MEMORY_CONDITIONS, AssociativeMemory
-from hou_memory import ACTR_DECAY, ACTR_W
+try:  # as hou_memory.variants, with code/ on the path
+    from .associative_memory import MEMORY_CONDITIONS, AssociativeMemory
+    from .hou_memory import ACTR_DECAY, ACTR_W
+except ImportError:  # on its own, with code/hou_memory on the path
+    from associative_memory import MEMORY_CONDITIONS, AssociativeMemory
+    from hou_memory import ACTR_DECAY, ACTR_W
 
 
 @dataclass(frozen=True)

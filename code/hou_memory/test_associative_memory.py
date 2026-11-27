@@ -257,7 +257,8 @@ class LoadingTests(unittest.TestCase):
     def test_loads_as_a_package_from_the_code_folder_too(self):
         # code/memory_storage imports it this way. The tests in this folder import it the other way.
         code = Path(__file__).resolve().parents[1]
-        done = subprocess.run([sys.executable, '-c', 'from hou_memory.associative_memory import entity_keys'],
+        modules = 'associative_memory', 'variants', 'replay'  # what code/memory_storage reuses
+        done = subprocess.run([sys.executable, '-c', '; '.join(f'import hou_memory.{m}' for m in modules)],
                               cwd=code, capture_output=True, text=True)
         self.assertEqual(done.returncode, 0, done.stderr)
 
