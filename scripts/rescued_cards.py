@@ -235,21 +235,21 @@ def sample_moments(turns, count, seed, pairs=True, swaps_first=False):
     """Take moments from each kind in turn. Skip any that reuse a memory or sit
     close enough to a chosen moment to share its history, so no two sampled
     moments are near copies of each other. Without pairs, a moment where
-    nothing was pushed out counts too. Moments kept from an earlier set go
-    first, then with swaps_first the ones where a memory was pushed out."""
+    nothing was pushed out counts too. Moments kept from an earlier set are
+    always taken, then with swaps_first the ones where a memory was pushed out."""
     def usable(t):
         if not t["displaced"]:
             return not pairs
         return t["by_id"].get(t["rescued"][0], {}).get("text") != t["by_id"].get(t["displaced"][0], {}).get("text")
 
-    pool = [t for t in turns if usable(t)]
+    pool = [t for t in turns if t.get("kept") or usable(t)]
     random.Random(seed).shuffle(pool)
     chosen, used, spots = [], set(), defaultdict(list)
 
-    def take(turn):
+    def take(turn, must=False):
         who = (turn["run"], turn["tag"])
         ids = {(who, i) for i, _ in cards_of(turn)}
-        if ids & used or any(abs(turn["rec"]["tick"] - t) <= 4 for t in spots[who]):
+        if not must and (ids & used or any(abs(turn["rec"]["tick"] - t) <= 4 for t in spots[who])):
             return False
         chosen.append(turn)
         used.update(ids)
@@ -268,7 +268,7 @@ def sample_moments(turns, count, seed, pairs=True, swaps_first=False):
 
     for turn in pool:
         if turn.get("kept"):
-            take(turn)
+            take(turn, must=True)  # a new formula's pick must not drop a card people graded
     if swaps_first:
         fill([t for t in pool if t["displaced"]])
     fill(pool)  # a moment already taken is refused
