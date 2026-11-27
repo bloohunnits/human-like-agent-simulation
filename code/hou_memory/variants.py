@@ -132,8 +132,8 @@ class Returning(AssociativeMemory):
     seen. Their other memories stay penalized, so one reminder comes back
     and not a flood.
 
-    Not for live runs yet: when each thing was last in view is not saved in
-    checkpoints, so a resumed run would treat everything as new.
+    When each thing was last in view is saved with the engine, so a resumed
+    run keeps counting from where it stopped.
     """
     AWAY = 20.0
 
@@ -168,6 +168,15 @@ class Returning(AssociativeMemory):
             self._last_seen[source] = result.tick
         return event
 
+    def to_dict(self):
+        return {**super().to_dict(), "last_seen": self._last_seen}
+
+    @classmethod
+    def from_dict(cls, store, payload, token_counter=None):
+        engine = super().from_dict(store, payload, token_counter)
+        engine._last_seen = dict(payload.get("last_seen", {}))
+        return engine
+
 
 VARIANTS = {name: Variant(name, about="stock formulas") for name in MEMORY_CONDITIONS}
 VARIANTS.update({
@@ -176,7 +185,7 @@ VARIANTS.update({
     # Threshold .5 on x / (x + BAR) is odds over BAR.
     "actr": Variant("chained", ActR, {"threshold": .5}, "ACT-R odds: power-law history, rarity-weighted links"),
     "actr_solo": Variant("hou", ActR, {"threshold": .5}, "actr with links off"),
-    # beta 1: a full pull is worth as much as a perfect match. Replay only for now.
+    # beta 1: a full pull is worth as much as a perfect match.
     "returning": Variant("chained", Returning, {"beta": 1.0}, "a cue pulls by its time away, one memory spared the crowd penalty"),
 })
 

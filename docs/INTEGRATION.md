@@ -356,7 +356,7 @@ The claim is that links bring back an old memory that matters when plain decay w
 
 Much of the work so far went into making worlds eventful enough for an old memory to matter: model choice, prompts, food, lineage rules. That is tuning the simulation to produce the situation, and it still produces it rarely. The cleaner design is to stage the situation: a scripted world where someone gives or takes, leaves, and returns later, repeated many times, with each formula scored on whether the old memory comes back and then on what the being does. That is a controlled experiment, and the free-running worlds become the check that the effect also shows up unstaged.
 
-### The `returning` formula (2026-11-24, replay only)
+### The `returning` formula (2026-11-24)
 
 `returning` in `code/hou_memory/variants.py` answers reasons 3 and 4 above. A thing in view pulls by how long it was gone:
 
@@ -379,8 +379,7 @@ What to hold against this:
 
 - It was the second pick. The first rule allowed at most 5 link-only memories per 100 turns on the tuning world, and every setting under that limit did worse there than no links (24 of 94 against 29). That pick scored 19 of 97 on the unseen worlds. The limit was then raised to 10, from the tuning table alone, and this setting was scored. Two settings have now been scored on the unseen worlds.
 - The score says an old memory of the person came back. It does not say the memory helped. That needs grades.
-- It is replay. No being has acted on these memories.
-- It cannot run live yet: when each thing was last in view is not saved in checkpoints.
+- It is replay. No being has acted on these memories. It can run live (`make run NAME=... CONDITION=returning`), and when each thing was last in view is saved in checkpoints, but no live world has been run with it.
 
 To reproduce one row: replay a world under `returning` with events on (`replay_agent(..., events=True)`) and count, at each reunion, whether a selected memory is tagged with the returning person and older than the gap.
 
