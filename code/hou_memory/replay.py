@@ -21,9 +21,14 @@ from dataclasses import fields
 from itertools import repeat
 from pathlib import Path
 
-from associative_memory import AssociativeMemory, MemoryConfig
-from hou_memory import HouMemoryStore
-from variants import VARIANTS, variant_settings
+try:  # as hou_memory.replay, with code/ on the path
+    from .associative_memory import AssociativeMemory, MemoryConfig
+    from .hou_memory import HouMemoryStore
+    from .variants import VARIANTS, variant_settings
+except ImportError:  # on its own, with code/hou_memory on the path
+    from associative_memory import AssociativeMemory, MemoryConfig
+    from hou_memory import HouMemoryStore
+    from variants import VARIANTS, variant_settings
 
 LOGS = Path(__file__).resolve().parent.parent / "terralingua" / "logs_dev" / "logs"
 

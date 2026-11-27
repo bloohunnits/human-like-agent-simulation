@@ -30,6 +30,7 @@ except ImportError:
 from embedder import SBERTEmbedder  # noqa: E402
 from hou_memory import HouMemoryStore  # noqa: E402
 from associative_memory import AssociativeMemory, MemoryConfig  # noqa: E402
+from entity_tags import extract_entities, heard  # noqa: E402
 
 
 # Plain human names, so memories read "Took 20 energy from Ben" instead of
@@ -307,52 +308,12 @@ class HouMemoryAgent(LLMAgent):
         plan = self.current_plan or "<no plan yet>"
         return f"Current plan: {plan}\n\nWhat comes to mind:\n{self._render_surfaced(surfaced)}"
 
-    @staticmethod
-    def _is_number(s: str) -> bool:
-        try:
-            float(s)
-            return True
-        except (TypeError, ValueError):
-            return False
-
     def _extract_entities(self, obs: dict, action: dict) -> dict:
-        """Structured observed cues; actions add explicit episode tags only."""
-        people, artifacts = set(), set()
+        """The turn's relational tags. The reader lives in entity_tags.py so
+        code outside the simulation can use it too."""
+        return extract_entities(obs, action)
 
-        for contents in obs.get("observation", {}).values():
-            for item in contents:
-                item = str(item)
-                if item.startswith("A("):  # artifact, rendered "A(text): name"
-                    artifacts.add(item.split(": ", 1)[-1])
-                elif item in ("X", "") or self._is_number(item):
-                    continue  # off-map marker or a food energy value - not a named entity
-                else:
-                    # Color is an appearance, not a new entity identity.
-                    people.add(item.rsplit("(", 1)[0] if item.endswith(")") else item)
-
-        for item in obs.get("inventory", []):
-            if str(item).startswith("A("):
-                artifacts.add(str(item).split(": ", 1)[-1])
-
-        for sender in self._heard(obs):
-            people.add(sender)
-
-        params = action.get("params", {}) or {}
-        act = action.get("action")
-        if act in ("give", "take") and params.get("target"):
-            people.add(str(params["target"]))
-        elif act == "reproduce" and params.get("name"):
-            people.add(str(params["name"]))
-        elif act == "create_artifact" and params.get("name"):
-            artifacts.add(str(params["name"]))
-
-        return {"people": sorted(people), "artifacts": sorted(artifacts),
-                "places": sorted(set(obs.get("named_places", [])))}
-
-    @staticmethod
-    def _heard(obs: dict) -> dict:
-        """Messages by sender. The newer engine calls them incoming_broadcasts."""
-        return obs.get("message") or obs.get("incoming_broadcasts") or {}
+    _heard = staticmethod(heard)
 
     @staticmethod
     def _plain_number(value) -> str:
