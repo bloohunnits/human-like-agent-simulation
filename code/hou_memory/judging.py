@@ -649,7 +649,8 @@ def tasks(card_set: str) -> list[dict]:
     a pair card: the swap the most formulas made, near copies left out. A
     scene without one gives a single card for a linked memory that pushed
     nothing out, unless the card already shows that memory as a recent turn.
-    Adding worlds to a set adds items. It never changes or removes one."""
+    Adding worlds to a set adds items. A new formula can change which swap a
+    scene shows. An answer stays with its scene, so nobody is asked twice."""
     cards = gradable(card_set)
     scene = scenes(cards)
     swaps = defaultdict(list)

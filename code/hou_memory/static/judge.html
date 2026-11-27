@@ -218,7 +218,7 @@ async function report(){if(!set())return;const r=await api('/api/judge/report?se
   $('rule').textContent=r.gate_rule;
   const runName=`${$('prompt').value} / ${$('model').value}`;const w=r.runs.some(x=>x.run===runName)?(await api(`/api/judge/disagreements?set=${encodeURIComponent(set())}&run=${encodeURIComponent(runName)}`)).items:[];
   $('wrong').innerHTML=w.length?w.map(x=>`<div class="box"><b>Came to mind:</b> ${esc(x.memory)}<br><b>People:</b> ${esc(name(x.majority))}<br><b>Judge:</b> ${esc(name(x.judge))}. <span class="muted">${esc(x.judge_reason)}</span><details><summary class="muted">Whole card</summary><pre>${esc(x.text)}</pre></details></div>`).join(''):'<p class="muted">Nothing yet. Label some cards, then run the judge.</p>';}
-const FORMULAS={hou:'No links',learned:'Learned',chained:'Chained',actr:'ACT-R'};
+const FORMULAS={hou:'No links',learned:'Learned',chained:'Chained',actr:'ACT-R',returning:'Returning'};
 let cmp=null;
 async function compare(){if(!set())return;cmp=await api('/api/judge/compare?set='+encodeURIComponent(set()));$('engine').hidden=new Set(cmp.moments.map(m=>m.engine)).size<2;drawCompare();}
 function drawCompare(){const d=cmp,fs=d.formulas,e=$('engine').hidden?'':$('engine').value,ms=d.moments.filter(m=>!e||m.engine===e);
