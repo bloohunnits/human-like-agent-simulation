@@ -352,9 +352,36 @@ The claim is that links bring back an old memory that matters when plain decay w
 
 **6. What we measure is one step removed.** Replay shows what a formula would have brought to mind. The beings acted on the recorded picks, so no being ever used another formula's memory. The grader reads four turns of history where the being's prompt holds one, so a 2-turn-old memory looks redundant to the grader and is not to the being. There are 40 scenes and one grader so far.
 
-**7. Tuning and testing on the same worlds.** A prototype that makes a cue as strong as the time the thing was away brought an old memory back at 48 to 89 of the same 114 reunions, depending on how much of the crowd penalty it keeps. Those numbers were tuned and scored on the same four worlds. A formula should be picked on one world and scored once on worlds it never saw.
+**7. Tuning and testing on the same worlds.** A prototype that makes a cue as strong as the time the thing was away brought an old memory back at 48 to 89 of the same 114 reunions, depending on how much of the crowd penalty it keeps. Those numbers were tuned and scored on the same four worlds. A formula should be picked on one world and scored once on worlds it never saw. The next section does that.
 
 Much of the work so far went into making worlds eventful enough for an old memory to matter: model choice, prompts, food, lineage rules. That is tuning the simulation to produce the situation, and it still produces it rarely. The cleaner design is to stage the situation: a scripted world where someone gives or takes, leaves, and returns later, repeated many times, with each formula scored on whether the old memory comes back and then on what the being does. That is a controlled experiment, and the free-running worlds become the check that the effect also shows up unstaged.
+
+### The `returning` formula (2026-11-24)
+
+`returning` in `code/hou_memory/variants.py` answers reasons 3 and 4 above. A thing in view pulls by how long it was gone:
+
+$$\text{pull} = 1 - e^{-\text{turns away}/20} \qquad \text{route value} = \text{stock route value} \times \text{pull}$$
+
+Someone here last turn pulls at 0.05. Someone back after 20 turns pulls at 0.63, after 40 turns at 0.86. The crowd penalty skips one memory per thing in view, the one with the strongest link to it, which for someone back after a gap is the last time they were seen. A full pull is worth as much as a perfect match (`beta` 1).
+
+It was picked from a family with three knobs (turns away for a full pull, how fast the pull fades while the thing stays, how many memories the penalty skips), 12 settings in all. The pick used one world, `paper_mini_300`, and was then scored once on eight worlds it never saw: the three on the newer engine and `paper_mini_300_2` to `_6`. A reunion is someone back in view after more than 20 turns, past turn 30. The score is how often a memory of them from before the gap came to mind.
+
+| Formula, on the eight unseen worlds | Old memory back at a reunion | Link-only memories per 100 turns | Of those, 2 turns old |
+| --- | --- | --- | --- |
+| No links | 14 of 97 | 0 | |
+| Chained | 13 of 97 | 1.8 | 47 of 87 |
+| ACT-R | 31 of 97 | 14.2 | 428 of 680 |
+| `returning` | 52 of 97 | 3.8 | 20 of 184 |
+
+On the newer engine alone it is 8 of 20 against 1 of 20 with no links, and 6 of those 8 are in `newengine_2`. On the older worlds it is 44 of 77 against 13.
+
+What to hold against this:
+
+- It was the second pick. The first rule allowed at most 5 link-only memories per 100 turns on the tuning world, and every setting under that limit did worse there than no links (24 of 94 against 29). That pick scored 19 of 97 on the unseen worlds. The limit was then raised to 10, from the tuning table alone, and this setting was scored. Two settings have now been scored on the unseen worlds.
+- The score says an old memory of the person came back. It does not say the memory helped. That needs grades.
+- It is replay. No being has acted on these memories. It can run live (`make run NAME=... CONDITION=returning`), and when each thing was last in view is saved in checkpoints, but no live world has been run with it.
+
+To reproduce one row: replay a world under `returning` with events on (`replay_agent(..., events=True)`) and count, at each reunion, whether a selected memory is tagged with the returning person and older than the gap.
 
 Replay under another formula first puts back what the run's own formula set. So `learned` on a run made with `chained` is one step at 0.8 again, and a stock condition on a run made with `actr` gets the stock cutoff back.
 

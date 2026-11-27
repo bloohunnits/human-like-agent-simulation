@@ -12,7 +12,7 @@ already, with the stock formulas. The launchers' --memory-condition takes
 any variant name, so the same formula can then run in the sim.
 """
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 try:  # as hou_memory.variants, with code/ on the path
     from .associative_memory import MEMORY_CONDITIONS, AssociativeMemory
@@ -115,6 +115,69 @@ class ActR(AssociativeMemory):
         return score.solo_score <= self.config.threshold < score.score
 
 
+class Returning(AssociativeMemory):
+    """A thing in view reminds by how long it was gone. The stock formulas
+    treat someone who has stood there all day like someone back after a
+    month, and since a link is strongest when its memory is new, they bring
+    back last turn. Here:
+
+        pull = 1 - exp(-turns away / AWAY)     route value = stock value x pull
+
+    Someone here last turn pulls almost nothing. Someone back after AWAY
+    turns pulls at about two thirds, and more the longer they were gone.
+
+    The crowd penalty, which weakens every memory of someone with many
+    memories, skips one memory per thing in view: the one with the strongest
+    link to it. For someone back after a gap that is the last time they were
+    seen. Their other memories stay penalized, so one reminder comes back
+    and not a flood.
+
+    When each thing was last in view is saved with the engine, so a resumed
+    run keeps counting from where it stopped.
+    """
+    AWAY = 20.0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._last_seen = {}
+
+    def _routes(self, direct, sources, tick):
+        pull = {s: 1 - math.exp(-(tick - self._last_seen[s]) / self.AWAY) if s in self._last_seen else 1.0
+                for s in sources}
+        found = super()._routes(direct, sources, tick)
+        links = {}
+        for i, routes in found.items():
+            for r in routes:
+                if len(r.edges) == 1:
+                    links.setdefault(r.source, []).append((-r.transmissions[0], i))
+        spared = {(source, min(ranked)[1]) for source, ranked in links.items()}
+        out = {}
+        for i, routes in found.items():
+            new = []
+            for r in routes:
+                value, tax = r.contribution, r.crowd_penalty
+                if len(r.edges) == 1 and (r.source, i) in spared:
+                    value, tax = value / tax, 1.0
+                new.append(replace(r, cue=pull[r.source], crowd_penalty=tax, contribution=value * pull[r.source]))
+            out[i] = tuple(sorted(new, key=lambda r: (-r.contribution, r.source, r.edges)))
+        return out
+
+    def commit(self, result):
+        event = super().commit(result)
+        for source in result.sources:
+            self._last_seen[source] = result.tick
+        return event
+
+    def to_dict(self):
+        return {**super().to_dict(), "last_seen": self._last_seen}
+
+    @classmethod
+    def from_dict(cls, store, payload, token_counter=None):
+        engine = super().from_dict(store, payload, token_counter)
+        engine._last_seen = dict(payload.get("last_seen", {}))
+        return engine
+
+
 VARIANTS = {name: Variant(name, about="stock formulas") for name in MEMORY_CONDITIONS}
 VARIANTS.update({
     "noisy_or": Variant("chained", NoisyOr, about="chained, links add to similarity"),
@@ -122,6 +185,8 @@ VARIANTS.update({
     # Threshold .5 on x / (x + BAR) is odds over BAR.
     "actr": Variant("chained", ActR, {"threshold": .5}, "ACT-R odds: power-law history, rarity-weighted links"),
     "actr_solo": Variant("hou", ActR, {"threshold": .5}, "actr with links off"),
+    # beta 1: a full pull is worth as much as a perfect match.
+    "returning": Variant("chained", Returning, {"beta": 1.0}, "a cue pulls by its time away, one memory spared the crowd penalty"),
 })
 
 
