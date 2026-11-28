@@ -8,6 +8,10 @@ TICKS ?= 50
 run: code/__main__.py
 	MEMORY_CONDITION=$(CONDITION) $(PYTHON) $< $(NAME) $(TICKS)
 
+# Same, with two villages that live apart and meet at gatherings (code/hou_memory/villages.py)
+run-villages: code/__main__.py
+	MEMORY_CONDITION=$(CONDITION) $(PYTHON) $< $(NAME) $(TICKS) villages
+
 # Same, on the older engine with the settings of the graded anchor_v1 worlds
 run-anchor: code/__main__.py
 	$(PYTHON) $< $(NAME) $(TICKS) anchor

@@ -38,6 +38,18 @@ HOU_SIM_ARGS = [
     "--no-save_video",
 ]
 
+# The same runner with two villages and a meeting ground (code/hou_memory/villages.py),
+# built so beings part for a long time and meet again. These go on top of the
+# settings above. The grid is larger so the three grounds are out of sight of
+# each other. Beings outlive the run and the world holds 8, so the same beings
+# are there at every gathering and a birth only replaces a death. Two pieces
+# of food a turn, twice what 8 beings burn, because these beings forage badly.
+# 180 turns is a first gathering and three more, each after 40 turns apart.
+VILLAGE_SIM_ARGS = [
+    "--scenario", "villages", "--init_agents", "8", "--max_agents", "8", "--agent_lifespan", "400", "--stagger-ages", "0",
+    "--grid_size", "48", "--food_zones", "[[24,24]]", "--food_spawn_rate", "2",
+]
+
 # The settings of the graded anchor_v1 worlds, on the older engine in code/terralingua.
 # They were launched as chained, but the config file then reset the chained
 # values, so what they really ran was learned. That is what this reproduces.
@@ -83,13 +95,24 @@ def run_terralingua(**kwargs) -> None:
     ])
 
 
-def run_hou_sim(name: str, ticks: str) -> None:
+def replace_flags(base: list, extra: tuple) -> list:
+    """The engine takes each flag once, so a flag in extra replaces the one in base."""
+    out, i = [], 0
+    while i < len(base):
+        size = 2 if base[i].startswith("--") and i + 1 < len(base) and not base[i + 1].startswith("--") else 1
+        if base[i] not in extra:
+            out += base[i:i + size]
+        i += size
+    return out + list(extra)
+
+
+def run_hou_sim(name: str, ticks: str, extra: tuple = ()) -> None:
     """Starts our memory runner on the newer engine"""
-    # The last flag wins, so make run CONDITION=actr replaces chained.
+    # The last memory flag wins, so make run CONDITION=actr replaces chained.
     condition = os.environ.get("MEMORY_CONDITION")
     subprocess.run(
         [str(FORK_DIR / ".venv/bin/python"), "../hou_memory/run_hou_new_engine.py",
-         *HOU_SIM_ARGS, *(["--memory-condition", condition] if condition else []),
+         *replace_flags(HOU_SIM_ARGS, extra), *(["--memory-condition", condition] if condition else []),
          "--exp_name", name, "--max_ts", ticks],
         cwd=FORK_DIR,
         check=True,
@@ -119,7 +142,7 @@ def wait_for_proxy(port: int = 9000, timeout: float = 30) -> None:
 
 
 if __name__ == "__main__":
-    # usage: __main__.py [<exp_name> <ticks> [anchor]]   (or "fork" for the fork's paper_core demo)
+    # usage: __main__.py [<exp_name> <ticks> [anchor | villages [flags]]]   (or "fork" for the fork's paper_core demo)
     try:
         from dotenv import load_dotenv
         load_dotenv(TL_DIR / ".env")
@@ -143,8 +166,11 @@ if __name__ == "__main__":
             args = sys.argv[1:]
             name = args[0] if args else "hou_sim"
             ticks = args[1] if len(args) > 1 else "50"
-            runner = run_anchor_sim if args[2:] == ["anchor"] else run_hou_sim
-            procs.append(start(runner, TERRALINGUA_LOG, name=name, ticks=ticks))
+            if args[2:] == ["anchor"]:
+                procs.append(start(run_anchor_sim, TERRALINGUA_LOG, name=name, ticks=ticks))
+            else:  # flags after "villages" go to the runner, for a short trial calendar
+                extra = (*VILLAGE_SIM_ARGS, *args[3:]) if args[2:3] == ["villages"] else ()
+                procs.append(start(run_hou_sim, TERRALINGUA_LOG, name=name, ticks=ticks, extra=extra))
         # Wait until the sim exits (or Ctrl+C); the proxy runs until stopped
         while procs[1].is_alive():
             procs[1].join(timeout=0.5)

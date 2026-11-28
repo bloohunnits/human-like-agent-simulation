@@ -44,6 +44,15 @@
       "actor_effort": "low",
       "plan_notes": false,
       "memory_window": 1
+    },
+    {
+      "run": "villages_1",
+      "run_dir": "/Users/marshall/dev/human-like-agent-simulation/code/terralingua/logs_dev/logs/villages_1",
+      "engine": "terralingua-relational-memory",
+      "actor_model": "gpt-5-mini",
+      "actor_effort": "low",
+      "plan_notes": false,
+      "memory_window": 1
     }
   ],
   "variant": [
@@ -54,7 +63,7 @@
     "returning"
   ],
   "repo": {
-    "commit": "72b5f3554f5cb42e1bcb4fd1080502eb517c56b8",
+    "commit": "34a5098a12ab8098bf4df975f8f602eada96b0a2",
     "dirty": true
   },
   "engine": {
@@ -63,14 +72,14 @@
   },
   "memory_text_format": "raw_json_v1",
   "history_lines": 4,
-  "anchor_moments": 150,
-  "cards": 272,
+  "anchor_moments": 179,
+  "cards": 330,
   "kinds": {
-    "rescued": 157,
-    "displaced": 115
+    "rescued": 186,
+    "displaced": 144
   },
   "splits": {
-    "held_out": 107,
-    "tuning": 165
+    "held_out": 130,
+    "tuning": 200
   }
 }
